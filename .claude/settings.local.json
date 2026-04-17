@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l docs/design/CLAUDE.md docs/design/artifacts/*.md docs/design/process/*.md docs/guides/*.md)",
+      "Bash(bun --version)",
+      "Bash(npx --version)",
+      "Bash(bunx create-expo-app@latest temp-expo --template tabs)",
+      "Bash(cp -r temp-expo/app temp-expo/assets temp-expo/components temp-expo/constants temp-expo/app.json temp-expo/package.json temp-expo/tsconfig.json temp-expo/bun.lock .)",
+      "Bash(cp -r temp-expo/node_modules .)",
+      "Bash(rm -rf temp-expo)",
+      "Bash(bunx expo *)",
+      "Bash(gh auth *)",
+      "Bash(gh repo *)"
+    ]
+  }
+}
