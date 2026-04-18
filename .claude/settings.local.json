@@ -10,7 +10,10 @@
       "Bash(rm -rf temp-expo)",
       "Bash(bunx expo *)",
       "Bash(gh auth *)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(bun add *)",
+      "Bash(bun run *)",
+      "Bash(node -e \"const mmkv = require\\('react-native-mmkv'\\); console.log\\(Object.keys\\(mmkv\\)\\)\")"
     ]
   }
 }
