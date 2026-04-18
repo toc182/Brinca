@@ -15,7 +15,7 @@
 
 | Phase | Title | Depends on | Status |
 |-------|-------|------------|--------|
-| 1 | Project boots, dev can see an empty Home tab | — | ☐ |
+| 1 | Project boots, dev can see an empty Home tab | — | ✅ |
 | 2 | Design system, i18n, and shared UI primitives | 1 | ☐ |
 | 3 | Supabase backend: schema, RLS, auth, storage | 1 | ☐ |
 | 4 | User can create an account and complete onboarding | 2, 3 | ☐ |
@@ -33,38 +33,40 @@
 None — this is the starting point.
 
 ### PR 1: Project config + infrastructure layer
-- [ ] 1.1 Convert `app.json` → `app.config.ts` — bundle ID, EAS project ID, Sentry plugin, Expo Router config
-- [ ] 1.2 Update `tsconfig.json` with path aliases: `@/features/*`, `@/shared/*`, `@/lib/*`, `@/stores/*`
-- [ ] 1.3 Install dependencies — `@tanstack/react-query`, `zustand`, `immer`, `expo-sqlite`, `react-native-mmkv`, `expo-secure-store`, `@supabase/supabase-js`, `@sentry/react-native`; dev: `jest`, `@testing-library/react-native`
-- [ ] 1.4 Create `src/shared/theme.ts` — v0 design tokens from `ux-conventions.md` §2 (colors, typography, spacing, radii, shadows)
-- [ ] 1.5 Create `src/lib/supabase/client.ts` — Supabase client with placeholder env vars
-- [ ] 1.6 Create `src/lib/sqlite/schema.ts` — complete table definitions as TypeScript SQL strings (all 20 tables from `05-database-schema.md`)
-- [ ] 1.7 Create `src/lib/sqlite/db.ts` — database open + migration runner using expo-sqlite `migrate` API
-- [ ] 1.8 Create `src/lib/sqlite/migrations/0001_initial.ts` — first migration applying the full initial schema
-- [ ] 1.9 Delete template files no longer needed: `components/`, `constants/`, `app/+html.tsx`, `app/+not-found.tsx`, `app/modal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/two.tsx`
+- [x] 1.1 Convert `app.json` → `app.config.ts` — bundle ID, EAS project ID, Sentry plugin, Expo Router config
+- [x] 1.2 Update `tsconfig.json` with path aliases: `@/features/*`, `@/shared/*`, `@/lib/*`, `@/stores/*`, `@/types/*`
+- [x] 1.3 Install dependencies — `@tanstack/react-query`, `zustand`, `immer`, `expo-sqlite`, `react-native-mmkv`, `expo-secure-store`, `@supabase/supabase-js`; dev: `jest`, `@testing-library/react-native`, `@types/jest`
+- [x] 1.4 Create `src/shared/theme.ts` — v0 design tokens from `ux-conventions.md` §2 (colors, typography, spacing, radii, shadows)
+- [x] 1.5 Create `src/lib/supabase/client.ts` — Supabase client with placeholder env vars
+- [x] 1.6 Create `src/lib/sqlite/schema.ts` — complete table definitions as TypeScript SQL strings (all 20 tables from `05-database-schema.md`)
+- [x] 1.7 Create `src/lib/sqlite/db.ts` — database open + migration runner with WAL mode + foreign keys
+- [x] 1.8 Create `src/lib/sqlite/migrations/0001_initial.ts` — first migration applying the full initial schema
+- [x] 1.9 Delete template files no longer needed: `components/`, `constants/`, `app/+html.tsx`, `app/+not-found.tsx`, `app/modal.tsx`, `app/(tabs)/index.tsx`, `app/(tabs)/two.tsx`
 
 ### PR 2: Zustand stores + shared utilities
-- [ ] 2.1 Create `src/stores/active-child.store.ts` — Zustand + immer + MMKV persist
-- [ ] 2.2 Create `src/stores/active-session.store.ts` — Zustand + immer, status: `idle | active | minimized | paused | complete`
-- [ ] 2.3 Create `src/stores/ui-preferences.store.ts` — Zustand + immer + MMKV persist
-- [ ] 2.4 Create `src/shared/components/SkeletonPlaceholder.tsx` — shimmer skeleton component
-- [ ] 2.5 Create `src/shared/utils/toast.ts` — toast utility with standard error/success strings
-- [ ] 2.6 Create `src/shared/hooks/useDestructiveAlert.ts` — native iOS alert wrapper for destructive confirmations
+- [x] 2.1 Create `src/stores/active-child.store.ts` — Zustand + immer + MMKV persist (uses `createMMKV` v4 API)
+- [x] 2.2 Create `src/stores/active-session.store.ts` — Zustand + immer, status: `idle | active | minimized | paused | complete`
+- [x] 2.3 Create `src/stores/ui-preferences.store.ts` — Zustand + immer + MMKV persist (uses `createMMKV` v4 API)
+- [x] 2.4 Create `src/shared/components/SkeletonPlaceholder.tsx` — shimmer skeleton component
+- [x] 2.5 Create `src/shared/utils/toast.ts` — toast utility with standard error/success strings
+- [x] 2.6 Create `src/shared/hooks/useDestructiveAlert.ts` — native iOS alert wrapper for destructive confirmations
 
 ### PR 3: Route layer + stub screens
-- [ ] 3.1 Create stub screens in `src/features/` — `home-dashboard/screens/HomeScreen.tsx`, `activity-selector/screens/ActivityScreen.tsx`, `stats/screens/StatsScreen.tsx`, `profile/screens/ProfileScreen.tsx`
-- [ ] 3.2 Create `src/features/session-logging/components/MiniPlayerBar.tsx` — invisible stub that reads `active-session.store`
-- [ ] 3.3 Rewrite `app/(tabs)/_layout.tsx` — 4-tab navigator (Home, Activity, Stats, Profile) with proper icons, renders MiniPlayerBar stub
-- [ ] 3.4 Create `app/(tabs)/home.tsx`, `activity.tsx`, `stats/index.tsx`, `profile.tsx` — thin wrappers importing from `src/features/`
-- [ ] 3.5 Rewrite `app/_layout.tsx` — root provider tree: `QueryClientProvider`, Sentry init, splash screen, SQLite database initialization
-- [ ] 3.6 Create `src/types/domain.types.ts`, `database.types.ts`, `api.types.ts` — empty/minimal type files as placeholders
+- [x] 3.1 Create stub screens in `src/features/` — `home-dashboard/screens/HomeScreen.tsx`, `activity-selector/screens/ActivityScreen.tsx`, `stats/screens/StatsScreen.tsx`, `profile/screens/ProfileScreen.tsx`
+- [x] 3.2 Create `src/features/session-logging/components/MiniPlayerBar.tsx` — invisible stub that reads `active-session.store`
+- [x] 3.3 Rewrite `app/(tabs)/_layout.tsx` — 4-tab navigator (Home, Activity, Stats, Profile), renders MiniPlayerBar stub
+- [x] 3.4 Create `app/(tabs)/home.tsx`, `activity.tsx`, `stats/index.tsx`, `profile.tsx` — thin wrappers importing from `src/features/`
+- [x] 3.5 Rewrite `app/_layout.tsx` — root provider tree: `QueryClientProvider`, splash screen, SQLite database initialization
+- [x] 3.6 Create `src/types/domain.types.ts`, `database.types.ts`, `api.types.ts` — placeholder type files
 
 ### Done criteria
 App boots, four tabs render with stub screens, SQLite opens and migration runs, no crash. Parent avatar area is a placeholder.
 
-### Risk notes
-- MMKV compatibility with RN 0.83 / New Architecture — verify early.
-- Expo SDK 55 may have template quirks that need workarounds.
+### Implementation notes
+- `@sentry/react-native` deferred to Phase 9 — not needed until crash reporting is wired up.
+- MMKV v4 uses `createMMKV()` factory instead of `new MMKV()`, and `.remove()` instead of `.delete()`.
+- `newArchEnabled` removed from `app.config.ts` — already the default in Expo SDK 55.
+- Typecheck passes clean. Committed on `feature/phase-1-bootstrap`, merged to `main`.
 
 ---
 
