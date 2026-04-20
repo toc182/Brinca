@@ -19,7 +19,7 @@
 | 2 | Design system, i18n, and shared UI primitives | 1 | ✅ |
 | 3 | Supabase backend: schema, RLS, auth, storage | 1 | ✅ |
 | 4 | User can create an account and complete onboarding | 2, 3 | ✅ |
-| 5 | Parent can build a custom activity with drills and rewards | 4 | ☐ |
+| 5 | Parent can build a custom activity with drills and rewards | 4 | ✅ |
 | 6 | Parent can log a full session offline and see a reward summary | 5 | ☐ |
 | 7 | Home shows real progress; Stats shows charts and history | 6 | ☐ |
 | 8 | Profile shows child info; Accounts Center manages family | 6 | ☐ |
