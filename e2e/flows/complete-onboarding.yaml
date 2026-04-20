@@ -1,0 +1,39 @@
+appId: com.brinca.app
+name: Complete Onboarding
+---
+# New user: create account → add child → name activity → land on Home
+
+# Step 1 — Create account
+- assertVisible: "Create your account"
+- tapOn: "Email"
+- inputText: "test-onboarding@brinca.app"
+- tapOn: "Password"
+- inputText: "Test1234!"
+- tapOn: "Your name"
+- inputText: "Test User"
+- tapOn: "Parent"
+- tapOn:
+    text: "I agree to the Terms"
+    optional: true
+- tapOn: "Create account"
+- waitForAnimationToEnd
+
+# Step 2 — Add first child
+- assertVisible: "Who are you tracking?"
+- tapOn: "Child's name"
+- inputText: "Andrei"
+- tapOn: "Select date of birth"
+- tapOn: "Male"
+- tapOn: "Continue"
+- waitForAnimationToEnd
+
+# Step 3 — Name first activity
+- assertVisible: "What will you be practicing?"
+- tapOn: "Activity name"
+- inputText: "Baseball"
+- tapOn: "Get started"
+- waitForAnimationToEnd
+
+# Verify landing on Home
+- assertVisible: "Andrei"
+- assertVisible: "Level 1"

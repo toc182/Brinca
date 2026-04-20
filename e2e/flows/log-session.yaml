@@ -1,0 +1,41 @@
+appId: com.brinca.app
+name: Log Session
+---
+# Prerequisites: user is logged in, has a child and activity with drills
+
+# Navigate to Activity tab
+- tapOn: "Activity"
+- waitForAnimationToEnd
+
+# Start a session
+- tapOn: "Start session"
+- waitForAnimationToEnd
+
+# Select first activity from bottom sheet
+- tapOn:
+    index: 0
+- waitForAnimationToEnd
+
+# Verify session screen
+- assertVisible: "Finish session"
+
+# Tap first drill
+- tapOn:
+    index: 0
+- waitForAnimationToEnd
+
+# Finish the drill
+- tapOn: "Finish drill"
+- waitForAnimationToEnd
+
+# Finish the session
+- tapOn: "Finish session"
+- waitForAnimationToEnd
+
+# Verify summary screen
+- assertVisible: "Session complete!"
+- tapOn: "Done"
+- waitForAnimationToEnd
+
+# Verify back on Home
+- assertVisible: "Level"

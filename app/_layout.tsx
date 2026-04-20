@@ -18,8 +18,10 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { getDatabase } from '@/lib/sqlite/db';
+import { initSentry } from '@/lib/sentry';
 import { getSession } from '@/lib/supabase/auth';
 import { supabase } from '@/lib/supabase/client';
+import { startSyncEngine } from '@/lib/sync/engine';
 import '@/shared/i18n/config';
 import { colors } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
@@ -59,11 +61,13 @@ export default function RootLayout() {
     JetBrainsMono_500Medium,
   });
 
-  // Initialize DB + check auth state
+  // Initialize DB + Sentry + sync engine + check auth state
   useEffect(() => {
     async function init() {
       try {
+        initSentry();
         await getDatabase();
+        startSyncEngine();
         const session = await getSession();
 
         if (!session) {
