@@ -10,6 +10,11 @@ interface SkeletonPlaceholderProps {
   style?: ViewStyle;
 }
 
+/**
+ * Skeleton shimmer loading placeholder.
+ * Violet-tinted per brand-decisions.md §11.
+ * Base: #E8E5F2, highlight: #F4F2FA, 1500ms sweep.
+ */
 export function SkeletonPlaceholder({
   width,
   height,
@@ -55,12 +60,13 @@ export function SkeletonPlaceholder({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.shimmer,
+    backgroundColor: colors.shimmerBase,
     overflow: 'hidden',
   },
   shimmer: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: colors.shimmerHighlight,
+    opacity: 0.6,
   },
 });

@@ -16,7 +16,7 @@
 | Phase | Title | Depends on | Status |
 |-------|-------|------------|--------|
 | 1 | Project boots, dev can see an empty Home tab | — | ✅ |
-| 2 | Design system, i18n, and shared UI primitives | 1 | ☐ |
+| 2 | Design system, i18n, and shared UI primitives | 1 | ✅ |
 | 3 | Supabase backend: schema, RLS, auth, storage | 1 | ☐ |
 | 4 | User can create an account and complete onboarding | 2, 3 | ☐ |
 | 5 | Parent can build a custom activity with drills and rewards | 4 | ☐ |
@@ -76,44 +76,48 @@ App boots, four tabs render with stub screens, SQLite opens and migration runs, 
 Phase 1 complete. **Independent of Phase 3** — can be built in parallel.
 
 ### PR 1: Brand fonts + icon library + design tokens
-- [ ] 1.1 Install `@expo-google-fonts/fredoka`, `@expo-google-fonts/lexend`, `@expo-google-fonts/jetbrains-mono` — the three brand fonts from `brand-decisions.md` §4
-- [ ] 1.2 Install `react-native-phosphor` — icon library (1,200+ icons, 6 weights including Duotone)
-- [ ] 1.3 Install `@gorhom/bottom-sheet` — bottom sheet library per `brand-decisions.md` §13
-- [ ] 1.4 Install `expo-haptics` — haptic feedback for interactive elements
-- [ ] 1.5 Rewrite `src/shared/theme.ts` — replace v0 tokens with full brand palette from `brand-decisions.md` §3 (Playful Purple), typography scale §4 (Fredoka/Lexend/JetBrains Mono), spacing §6, corner radii §6, shadows §6, touch targets §6, animation spring configs §6
-- [ ] 1.6 Update `app/_layout.tsx` — load brand fonts with `useFonts`, gate rendering on font readiness
+- [x] 1.1 Install `@expo-google-fonts/fredoka`, `@expo-google-fonts/lexend`, `@expo-google-fonts/jetbrains-mono` — the three brand fonts from `brand-decisions.md` §4
+- [x] 1.2 Install `phosphor-react-native` v3 — icon library (1,200+ icons, 6 weights including Duotone). Note: `brand-decisions.md` originally referenced `react-native-phosphor`; corrected to `phosphor-react-native` (same repo, v3 is current). `brand-decisions.md` updated.
+- [x] 1.3 Install `@gorhom/bottom-sheet` — bottom sheet library per `brand-decisions.md` §13
+- [x] 1.4 Install `expo-haptics` — haptic feedback for interactive elements
+- [x] 1.5 Rewrite `src/shared/theme.ts` — full brand palette (Playful Purple), typography (Fredoka/Lexend/JetBrains Mono), spacing, radii (added `xs` and `xl`), shadows (added `xl`), touch targets, animation spring configs, icon sizes
+- [x] 1.6 Update `app/_layout.tsx` — load 6 font weights with `useFonts`, gate rendering on fonts + DB readiness
+- [x] 1.7 Also installed: `expo-linear-gradient`, `react-hook-form`, `expo-localization`, `i18next`, `react-i18next` (pulled forward from PR 3 since root layout imports i18n config)
 
 ### PR 2: Shared UI components
-- [ ] 2.1 Create `src/shared/components/Button.tsx` — primary, secondary, destructive, text, ghost variants per `brand-decisions.md` §15 (disabled states), pill radius for kid CTAs, `radiusMd` for adult
-- [ ] 2.2 Create `src/shared/components/Card.tsx` — surface background, `shadowSm`, `radiusMd`, `border-subtle` border
-- [ ] 2.3 Create `src/shared/components/Input.tsx` — all 5 states (default, focused, filled, error, disabled) per `brand-decisions.md` §9, static top label, focus halo, error trailing icon
-- [ ] 2.4 Create `src/shared/components/Avatar.tsx` — circular photo with initials fallback, sizes for parent (small) and child (medium/large)
-- [ ] 2.5 Create `src/shared/components/EmptyState.tsx` — icon/illustration + title + body + optional CTA per `brand-decisions.md` §10
-- [ ] 2.6 Create `src/shared/components/Badge.tsx` — tint-50 bg + 700-shade text + Phosphor icon, 6 status variants per `brand-decisions.md` §17
-- [ ] 2.7 Create `src/shared/components/ProgressBar.tsx` — linear bar, adult (4pt accent) and kid (10pt gradient) variants per `brand-decisions.md` §18
-- [ ] 2.8 Create `src/shared/components/Toast.tsx` — top-positioned, 4 variants (success/error/warning/info), left border + icon, auto-dismiss per `brand-decisions.md` §7
-- [ ] 2.9 Update `src/shared/components/SkeletonPlaceholder.tsx` — apply violet-tinted shimmer from `brand-decisions.md` §11 (`#E8E5F2` base, `#F4F2FA` highlight, 1500ms sweep)
-- [ ] 2.10 Update `src/shared/utils/toast.ts` — wire to new Toast component, expose `showToast(variant, message)` API
-- [ ] 2.11 Update `src/shared/hooks/useDestructiveAlert.ts` — bilingual button labels from `brand-decisions.md` §14
+- [x] 2.1 Create `src/shared/components/Button.tsx` — primary, secondary, destructive, text, ghost variants, pill option for kid CTAs
+- [x] 2.2 Create `src/shared/components/Card.tsx` — surface background, `shadowSm`, `radiusMd`, `border-subtle` border
+- [x] 2.3 Create `src/shared/components/Input.tsx` — all 5 states (default, focused, filled, error, disabled), static top label, focus halo, error tint background
+- [x] 2.4 Create `src/shared/components/Avatar.tsx` — circular photo with initials fallback, 3 sizes (small/medium/large)
+- [x] 2.5 Create `src/shared/components/EmptyState.tsx` — title + body + optional CTA button
+- [x] 2.6 Create `src/shared/components/Badge.tsx` — tint-50 bg + 700-shade text, 6 status variants (active/completed/paused/missed/scheduled/achievement)
+- [x] 2.7 Create `src/shared/components/ProgressBar.tsx` — linear bar, adult (4pt primary) and kid (10pt accent) variants
+- [x] 2.8 Create `src/shared/components/Toast.tsx` — animated top-positioned toast, 4 variants, left border + auto-dismiss with variant-specific durations
+- [x] 2.9 Update `src/shared/components/SkeletonPlaceholder.tsx` — violet-tinted shimmer (`#E8E5F2` base, `#F4F2FA` highlight)
+- [x] 2.10 Update `src/shared/utils/toast.ts` — imperative toast manager with `showToast`, `dismissToast`, `subscribeToast` API
+- [x] 2.11 Update `src/shared/hooks/useDestructiveAlert.ts` — uses i18n for bilingual Cancel/Delete defaults
 
 ### PR 3: i18n setup + bilingual copy
-- [ ] 3.1 Install `expo-localization` + `i18next` + `react-i18next` — i18n framework
-- [ ] 3.2 Create `src/shared/i18n/config.ts` — i18n initialization, detect device locale via `expo-localization`, default to English
-- [ ] 3.3 Create `src/shared/i18n/en.json` — all English copy strings: CTAs, toasts, celebrations, gentle misses, empty states, form validation, error messages from `brand-decisions.md` §2
-- [ ] 3.4 Create `src/shared/i18n/es.json` — all Spanish copy strings: matching keys from `brand-decisions.md` §2
-- [ ] 3.5 Create `src/shared/i18n/useTranslation.ts` — thin wrapper hook for type-safe translation keys
-- [ ] 3.6 Update `app/_layout.tsx` — initialize i18n provider in root layout
+- [x] 3.1 Installed `expo-localization` + `i18next` + `react-i18next` (in PR 1 batch)
+- [x] 3.2 Create `src/shared/i18n/config.ts` — i18n init, detect device locale via `getLocales()`, fallback to English
+- [x] 3.3 Create `src/shared/i18n/en.json` — all English copy: CTAs, toasts, celebrations, gentle misses, empty states, validation, errors, alerts from `brand-decisions.md` §2
+- [x] 3.4 Create `src/shared/i18n/es.json` — all Spanish copy: matching keys
+- [x] 3.5 Create `src/shared/i18n/useTranslation.ts` — thin wrapper hook
+- [x] 3.6 Root layout imports `@/shared/i18n/config` to initialize i18n at startup
 
 ### PR 4: Domain types
-- [ ] 4.1 Fill out `src/types/domain.types.ts` — all business entities: `User`, `Family`, `FamilyMember`, `Child`, `Activity`, `Drill`, `TrackingElement`, `TierReward`, `BonusPreset`, `Session`, `DrillResult`, `ElementValue`, `CurrencyLedgerEntry`, `AccoladeUnlock`, `Reward`, `Measurement`, `ExternalActivity` — per `05-database-schema.md`
-- [ ] 4.2 Fill out `src/types/api.types.ts` — shared request/response shapes for Supabase operations
+- [x] 4.1 Fill out `src/types/domain.types.ts` — 18 interfaces + type aliases: `User`, `Family`, `FamilyMember`, `Invite`, `Child`, `Activity`, `Drill`, `TrackingElement`, `TierReward`, `TierCondition`, `BonusPreset`, `Session`, `DrillResult`, `ElementValue`, `CurrencyLedgerEntry`, `Reward`, `AccoladeUnlock`, `Measurement`, `ExternalActivity` + all enums (`TrackingElementType` with 18 types, `FamilyRole`, `Gender`, `RewardState`, etc.)
+- [x] 4.2 Fill out `src/types/api.types.ts` — `ApiResponse<T>`, `SyncQueueEntry`, `SyncOperation`, `SyncStatus`
 
 ### Done criteria
 All shared UI components render correctly with brand tokens. App detects device language and shows English or Spanish copy. `bun run typecheck` passes. Domain types cover all 20 tables.
 
-### Risk notes
-- Fredoka/Lexend font rendering on low-DPI Android — verify but deprioritize (iOS primary).
-- `react-native-phosphor` may need version pinning for New Architecture compatibility.
+### Implementation notes
+- `phosphor-react-native` v3 used instead of `react-native-phosphor` — both resolve to the same GitHub repo, v3 is current. `brand-decisions.md` Libraries table updated.
+- All Phase 2 deps installed in one batch (fonts, icons, bottom-sheet, haptics, i18n, linear-gradient, react-hook-form).
+- Tab layout updated: `colors.accent` → `colors.primary500` to match new token names.
+- i18n initialized as side-effect import in root layout — no provider wrapper needed (react-i18next v17 handles this).
+- Typecheck passes clean. Committed on `feature/phase-2-design-system`.
 
 ---
 

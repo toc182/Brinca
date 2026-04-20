@@ -1,0 +1,76 @@
+{
+  "cta": {
+    "save": "Guardar",
+    "startSession": "Empezar sesión",
+    "finishSession": "Terminar sesión",
+    "logOut": "Cerrar sesión",
+    "addChild": "Agregar niño/a",
+    "upgrade": "Mejorar plan",
+    "continue": "Continuar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "confirm": "Confirmar",
+    "discard": "Descartar",
+    "addReward": "Agregar recompensa",
+    "done": "Listo",
+    "retry": "Reintentar"
+  },
+  "toast": {
+    "sessionSaved": "Sesión guardada",
+    "profileCreated": "¡Perfil listo!",
+    "changesSaved": "Cambios guardados",
+    "inviteSent": "Invitación enviada",
+    "goalUpdated": "Meta actualizada",
+    "activityCreated": "Actividad creada"
+  },
+  "error": {
+    "offline": "Sin conexión. Sincronizamos cuando vuelvas.",
+    "syncFailed": "No se pudo sincronizar. Toca para reintentar.",
+    "saveFailed": "No se pudo guardar. Revisa tu conexión.",
+    "loginFailed": "No funcionó. Revisa tu contraseña.",
+    "generic": "Algo falló de nuestro lado. Intenta otra vez."
+  },
+  "validation": {
+    "required": "Este campo es obligatorio.",
+    "maxLength": "El nombre debe tener menos de 50 caracteres.",
+    "minLength": "Usa al menos 2 caracteres.",
+    "emailFormat": "Ingresa un correo válido.",
+    "ageRange": "La edad debe estar entre 7 y 12 años.",
+    "password": "Usa 8+ caracteres, incluye un número."
+  },
+  "celebration": {
+    "streak3": "¡Racha de 3 días!",
+    "streak7": "¡Una semana entera, sigue así!",
+    "streak30": "30 días seguidos. Lo lograste.",
+    "personalBest": "¡Nuevo récord! +{{diff}} que la última vez.",
+    "rewardEarned": "¡Desbloqueaste una estampita!",
+    "firstSession": "Primera sesión lista. Buen comienzo.",
+    "goalHit": "¡Meta cumplida!"
+  },
+  "gentleMiss": {
+    "missedDay": "Día de descanso — nos vemos mañana.",
+    "sessionNotFinished": "Guardamos lo que hiciste. ¿Terminamos después?",
+    "skippedRep": "Sin problema — vamos a la siguiente.",
+    "streakPaused": "Racha en pausa. Empieza otra cuando quieras."
+  },
+  "empty": {
+    "noSessions": "Aún no hay sesiones. Toca + para registrar la primera.",
+    "noChildren": "Agrega un niño/a para comenzar.",
+    "noActivities": "Elige una actividad para armar tu plan.",
+    "noProgress": "El progreso aparece después de 2–3 sesiones.",
+    "noRewards": "Sigue así — ¡las recompensas están cerca!"
+  },
+  "upgradeNudge": {
+    "sessionLimit": "Alcanzaste las sesiones gratis del mes. ¿Pasar a ilimitadas?",
+    "addSecondChild": "Agrega más niños con el plan familiar.",
+    "exportReport": "Exportar es una función premium. Ver planes.",
+    "therapistSeats": "Invita a todo tu equipo con Clinician Pro.",
+    "generic": "Desbloquea todo. Cancela cuando quieras."
+  },
+  "alert": {
+    "logOutTitle": "Cerrar sesión",
+    "logOutMessage": "¿Seguro que quieres cerrar sesión?",
+    "discardChangesTitle": "¿Descartar cambios?",
+    "discardChangesMessage": "Tienes cambios sin guardar. ¿Descartarlos?"
+  }
+}

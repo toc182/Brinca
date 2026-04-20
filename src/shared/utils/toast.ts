@@ -1,42 +1,69 @@
-import { Alert } from 'react-native';
-
 /**
- * Minimal toast utility — v0 using Alert.alert as a placeholder.
- * Will be replaced with a proper Toast component in Phase 2.
+ * Toast manager — imperative API for showing toasts.
+ * Components subscribe to state changes to render the Toast component.
+ *
+ * Usage:
+ *   showToast('success', 'Session saved');
+ *   showStandardToast('success', 'sessionSaved');
  */
 
 type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
+interface ToastState {
+  message: string;
+  variant: ToastVariant;
+  visible: boolean;
+}
+
+type ToastListener = (state: ToastState) => void;
+
+const listeners = new Set<ToastListener>();
+
+let currentState: ToastState = {
+  message: '',
+  variant: 'info',
+  visible: false,
+};
+
+function notify() {
+  listeners.forEach((listener) => listener({ ...currentState }));
+}
+
+export function showToast(variant: ToastVariant, message: string): void {
+  currentState = { message, variant, visible: true };
+  notify();
+}
+
+export function dismissToast(): void {
+  currentState = { ...currentState, visible: false };
+  notify();
+}
+
+export function subscribeToast(listener: ToastListener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getToastState(): ToastState {
+  return { ...currentState };
+}
+
+// Standard messages keyed by name — used with showStandardToast.
 const standardMessages = {
-  // Success
-  sessionSaved: 'Session saved.',
-  changesSaved: 'Changes saved.',
-  childProfileCreated: 'Profile created.',
-  activityCreated: 'Activity created.',
-
-  // Errors
-  networkUnavailable: "You're offline. Changes will sync when your connection is restored.",
-  syncFailed: "Couldn't sync. We'll try again shortly.",
-  genericError: 'Something went wrong. Please try again.',
-  failedToSave: "Couldn't save. Please try again.",
-
-  // Validation
-  fieldRequired: 'This field is required.',
-  nameTooLong: 'Name must be under 50 characters.',
+  sessionSaved: 'Session saved',
+  changesSaved: 'Changes saved',
+  profileCreated: 'Profile ready!',
+  activityCreated: 'Activity created',
+  inviteSent: 'Invite sent',
+  goalUpdated: 'Goal updated',
+  networkUnavailable: "You're offline. We'll sync when you're back.",
+  syncFailed: "Couldn't sync. Tap to retry.",
+  saveFailed: "Couldn't save. Check your connection.",
+  genericError: 'Something broke on our end. Try again.',
 } as const;
 
 export type StandardMessageKey = keyof typeof standardMessages;
 
-export function showToast(_variant: ToastVariant, message: string): void {
-  // Phase 2 will replace this with a proper animated toast component.
-  // For now, use a simple console log in dev and Alert for errors.
-  if (__DEV__) {
-    console.log(`[Toast/${_variant}] ${message}`);
-  }
-}
-
 export function showStandardToast(variant: ToastVariant, key: StandardMessageKey): void {
   showToast(variant, standardMessages[key]);
 }
-
-export { standardMessages };
