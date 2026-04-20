@@ -1,9 +1,6 @@
 /**
- * Supabase-generated types — placeholder until Phase 3.
- * Regenerated via: npx supabase gen types typescript
- * Never edit manually.
+ * Re-export of Supabase-generated types.
+ * Source: src/lib/supabase/types.ts (generated via `npx supabase gen types typescript`)
+ * Per 02-project-structure.md Decision 12: never edit the generated file manually.
  */
-
-// This file will be overwritten by `supabase gen types typescript`
-// after the Supabase project is set up in Phase 3.
-export type Database = Record<string, unknown>;
+export type { Database, Json } from '@/lib/supabase/types';

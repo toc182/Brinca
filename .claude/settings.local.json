@@ -14,7 +14,9 @@
       "Bash(bun add *)",
       "Bash(bun run *)",
       "Bash(node -e \"const mmkv = require\\('react-native-mmkv'\\); console.log\\(Object.keys\\(mmkv\\)\\)\")",
-      "Bash(npm view *)"
+      "Bash(npm view *)",
+      "Bash(npx supabase *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }
