@@ -43,7 +43,20 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         enableFTS: false,
       },
     ],
+    [
+      '@sentry/react-native/expo',
+      {
+        organization: process.env.SENTRY_ORG ?? '',
+        project: process.env.SENTRY_PROJECT ?? '',
+      },
+    ],
   ],
+  updates: {
+    url: 'https://u.expo.dev/' + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ''),
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   experiments: {
     typedRoutes: true,
   },

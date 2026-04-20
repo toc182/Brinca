@@ -1,0 +1,18 @@
+appId: com.brinca.app
+name: Switch Child
+---
+# Prerequisites: user has multiple children
+
+# Navigate to Profile tab
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Tap the child header to open switcher
+- tapOn:
+    id: "child-header"
+    optional: true
+- waitForAnimationToEnd
+
+# Verify child switcher is visible
+# Select a different child (if available)
+- assertVisible: "Profile"

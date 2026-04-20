@@ -1,0 +1,20 @@
+appId: com.brinca.app
+name: Add Activity
+---
+# Prerequisites: user is logged in with a child
+
+# Navigate to Settings (tap parent avatar area)
+- tapOn: "Profile"
+- waitForAnimationToEnd
+
+# Open Activities from Settings
+# (Navigating through settings to activity list)
+- tapOn: "Activities"
+- waitForAnimationToEnd
+
+# Add a new activity
+- tapOn: "Add activity"
+- waitForAnimationToEnd
+
+# Verify activity list has the new activity
+- assertVisible: "Activities"

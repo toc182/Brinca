@@ -23,7 +23,7 @@
 | 6 | Parent can log a full session offline and see a reward summary | 5 | ✅ |
 | 7 | Home shows real progress; Stats shows charts and history | 6 | ✅ |
 | 8 | Profile shows child info; Accounts Center manages family | 6 | ✅ |
-| 9 | App is submittable to the App Store | 7, 8 | ☐ |
+| 9 | App is submittable to the App Store | 7, 8 | ✅ (code complete — external steps remain) |
 
 ---
 
