@@ -52,10 +52,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   ],
   updates: {
-    url: 'https://u.expo.dev/' + (process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? ''),
+    url: 'https://u.expo.dev/2bbf775c-5028-48e5-a574-1e213e939d4e',
   },
   runtimeVersion: {
     policy: 'appVersion',
+  },
+  extra: {
+    eas: {
+      projectId: '2bbf775c-5028-48e5-a574-1e213e939d4e',
+    },
   },
   experiments: {
     typedRoutes: true,
