@@ -782,7 +782,7 @@ Never uppercase for ES badges (`textTransform: 'none'`).
 | `@expo-google-fonts/fredoka` | Display font |
 | `@expo-google-fonts/lexend` | Body font |
 | `@expo-google-fonts/jetbrains-mono` | Timer font |
-| `react-native-phosphor` | Icon system |
+| `phosphor-react-native` | Icon system (v3 — originally listed as `react-native-phosphor`, corrected during Phase 2) |
 | `@gorhom/bottom-sheet` | Bottom sheets |
 | `expo-haptics` | Haptic feedback |
 | `expo-linear-gradient` | Kid progress bar gradient |

@@ -1,0 +1,76 @@
+{
+  "cta": {
+    "save": "Save",
+    "startSession": "Start session",
+    "finishSession": "Finish session",
+    "logOut": "Log out",
+    "addChild": "Add child",
+    "upgrade": "Upgrade",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "discard": "Discard",
+    "addReward": "Add reward",
+    "done": "Done",
+    "retry": "Retry"
+  },
+  "toast": {
+    "sessionSaved": "Session saved",
+    "profileCreated": "Profile ready!",
+    "changesSaved": "Changes saved",
+    "inviteSent": "Invite sent",
+    "goalUpdated": "Goal updated",
+    "activityCreated": "Activity created"
+  },
+  "error": {
+    "offline": "You're offline. We'll sync when you're back.",
+    "syncFailed": "Couldn't sync. Tap to retry.",
+    "saveFailed": "Couldn't save. Check your connection.",
+    "loginFailed": "That didn't work. Check your password.",
+    "generic": "Something broke on our end. Try again."
+  },
+  "validation": {
+    "required": "This field is required.",
+    "maxLength": "Name must be under 50 characters.",
+    "minLength": "Use at least 2 characters.",
+    "emailFormat": "Enter a valid email.",
+    "ageRange": "Age must be between 7 and 12.",
+    "password": "Use 8+ characters, including a number."
+  },
+  "celebration": {
+    "streak3": "3-day streak!",
+    "streak7": "A whole week — keep going!",
+    "streak30": "30 days strong. You did that.",
+    "personalBest": "New best! +{{diff}} from last time.",
+    "rewardEarned": "You unlocked a sticker!",
+    "firstSession": "First session done. Big step.",
+    "goalHit": "Goal hit!"
+  },
+  "gentleMiss": {
+    "missedDay": "Rest day — come back tomorrow.",
+    "sessionNotFinished": "We saved what you did. Finish later?",
+    "skippedRep": "No problem — on to the next one.",
+    "streakPaused": "Streak paused. Start a new one anytime."
+  },
+  "empty": {
+    "noSessions": "No sessions yet. Tap + to log the first one.",
+    "noChildren": "Add a child to get started.",
+    "noActivities": "Pick an activity to build your plan.",
+    "noProgress": "Progress shows up after 2–3 sessions.",
+    "noRewards": "Keep going — rewards are on the way!"
+  },
+  "upgradeNudge": {
+    "sessionLimit": "You've hit your free sessions. Go unlimited?",
+    "addSecondChild": "Add more kids with a family plan.",
+    "exportReport": "Exports are a premium feature. See plans.",
+    "therapistSeats": "Invite your whole team with Clinician Pro.",
+    "generic": "Unlock everything. Cancel anytime."
+  },
+  "alert": {
+    "logOutTitle": "Log out",
+    "logOutMessage": "Are you sure you want to log out?",
+    "discardChangesTitle": "Discard changes?",
+    "discardChangesMessage": "You have unsaved changes. Discard them?"
+  }
+}
