@@ -21,8 +21,8 @@
 | 4 | User can create an account and complete onboarding | 2, 3 | ✅ |
 | 5 | Parent can build a custom activity with drills and rewards | 4 | ✅ |
 | 6 | Parent can log a full session offline and see a reward summary | 5 | ✅ |
-| 7 | Home shows real progress; Stats shows charts and history | 6 | ☐ |
-| 8 | Profile shows child info; Accounts Center manages family | 6 | ☐ |
+| 7 | Home shows real progress; Stats shows charts and history | 6 | ✅ |
+| 8 | Profile shows child info; Accounts Center manages family | 6 | ✅ |
 | 9 | App is submittable to the App Store | 7, 8 | ☐ |
 
 ---
