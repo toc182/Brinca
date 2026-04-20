@@ -27,6 +27,26 @@ import { colors } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { getFirstChild } from '@/features/onboarding/repositories/child.repository';
 import { getFirstActivity } from '@/features/onboarding/repositories/activity.repository';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://c1b5bd34c56cc08f89eebd3c02cd7318@o4511140030251008.ingest.us.sentry.io/4511254380675072',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -45,7 +65,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [authState, setAuthState] = useState<'loading' | 'unauthenticated' | 'onboarding-child' | 'onboarding-activity' | 'authenticated'>('loading');
 
@@ -162,7 +182,7 @@ export default function RootLayout() {
       </Stack>
     </QueryClientProvider>
   );
-}
+});
 
 const styles = StyleSheet.create({
   loading: {

@@ -16,7 +16,16 @@
       "Bash(node -e \"const mmkv = require\\('react-native-mmkv'\\); console.log\\(Object.keys\\(mmkv\\)\\)\")",
       "Bash(npm view *)",
       "Bash(npx supabase *)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "WebFetch(domain:www.revenuecat.com)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(npx eas *)",
+      "Bash(gh api *)",
+      "Bash(mkdir -p docs-public)",
+      "Bash(mv docs-site/privacy.html docs-site/privacidad.html docs-public/)",
+      "Bash(rmdir docs-site *)",
+      "Bash(mv docs-public/privacy.html docs-public/privacidad.html .)",
+      "Bash(rmdir docs-public *)"
     ]
   }
 }
