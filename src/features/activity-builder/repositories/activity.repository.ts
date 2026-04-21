@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 interface ActivityRow {
@@ -31,10 +32,12 @@ export async function insertActivity(id: UUID, childId: UUID, name: string, icon
   const maxOrder = await db.getFirstAsync<{ m: number }>(
     `SELECT COALESCE(MAX(display_order), -1) as m FROM activities WHERE child_id = ?`, childId
   );
+  const displayOrder = (maxOrder?.m ?? -1) + 1;
   await db.runAsync(
     `INSERT INTO activities (id, child_id, name, icon, category, display_order) VALUES (?, ?, ?, ?, ?, ?)`,
-    id, childId, name, icon ?? null, category ?? null, (maxOrder?.m ?? -1) + 1
+    id, childId, name, icon ?? null, category ?? null, displayOrder
   );
+  await appendToQueue('INSERT', 'activities', { id, child_id: childId, name, icon: icon ?? null, category: category ?? null, display_order: displayOrder });
 }
 
 export async function updateActivity(id: UUID, fields: { name?: string; icon?: string; category?: string; is_active?: boolean }) {

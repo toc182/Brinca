@@ -25,7 +25,10 @@
       "Bash(mv docs-site/privacy.html docs-site/privacidad.html docs-public/)",
       "Bash(rmdir docs-site *)",
       "Bash(mv docs-public/privacy.html docs-public/privacidad.html .)",
-      "Bash(rmdir docs-public *)"
+      "Bash(rmdir docs-public *)",
+      "Bash(bun remove *)",
+      "Bash(gh issue *)",
+      "Bash(gh label *)"
     ]
   }
 }

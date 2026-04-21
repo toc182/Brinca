@@ -25,10 +25,7 @@ export function useFinishSessionMutation() {
       // 3. Evaluate accolades
       const newAccolades = await evaluateAccolades(childId);
 
-      // 4. Clear active session
-      useActiveSessionStore.getState().clearSession();
-
-      // 5. Invalidate queries
+      // 4. Invalidate queries (clearSession called by screen after navigation)
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       queryClient.invalidateQueries({ queryKey: ['recent-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });

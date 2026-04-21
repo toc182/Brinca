@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 interface DrillRow {
@@ -29,10 +30,12 @@ export async function insertDrill(id: UUID, activityId: UUID, name: string) {
   const maxOrder = await db.getFirstAsync<{ m: number }>(
     `SELECT COALESCE(MAX(display_order), -1) as m FROM drills WHERE activity_id = ?`, activityId
   );
+  const displayOrder = (maxOrder?.m ?? -1) + 1;
   await db.runAsync(
     `INSERT INTO drills (id, activity_id, name, display_order) VALUES (?, ?, ?, ?)`,
-    id, activityId, name, (maxOrder?.m ?? -1) + 1
+    id, activityId, name, displayOrder
   );
+  await appendToQueue('INSERT', 'drills', { id, activity_id: activityId, name, display_order: displayOrder });
 }
 
 export async function updateDrill(id: UUID, fields: { name?: string; is_active?: boolean }) {

@@ -59,6 +59,7 @@ export function SessionScreen() {
       {
         onSuccess: (result) => {
           timer.reset();
+          useActiveSessionStore.getState().clearSession();
           router.replace({
             pathname: '/(modals)/session-summary',
             params: {

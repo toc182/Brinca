@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 export async function insertChild(
@@ -20,6 +21,7 @@ export async function insertChild(
     gender,
     avatarUrl ?? null
   );
+  await appendToQueue('INSERT', 'children', { id, family_id: familyId, name, date_of_birth: dateOfBirth, gender, avatar_url: avatarUrl ?? null });
 }
 
 export async function getChildrenByFamily(familyId: UUID) {

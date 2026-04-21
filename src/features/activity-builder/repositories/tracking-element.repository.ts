@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 interface TrackingElementRow {
@@ -25,10 +26,13 @@ export async function insertElement(id: UUID, drillId: UUID, type: string, label
   const maxOrder = await db.getFirstAsync<{ m: number }>(
     `SELECT COALESCE(MAX(display_order), -1) as m FROM tracking_elements WHERE drill_id = ?`, drillId
   );
+  const displayOrder = (maxOrder?.m ?? -1) + 1;
+  const configJson = JSON.stringify(config);
   await db.runAsync(
     `INSERT INTO tracking_elements (id, drill_id, type, label, config, display_order) VALUES (?, ?, ?, ?, ?, ?)`,
-    id, drillId, type, label, JSON.stringify(config), (maxOrder?.m ?? -1) + 1
+    id, drillId, type, label, configJson, displayOrder
   );
+  await appendToQueue('INSERT', 'tracking_elements', { id, drill_id: drillId, type, label, config: configJson, display_order: displayOrder });
 }
 
 export async function updateElement(id: UUID, fields: { label?: string; config?: Record<string, unknown> }) {

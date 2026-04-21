@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 interface SessionRow {
@@ -19,6 +20,7 @@ export async function insertSession(id: UUID, childId: UUID, activityId: UUID, s
     `INSERT INTO sessions (id, child_id, activity_id, started_at) VALUES (?, ?, ?, ?)`,
     id, childId, activityId, startedAt
   );
+  await appendToQueue('INSERT', 'sessions', { id, child_id: childId, activity_id: activityId, started_at: startedAt });
 }
 
 export async function getSessionById(id: UUID): Promise<SessionRow | null> {
@@ -32,6 +34,7 @@ export async function finishSession(id: UUID, endedAt: string, durationSeconds: 
     `UPDATE sessions SET ended_at = ?, duration_seconds = ?, is_complete = 1 WHERE id = ?`,
     endedAt, durationSeconds, id
   );
+  await appendToQueue('UPDATE', 'sessions', { id, ended_at: endedAt, duration_seconds: durationSeconds, is_complete: true });
 }
 
 export async function updateSessionNote(id: UUID, note: string) {

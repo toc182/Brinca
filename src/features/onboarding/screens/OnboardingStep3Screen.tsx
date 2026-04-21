@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
@@ -15,10 +15,19 @@ export function OnboardingStep3Screen() {
 
   const [activityName, setActivityName] = useState('');
 
+  useEffect(() => {
+    if (!childId) {
+      showToast('error', 'Something went wrong. Please go back and try again.');
+    }
+  }, [childId]);
+
   const isValid = activityName.trim().length >= 2 && activityName.trim().length <= 50;
 
   const handleGetStarted = () => {
-    if (!childId) return;
+    if (!childId) {
+      showToast('error', 'Something went wrong. Please go back and try again.');
+      return;
+    }
 
     createActivity.mutate(
       {

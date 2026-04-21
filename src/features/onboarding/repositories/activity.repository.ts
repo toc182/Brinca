@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 export async function insertActivity(
@@ -13,6 +14,7 @@ export async function insertActivity(
     childId,
     name
   );
+  await appendToQueue('INSERT', 'activities', { id, child_id: childId, name, display_order: 0 });
 }
 
 export async function getActivitiesByChild(childId: UUID) {

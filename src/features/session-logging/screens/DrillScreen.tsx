@@ -6,6 +6,7 @@ import { randomUUID } from 'expo-crypto';
 
 import { Button } from '@/shared/components/Button';
 import { colors, typography, spacing } from '@/shared/theme';
+import { showToast } from '@/shared/utils/toast';
 import { useActiveSessionStore } from '@/stores/active-session.store';
 import { getDrillById } from '@/features/activity-builder/repositories/drill.repository';
 import { getElementsByDrill } from '@/features/activity-builder/repositories/tracking-element.repository';
@@ -38,19 +39,26 @@ export function DrillScreen() {
   }, []);
 
   const handleFinishDrill = async () => {
-    if (!sessionId || !drillId) return;
-
-    const drillResultId = randomUUID();
-    await insertDrillResult(drillResultId, sessionId, drillId);
-
-    // Save all element values
-    for (const [elementId, value] of Object.entries(values)) {
-      const evId = randomUUID();
-      await insertElementValue(evId, drillResultId, elementId, value);
+    if (!sessionId || !drillId) {
+      showToast('error', 'Session error. Please restart the session.');
+      return;
     }
 
-    await markDrillComplete(drillResultId);
-    router.back();
+    try {
+      const drillResultId = randomUUID();
+      await insertDrillResult(drillResultId, sessionId, drillId);
+
+      // Save all element values
+      for (const [elementId, value] of Object.entries(values)) {
+        const evId = randomUUID();
+        await insertElementValue(evId, drillResultId, elementId, value);
+      }
+
+      await markDrillComplete(drillResultId);
+      router.back();
+    } catch {
+      showToast('error', 'Could not save drill. Please try again.');
+    }
   };
 
   return (

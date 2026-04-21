@@ -53,8 +53,8 @@ export function useCreateAccountMutation() {
         familyId
       );
       await db.runAsync(
-        `INSERT OR IGNORE INTO family_members (family_id, user_id, role) VALUES (?, ?, ?)`,
-        familyId, userId, 'admin'
+        `INSERT OR IGNORE INTO family_members (id, family_id, user_id, role) VALUES (?, ?, ?, ?)`,
+        randomUUID(), familyId, userId, 'admin'
       );
 
       return { userId, familyId };

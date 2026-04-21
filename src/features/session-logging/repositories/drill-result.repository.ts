@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 export async function insertDrillResult(id: UUID, sessionId: UUID, drillId: UUID) {
@@ -7,11 +8,13 @@ export async function insertDrillResult(id: UUID, sessionId: UUID, drillId: UUID
     `INSERT INTO drill_results (id, session_id, drill_id) VALUES (?, ?, ?)`,
     id, sessionId, drillId
   );
+  await appendToQueue('INSERT', 'drill_results', { id, session_id: sessionId, drill_id: drillId });
 }
 
 export async function markDrillComplete(id: UUID) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE drill_results SET is_complete = 1 WHERE id = ?`, id);
+  await appendToQueue('UPDATE', 'drill_results', { id, is_complete: true });
 }
 
 export async function updateDrillResultNote(id: UUID, note: string) {
@@ -37,6 +40,7 @@ export async function insertElementValue(id: UUID, drillResultId: UUID, tracking
     `INSERT INTO element_values (id, drill_result_id, tracking_element_id, value) VALUES (?, ?, ?, ?)`,
     id, drillResultId, trackingElementId, JSON.stringify(value)
   );
+  await appendToQueue('INSERT', 'element_values', { id, drill_result_id: drillResultId, tracking_element_id: trackingElementId, value: JSON.stringify(value) });
 }
 
 export async function updateElementValue(id: UUID, value: Record<string, unknown>) {
