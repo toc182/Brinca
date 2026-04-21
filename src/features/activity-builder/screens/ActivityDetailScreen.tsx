@@ -1,32 +1,19 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { randomUUID } from 'expo-crypto';
 
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { colors, typography, spacing, shadows, radii } from '@/shared/theme';
 import { useDrillsQuery } from '../queries/useDrillsQuery';
-import { activityBuilderKeys } from '../queries/keys';
-import { insertDrill } from '../repositories/drill.repository';
-import { showToast } from '@/shared/utils/toast';
 
 export function ActivityDetailScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const queryClient = useQueryClient();
   const { data: drills, isLoading } = useDrillsQuery(activityId ?? '');
 
-  const handleAddDrill = async () => {
+  const handleAddDrill = () => {
     if (!activityId) return;
-    const id = randomUUID();
-    try {
-      await insertDrill(id, activityId, 'New Drill');
-      queryClient.invalidateQueries({ queryKey: activityBuilderKeys.drills(activityId) });
-      router.push(`/(settings)/activities/${activityId}/${id}` as never);
-    } catch {
-      showToast('error', "Couldn't create drill.");
-    }
+    router.push(`/(settings)/activities/${activityId}/create-drill` as never);
   };
 
   if (!drills?.length && !isLoading) {

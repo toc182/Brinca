@@ -27,6 +27,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="activities/index" options={{ title: 'Activities' }} />
       <Stack.Screen name="activities/create" options={{ title: 'New Activity' }} />
       <Stack.Screen name="activities/[activityId]/index" options={{ title: 'Activity' }} />
+      <Stack.Screen name="activities/[activityId]/create-drill" options={{ title: 'New Drill' }} />
       <Stack.Screen name="activities/[activityId]/[drillId]" options={{ title: 'Edit Drill' }} />
       <Stack.Screen name="child/edit-profile" options={{ title: 'Edit Profile' }} />
       <Stack.Screen name="child/measurements" options={{ title: 'Measurements' }} />
