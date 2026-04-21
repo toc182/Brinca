@@ -164,7 +164,7 @@ export default Sentry.wrap(function RootLayout() {
       router.replace('/(auth)/onboarding/step-2');
     } else if (authState === 'onboarding-activity' && !inAuthGroup) {
       router.replace('/(auth)/onboarding/step-3');
-    } else if (authState === 'authenticated' && inAuthGroup) {
+    } else if (authState === 'authenticated' && segments[0] !== '(tabs)') {
       router.replace('/(tabs)/home');
     }
   }, [authState, segments, appReady, router]);
@@ -186,6 +186,7 @@ export default Sentry.wrap(function RootLayout() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(settings)" options={{ headerShown: false }} />
         <Stack.Screen name="(modals)" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>
