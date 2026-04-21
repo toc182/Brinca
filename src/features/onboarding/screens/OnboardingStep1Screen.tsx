@@ -8,6 +8,7 @@ import { Input } from '@/shared/components/Input';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useCreateAccountMutation } from '../mutations/useCreateAccountMutation';
+import { useAuthContext } from '@/shared/contexts/AuthContext';
 import type { PersonaType } from '@/types/domain.types';
 
 const PERSONA_OPTIONS: { value: PersonaType; label: string }[] = [
@@ -29,6 +30,7 @@ export function OnboardingStep1Screen() {
   const router = useRouter();
   const { t } = useTranslation();
   const createAccount = useCreateAccountMutation();
+  const { setAuthState } = useAuthContext();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,6 +60,7 @@ export function OnboardingStep1Screen() {
       },
       {
         onSuccess: ({ familyId }) => {
+          setAuthState('onboarding-child');
           router.push({
             pathname: '/(auth)/onboarding/step-2',
             params: { familyId },

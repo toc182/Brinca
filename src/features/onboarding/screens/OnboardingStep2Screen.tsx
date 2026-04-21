@@ -9,6 +9,7 @@ import { Avatar } from '@/shared/components/Avatar';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useCreateChildMutation } from '../mutations/useCreateChildMutation';
+import { useAuthContext } from '@/shared/contexts/AuthContext';
 import type { Gender } from '@/types/domain.types';
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
@@ -21,6 +22,7 @@ export function OnboardingStep2Screen() {
   const router = useRouter();
   const { familyId } = useLocalSearchParams<{ familyId: string }>();
   const createChild = useCreateChildMutation();
+  const { setAuthState } = useAuthContext();
 
   const [name, setName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
@@ -43,6 +45,7 @@ export function OnboardingStep2Screen() {
       },
       {
         onSuccess: ({ childId }) => {
+          setAuthState('onboarding-activity');
           router.push({
             pathname: '/(auth)/onboarding/step-3',
             params: { childId },

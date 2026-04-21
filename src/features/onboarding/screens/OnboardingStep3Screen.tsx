@@ -6,12 +6,14 @@ import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
+import { useAuthContext } from '@/shared/contexts/AuthContext';
 import { useCreateActivityMutation } from '../mutations/useCreateActivityMutation';
 
 export function OnboardingStep3Screen() {
   const router = useRouter();
   const { childId } = useLocalSearchParams<{ childId: string }>();
   const createActivity = useCreateActivityMutation();
+  const { setAuthState } = useAuthContext();
 
   const [activityName, setActivityName] = useState('');
 
@@ -36,7 +38,7 @@ export function OnboardingStep3Screen() {
       },
       {
         onSuccess: () => {
-          router.replace('/(tabs)/home');
+          setAuthState('authenticated');
         },
         onError: () => {
           showToast('error', 'error.generic');

@@ -14,9 +14,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthContext } from '@/shared/contexts/AuthContext';
+import type { AuthState } from '@/shared/contexts/AuthContext';
 
 import { getDatabase } from '@/lib/sqlite/db';
 import { initSentry } from '@/lib/sentry';
@@ -68,7 +70,8 @@ const queryClient = new QueryClient({
 
 export default Sentry.wrap(function RootLayout() {
   const [appReady, setAppReady] = useState(false);
-  const [authState, setAuthState] = useState<'loading' | 'unauthenticated' | 'onboarding-child' | 'onboarding-activity' | 'authenticated'>('loading');
+  const [authState, setAuthState] = useState<AuthState>('loading');
+  const authContextValue = useMemo(() => ({ setAuthState }), []);
 
   const router = useRouter();
   const segments = useSegments();
@@ -171,6 +174,7 @@ export default Sentry.wrap(function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
+    <AuthContext.Provider value={authContextValue}>
     <QueryClientProvider client={queryClient}>
       <Stack
         screenOptions={{
@@ -183,6 +187,7 @@ export default Sentry.wrap(function RootLayout() {
         <Stack.Screen name="(modals)" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>
+    </AuthContext.Provider>
     </GestureHandlerRootView>
   );
 });
