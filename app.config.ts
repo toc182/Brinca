@@ -19,6 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       NSMicrophoneUsageDescription:
         'Brinca uses the microphone only when you tap record on a Voice Note during a practice session.',
+      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {

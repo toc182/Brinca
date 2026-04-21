@@ -16,6 +16,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { getDatabase } from '@/lib/sqlite/db';
 import { initSentry } from '@/lib/sentry';
@@ -169,6 +170,7 @@ export default Sentry.wrap(function RootLayout() {
   }
 
   return (
+    <GestureHandlerRootView style={styles.root}>
     <QueryClientProvider client={queryClient}>
       <Stack
         screenOptions={{
@@ -181,10 +183,14 @@ export default Sentry.wrap(function RootLayout() {
         <Stack.Screen name="(modals)" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 });
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   loading: {
     flex: 1,
     backgroundColor: colors.background,

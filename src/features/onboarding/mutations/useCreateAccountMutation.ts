@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
-import { signUp } from '@/lib/supabase/auth';
+import { signUp, signIn } from '@/lib/supabase/auth';
 import { supabase } from '@/lib/supabase/client';
 import { insertProfile } from '../repositories/profile.repository';
+import { getDatabase } from '@/lib/sqlite/db';
 import type { CreateAccountData } from '../types/onboarding.types';
 
 export function useCreateAccountMutation() {
@@ -13,6 +14,9 @@ export function useCreateAccountMutation() {
       const authResult = await signUp(data.email, data.password);
       const userId = authResult.user?.id;
       if (!userId) throw new Error('Account creation failed');
+
+      // Establish session immediately so RLS allows subsequent inserts
+      await signIn(data.email, data.password);
 
       // 2. Create profile in Supabase
       const { error: profileError } = await supabase
@@ -41,8 +45,17 @@ export function useCreateAccountMutation() {
         });
       if (memberError) throw memberError;
 
-      // 5. Save profile to local SQLite
+      // 5. Save profile and family to local SQLite
       await insertProfile(userId, data.displayName, data.personaType);
+      const db = await getDatabase();
+      await db.runAsync(
+        `INSERT OR IGNORE INTO families (id) VALUES (?)`,
+        familyId
+      );
+      await db.runAsync(
+        `INSERT OR IGNORE INTO family_members (family_id, user_id, role) VALUES (?, ?, ?)`,
+        familyId, userId, 'admin'
+      );
 
       return { userId, familyId };
     },
