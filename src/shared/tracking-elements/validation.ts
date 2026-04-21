@@ -72,6 +72,29 @@ export function validateElementConfig(type: ElementType, config: unknown): strin
   }
 }
 
+export function getDefaultValue(type: ElementType): Record<string, unknown> {
+  switch (type) {
+    case 'counter': return { count: 0 };
+    case 'combined_counter': return { count: 0 };
+    case 'split_counter': return { left: 0, right: 0 };
+    case 'multistep_counter': return { reps: 0 };
+    case 'stopwatch': return { elapsed_seconds: 0 };
+    case 'countdown_timer': return { remaining_seconds: 0, elapsed_seconds: 0 };
+    case 'lap_timer': return { laps: [], total_elapsed: 0 };
+    case 'interval_timer': return { completed_cycles: 0, total_elapsed: 0, skipped_phases: 0 };
+    case 'checklist': return { items: [] };
+    case 'single_select': return { selected: null };
+    case 'multi_select': return { selected: [] };
+    case 'yes_no': return { answer: null };
+    case 'rating_scale': return { value: null };
+    case 'emoji_face_scale': return { value: null };
+    case 'number_input': return { value: null };
+    case 'multi_number_input': return { values: [] };
+    case 'free_text_note': return { text: '' };
+    case 'voice_note': return { file_uri: '', duration_seconds: 0 };
+  }
+}
+
 export function getDefaultConfig(type: ElementType): Record<string, unknown> {
   switch (type) {
     case 'counter': return {};

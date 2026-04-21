@@ -14,6 +14,7 @@ import { getElementsByDrill } from '@/features/activity-builder/repositories/tra
 import { insertDrillResult, markDrillComplete, insertElementValue } from '../repositories/drill-result.repository';
 import { ElementRenderer } from '../components/elements/ElementRenderer';
 import type { ElementType } from '@/shared/tracking-elements/types/element-types';
+import { getDefaultValue } from '@/shared/tracking-elements/validation';
 
 export function DrillScreen() {
   const router = useRouter();
@@ -73,7 +74,7 @@ export function DrillScreen() {
           <ElementRenderer
             type={el.type as ElementType}
             config={JSON.parse(el.config)}
-            value={values[el.id] ?? {}}
+            value={values[el.id] ?? getDefaultValue(el.type as ElementType)}
             onValueChange={(v) => handleValueChange(el.id, v)}
           />
         </View>
