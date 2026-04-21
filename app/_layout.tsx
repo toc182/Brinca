@@ -71,6 +71,7 @@ const queryClient = new QueryClient({
 
 export default Sentry.wrap(function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+  const [initialRouteHandled, setInitialRouteHandled] = useState(false);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const authContextValue = useMemo(() => ({ setAuthState }), []);
 
@@ -164,10 +165,16 @@ export default Sentry.wrap(function RootLayout() {
       router.replace('/(auth)/onboarding/step-2');
     } else if (authState === 'onboarding-activity' && !inAuthGroup) {
       router.replace('/(auth)/onboarding/step-3');
-    } else if (authState === 'authenticated' && segments[0] !== '(tabs)') {
+    } else if (authState === 'authenticated' && inAuthGroup) {
+      router.replace('/(tabs)/home');
+    } else if (authState === 'authenticated' && !initialRouteHandled && segments[0] !== '(tabs)') {
       router.replace('/(tabs)/home');
     }
-  }, [authState, segments, appReady, router]);
+
+    if (!initialRouteHandled) {
+      setInitialRouteHandled(true);
+    }
+  }, [authState, segments, appReady, router, initialRouteHandled]);
 
   if (!appReady || (!fontsLoaded && !fontError)) {
     return <View style={styles.loading} />;
@@ -186,7 +193,7 @@ export default Sentry.wrap(function RootLayout() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(settings)" options={{ headerShown: false }} />
+        <Stack.Screen name="(settings)" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="(modals)" options={{ headerShown: false }} />
       </Stack>
     </QueryClientProvider>

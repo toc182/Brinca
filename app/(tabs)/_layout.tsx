@@ -1,9 +1,18 @@
-import { Tabs } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
-import { House, Lightning, ChartBar, User } from 'phosphor-react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { House, Lightning, ChartBar, User, GearSix } from 'phosphor-react-native';
 
 import { MiniPlayerBar } from '@/features/session-logging/components/MiniPlayerBar';
-import { colors } from '@/shared/theme';
+import { colors, spacing } from '@/shared/theme';
+
+function SettingsButton() {
+  const router = useRouter();
+  return (
+    <Pressable onPress={() => router.navigate('/(settings)' as never)} style={{ paddingRight: spacing.md }}>
+      <GearSix color={colors.textSecondary} size={24} />
+    </Pressable>
+  );
+}
 
 export default function TabLayout() {
   return (
@@ -24,6 +33,7 @@ export default function TabLayout() {
             title: 'Home',
             tabBarLabel: 'Home',
             tabBarIcon: ({ color, size }) => <House color={color} size={size} weight="fill" />,
+            headerRight: () => <SettingsButton />,
           }}
         />
         <Tabs.Screen
