@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
 import { Button } from '@/shared/components/Button';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useActiveSessionStore } from '@/stores/active-session.store';
@@ -62,7 +63,8 @@ export function DrillScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
       <Text style={styles.drillName}>{drill?.name}</Text>
 
       {elements?.map((el) => (
@@ -83,11 +85,12 @@ export function DrillScreen() {
         style={styles.finishButton}
       />
     </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  scrollView: { flex: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xxxl },
   drillName: { ...typography.titleLarge, color: colors.textPrimary, marginBottom: spacing.lg },
   elementContainer: { marginBottom: spacing.lg },

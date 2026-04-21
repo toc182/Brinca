@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
 import { Button } from '@/shared/components/Button';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useActiveSessionStore } from '@/stores/active-session.store';
@@ -75,7 +76,7 @@ export function SessionScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen>
       <View style={styles.header}>
         <View style={styles.headerInfo}>
           <Text style={styles.activityName}>{activityName}</Text>
@@ -113,12 +114,11 @@ export function SessionScreen() {
           disabled={finishSession.isPending}
         />
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

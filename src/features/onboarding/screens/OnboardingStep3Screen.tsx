@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useAuthContext } from '@/shared/contexts/AuthContext';
@@ -48,8 +49,9 @@ export function OnboardingStep3Screen() {
   };
 
   return (
+    <Screen>
     <ScrollView
-      style={styles.container}
+      style={styles.scrollView}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
@@ -79,13 +81,13 @@ export function OnboardingStep3Screen() {
         style={styles.getStartedButton}
       />
     </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,

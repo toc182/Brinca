@@ -17,6 +17,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext } from '@/shared/contexts/AuthContext';
 import type { AuthState } from '@/shared/contexts/AuthContext';
 
@@ -174,6 +175,7 @@ export default Sentry.wrap(function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
+    <SafeAreaProvider>
     <AuthContext.Provider value={authContextValue}>
     <QueryClientProvider client={queryClient}>
       <Stack
@@ -188,6 +190,7 @@ export default Sentry.wrap(function RootLayout() {
       </Stack>
     </QueryClientProvider>
     </AuthContext.Provider>
+    </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 });

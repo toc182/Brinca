@@ -3,6 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing } from '@/shared/theme';
 import { getAccoladeById } from '@/shared/gamification/accolade-catalog';
 import { RewardBreakdown } from '../components/summary/RewardBreakdown';
@@ -26,7 +27,8 @@ export function SessionSummaryScreen() {
   const seconds = duration % 60;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <Screen>
+    <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Session complete!</Text>
       <Text style={styles.duration}>
         {minutes}:{seconds.toString().padStart(2, '0')}
@@ -57,11 +59,12 @@ export function SessionSummaryScreen() {
         style={styles.doneButton}
       />
     </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  scrollView: { flex: 1 },
   content: { padding: spacing.lg, alignItems: 'center', paddingBottom: spacing.xxxl },
   title: { ...typography.titleLarge, color: colors.textPrimary, marginBottom: spacing.sm },
   duration: { ...typography.timer, color: colors.textSecondary, marginBottom: spacing.lg },

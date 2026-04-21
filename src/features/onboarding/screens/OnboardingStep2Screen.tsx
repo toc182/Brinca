@@ -6,6 +6,7 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { Avatar } from '@/shared/components/Avatar';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useCreateChildMutation } from '../mutations/useCreateChildMutation';
@@ -62,8 +63,9 @@ export function OnboardingStep2Screen() {
     date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
+    <Screen>
     <ScrollView
-      style={styles.container}
+      style={styles.scrollView}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
@@ -134,13 +136,13 @@ export function OnboardingStep2Screen() {
         style={styles.continueButton}
       />
     </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
