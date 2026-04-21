@@ -1,17 +1,15 @@
-import { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import BottomSheet from '@gorhom/bottom-sheet';
 
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { colors, typography, spacing } from '@/shared/theme';
+import { colors, typography, spacing, radii, shadows } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useActiveSession } from '@/features/session-logging/hooks/useActiveSession';
 import { useActivitiesQuery } from '@/features/activity-builder/queries/useActivitiesQuery';
 import { useStartSessionMutation } from '@/features/session-logging/mutations/useStartSessionMutation';
 import { useSessionTimer } from '@/features/session-logging/hooks/useSessionTimer';
-import { ActivityPickerSheet } from '../components/ActivityPickerSheet';
 
 export function ActivityScreen() {
   const router = useRouter();
@@ -20,7 +18,21 @@ export function ActivityScreen() {
   const { data: activities } = useActivitiesQuery(childId);
   const startSession = useStartSessionMutation();
   const timer = useSessionTimer();
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [showPicker, setShowPicker] = useState(false);
+
+  const handleSelectActivity = useCallback((activity: { id: string; name: string }) => {
+    if (!childId) return;
+    setShowPicker(false);
+    startSession.mutate(
+      { childId, activityId: activity.id, activityName: activity.name },
+      {
+        onSuccess: () => {
+          timer.start();
+          router.push('/(modals)/session' as never);
+        },
+      }
+    );
+  }, [childId, startSession, timer, router]);
 
   // If session is active, show resume UI
   if (isActive) {
@@ -38,20 +50,6 @@ export function ActivityScreen() {
     );
   }
 
-  const handleSelectActivity = useCallback((activity: { id: string; name: string }) => {
-    if (!childId) return;
-    bottomSheetRef.current?.close();
-    startSession.mutate(
-      { childId, activityId: activity.id, activityName: activity.name },
-      {
-        onSuccess: () => {
-          timer.start();
-          router.push('/(modals)/session' as never);
-        },
-      }
-    );
-  }, [childId, startSession, timer, router]);
-
   return (
     <View style={styles.container}>
       {!activities?.length ? (
@@ -63,21 +61,33 @@ export function ActivityScreen() {
         <>
           <Button
             title="Start session"
-            onPress={() => bottomSheetRef.current?.expand()}
+            onPress={() => setShowPicker(true)}
             style={styles.startButton}
           />
-          <BottomSheet
-            ref={bottomSheetRef}
-            index={-1}
-            snapPoints={['50%']}
-            enablePanDownToClose
-            backgroundStyle={styles.sheetBg}
+          <Modal
+            visible={showPicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowPicker(false)}
           >
-            <ActivityPickerSheet
-              activities={activities.map((a) => ({ id: a.id, name: a.name, icon: a.icon }))}
-              onSelect={handleSelectActivity}
-            />
-          </BottomSheet>
+            <Pressable style={styles.overlay} onPress={() => setShowPicker(false)}>
+              <View style={styles.sheet}>
+                <Text style={styles.sheetTitle}>Choose an activity</Text>
+                <FlatList
+                  data={activities}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      style={styles.activityRow}
+                      onPress={() => handleSelectActivity({ id: item.id, name: item.name })}
+                    >
+                      <Text style={styles.activityRowText}>{item.name}</Text>
+                    </Pressable>
+                  )}
+                />
+              </View>
+            </Pressable>
+          </Modal>
         </>
       )}
     </View>
@@ -91,5 +101,21 @@ const styles = StyleSheet.create({
   activityName: { ...typography.titleMedium, color: colors.textPrimary, marginBottom: spacing.sm },
   timer: { ...typography.timer, color: colors.primary500, marginBottom: spacing.lg },
   resumeButton: { minWidth: 200 },
-  sheetBg: { backgroundColor: colors.surface },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    padding: spacing.lg,
+    maxHeight: '50%',
+  },
+  sheetTitle: { ...typography.titleMedium, color: colors.textPrimary, marginBottom: spacing.md },
+  activityRow: {
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.background,
+    marginBottom: spacing.xs,
+    ...shadows.sm,
+  },
+  activityRowText: { ...typography.bodySmall, color: colors.textPrimary },
 });
