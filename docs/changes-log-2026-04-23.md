@@ -53,20 +53,39 @@ Runtime debugging session after 293-gap compliance fix. All changes below diverg
 - Now uses TabHeader like all other tabs
 - ChildHeader component (large avatar + name) still renders in scroll content below
 
-### NativeTabs + native large title headers (REPLACES all custom header work above)
+### NativeTabs (tab bar)
 - **Replaced JS `Tabs` with `NativeTabs`** from `expo-router/unstable-native-tabs`
 - Uses native `UITabBarController` — gets Liquid Glass automatically on iOS 26
-- SF Symbols for tab icons: `house.fill`, `bolt.fill`, `chart.bar.fill`, `person.fill`
-- `minimizeBehavior="onScrollDown"` — tab bar shrinks on scroll (iOS 26)
-- **MiniPlayerBar** moved into `NativeTabs.BottomAccessory` — integrates with native tab bar instead of floating overlay. Removed absolute positioning.
-- **Native large title headers** via `headerLargeTitle: true` on all 4 tab screens — native collapsing animation, blur, and edge blending handled by iOS
-- **ParentAvatar** in `headerRight` on all tab screens via `navigation.setOptions`
-- **Stats filter button** in `headerRight` alongside ParentAvatar via `navigation.setOptions`
-- **`contentInsetAdjustmentBehavior="automatic"`** on all ScrollViews/FlatLists — required for native large title collapse
-- **Created `app/(tabs)/stats/_layout.tsx`** — Stack layout for stats tab to support `stats/[sessionId]` sub-route
-- **Deleted `src/shared/components/TabHeader.tsx`** — custom animated header no longer needed
-- Removed all reanimated scroll tracking (`useSharedValue`, `useAnimatedScrollHandler`) from all 4 tab screens
-- `expo-blur` installed but no longer used by custom header (native headers handle blur natively)
+- SF Symbols for tab icons: `house`/`house.fill`, `bolt`/`bolt.fill`, `chart.bar`/`chart.bar.fill`, `person`/`person.fill`
+- `minimizeBehavior="onScrollDown"` — tab bar shrinks when user scrolls down (iOS 26)
+- **MiniPlayerBar** moved into `NativeTabs.BottomAccessory` — integrates with native tab bar. Removed absolute positioning.
+
+### CollapsibleHeader (REPLACES native headerLargeTitle + all custom header work)
+- Native `headerLargeTitle` abandoned — `react-native-screens` can't position `headerRight` inline with large title on iOS 26 (issue #2990)
+- Each tab `_layout.tsx` sets `headerShown: false`
+- **New `CollapsibleHeader` component** (`src/shared/components/CollapsibleHeader.tsx`):
+  - Title = child's name (from Zustand store), not tab name
+  - Right content = ParentAvatar (all tabs) + filter button (Stats only)
+  - Title font animates 34pt → 17pt on scroll (Fredoka 600)
+  - Header height animates with 30px fade zone
+  - Background uses native `GradientBlurView` module
+- Scroll tracking via `useSharedValue` + `useAnimatedScrollHandler` in each tab screen
+
+### GradientBlurView native module (NEW)
+- Custom Expo module at `modules/GradientBlurView/`
+- Swift: `UIVisualEffectView` + `CAGradientLayer` mask — the standard native iOS approach
+- Blur fades smoothly from full intensity to transparent (no hard edge)
+- `fadeStart` prop controls where fade begins (currently 0.55)
+- Falls back to `expo-blur` on Android
+- Requires EAS native rebuild
+
+### Patches
+- `react-native-screens` 4.23.0 patched via `patch-package` for iOS 26 header button centering
+- Auto-applied via `postinstall` script
+
+### Dependencies added
+- `expo-blur`, `@sbaiahmed1/react-native-blur`, `@react-native-masked-view/masked-view`, `patch-package`
+- Note: `@react-native-masked-view` and `@sbaiahmed1/react-native-blur` are installed but unused in final implementation (explored during development, kept as they don't affect bundle size when unused)
 
 ---
 

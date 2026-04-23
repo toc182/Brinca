@@ -17,7 +17,7 @@ This document defines the design changes applied after the feature spec implemen
 ### Implementation
 
 - **Component**: `NativeTabs` from `expo-router/unstable-native-tabs` (replaces JS `Tabs` from `expo-router`)
-- **Tab bar styling**: Fully native — Liquid Glass on iOS 26, standard translucent on older versions. No custom `tabBarStyle`, `backgroundColor`, or `tabBarActiveTintColor`.
+- **Tab bar styling**: Fully native — Liquid Glass on iOS 26, standard translucent on older versions. No custom styles.
 - **Icons**: SF Symbols with default/selected variants:
   - Home: `house` / `house.fill`
   - Activity: `bolt` / `bolt.fill`
@@ -25,52 +25,55 @@ This document defines the design changes applied after the feature spec implemen
   - Profile: `person` / `person.fill`
 - **Labels**: Single word — Home, Activity, Stats, Profile
 - **Minimize behavior**: `minimizeBehavior="onScrollDown"` — tab bar shrinks when user scrolls content down (iOS 26).
-- **No custom colors or fonts** on the tab bar — the native system handles tint, selection, and Liquid Glass appearance.
 
 ### What changed from previous specs
 
-- Removed Phosphor icons (`House`, `Lightning`, `ChartBar`, `User`) — replaced with SF Symbols.
-- Removed custom `tabBarActiveTintColor`, `tabBarInactiveTintColor`, `tabBarStyle`.
-- Removed `ActivityTabIcon` component with session-active color logic — native tab icons don't support runtime color changes. Session state should be conveyed through a badge or the BottomAccessory instead.
+- Removed Phosphor icons — replaced with SF Symbols.
+- Removed all custom tab bar styling.
+- Removed `ActivityTabIcon` component with session-active color logic.
 
 ---
 
-## 2. Navigation Bars (Headers)
+## 2. Screen Headers (CollapsibleHeader)
 
-### HIG Rules (source: developer.apple.com/design/human-interface-guidelines/toolbars)
+### HIG Reference
 
-- Use **large titles** to help users maintain orientation — these transition to standard size during scrolling.
-- Navigation bars and toolbars are **transparent** with Liquid Glass buttons on iOS 26, giving more space to content.
-- Prioritize only the most essential actions in the toolbar.
+- Large titles help users maintain orientation, transitioning to standard size during scrolling.
+- Content should scroll behind the header with a translucent/blur effect.
+- Reference app: Gentle Streak — large title left-aligned, avatar right-aligned, content blurs behind header on scroll.
+
+### Why not native `headerLargeTitle`
+
+`react-native-screens` does not correctly position `headerRight` items inline with the large title on iOS 26 (issue #2990). Native Swift apps get this layout automatically, but React Native apps show the avatar in a separate compact bar above the large title. A patch exists for centering but not for positioning.
 
 ### Implementation
 
-- Each tab is a **directory** with its own `_layout.tsx` containing a `Stack` navigator.
-- Each Stack.Screen configures:
-  - `title` — the tab's display name (e.g., "Home", "Stats")
-  - `headerLargeTitle: true` — enables native collapsing large title
-  - `headerRight: () => <ParentAvatar />` — settings entry point (per UX conventions §3)
-  - `headerStyle: { backgroundColor: colors.background }` — matches app theme
-- **ScrollView/FlatList must be the direct first child** of the screen component for large title collapse to work. If a wrapper View is needed, set `collapsable={false}` on it.
-- **`contentInsetAdjustmentBehavior="automatic"`** on all ScrollViews/FlatLists — lets the system handle safe area and header insets.
+Custom `CollapsibleHeader` component (`src/shared/components/CollapsibleHeader.tsx`):
 
-### Per-tab header configuration
+- **Title**: Child's name from `useActiveChildStore` (not "Home"/"Stats"/etc.)
+- **Right content**: `ParentAvatar` on all tabs, filter button + ParentAvatar on Stats
+- **Title animation**: Font size interpolates from 34pt (expanded) to 17pt (collapsed) over 40px of scroll, using Fredoka 600 SemiBold
+- **Header height**: Animates from `insets.top + 52` (expanded) to `insets.top + 44 `(collapsed) + 30px fade zone
+- **Blur background**: Native iOS module `GradientBlurView` (see §4)
+- **Scroll tracking**: Each screen uses `useSharedValue` + `useAnimatedScrollHandler` from `react-native-reanimated`, passing `scrollY` to the header
+- **Content padding**: `useCollapsibleHeaderHeight()` returns `insets.top + 52` for scroll content's `paddingTop`
 
-| Tab | Title | headerLargeTitle | headerRight | Notes |
-|-----|-------|-----------------|-------------|-------|
-| Home | "Home" | true | ParentAvatar | |
-| Activity | "Activity" | true | ParentAvatar | |
-| Stats | "Stats" | true | Filter button + ParentAvatar | Filter button updates dynamically via `navigation.setOptions` |
-| Profile | "Profile" | true | ParentAvatar | |
+### Per-tab configuration
+
+| Tab | Title | Right content | Scroll component |
+|-----|-------|---------------|------------------|
+| Home | `childName ?? 'Home'` | ParentAvatar | Animated.ScrollView |
+| Activity | `childName ?? 'Activity'` | ParentAvatar | Static (bottom sheet, no scroll) |
+| Stats | `childName ?? 'Stats'` | Filter button + ParentAvatar | Animated.FlatList |
+| Profile | `childName ?? 'Profile'` | ParentAvatar | Animated.ScrollView |
 
 ### What changed from previous specs
 
-- Removed custom `TabHeader` component (animated blur header with child avatar + name).
-- Removed inline child header from Home screen (avatar + name + streak row) — native large title "Home" replaces it.
-- Removed streak counter from header area. Streak data is still available but not displayed in the header.
-- Removed gear icon (`GearSix`) from header — ParentAvatar is the sole Settings entry point.
-- Removed all custom scroll tracking (`useSharedValue`, `useAnimatedScrollHandler`, `scrollY` shared values) from tab screens.
-- Stats filter button moved from custom header to native `headerRight` via `navigation.setOptions`.
+- Removed native `headerLargeTitle` — react-native-screens can't position headerRight inline with large title on iOS 26.
+- Each tab `_layout.tsx` sets `headerShown: false` — headers are fully custom.
+- Title shows child's name, not the tab name.
+- Removed streak counter from header.
+- Removed gear icon — ParentAvatar is the sole Settings entry point.
 
 ---
 
@@ -78,43 +81,50 @@ This document defines the design changes applied after the feature spec implemen
 
 ### HIG Rules
 
-- The tab bar supports **accessories** — persistent controls like a mini player that sit above the tab bar (reference: Music app MiniPlayer).
+- The tab bar supports **accessories** — persistent controls like a mini player that sit above the tab bar.
 - Accessories integrate with the tab bar minimize behavior.
 
 ### Implementation
 
 - **Component**: `NativeTabs.BottomAccessory` wraps `MiniPlayerBar`.
-- **Positioning**: No longer `position: 'absolute'` with `bottom: 80`. Now uses `marginHorizontal` and `marginVertical` within the BottomAccessory slot.
-- **State**: Must be stored outside the accessory component (already using Zustand `useActiveSessionStore`).
+- **Positioning**: Uses `marginHorizontal` and `marginVertical` within the BottomAccessory slot. No absolute positioning.
+- **State**: Stored in Zustand `useActiveSessionStore`.
 
 ### What changed from previous specs
 
-- MiniPlayerBar was a floating overlay inside a `<View>` wrapper around `<Tabs>`. Now it's a native BottomAccessory.
+- MiniPlayerBar was a floating overlay. Now it's a native BottomAccessory.
 - Removed absolute positioning styles.
 
 ---
 
-## 4. Materials and Visual Style
+## 4. Gradient Blur (Native Module)
 
-### HIG Rules (source: developer.apple.com/design/human-interface-guidelines/materials)
+### Problem
 
-- **Liquid Glass** is a dynamic material that unifies the design language. It presents controls and navigation without obscuring underlying content.
-- Two variants: `regular` (frosted blur) and `clear` (more transparent). Use `clear` only over visually rich backgrounds.
-- Standard materials (ultra-thin, thin, regular, thick) are used in the **content layer** for visual distinction — NOT for navigation chrome.
-- Do **not** manually implement blur, translucency, or glass effects on navigation bars or tab bars. The native components handle this.
+`expo-blur`'s `BlurView` provides backdrop blur but has a hard edge at its boundary. Standard approaches to fade the edge (`MaskedView`, `LinearGradient` overlay, `ProgressiveBlurView`) either don't support Fabric, don't do backdrop blur, or produce visible artifacts.
 
-### Implementation
+### Solution
 
-- **No custom blur** (`expo-blur` BlurView) on navigation chrome. The native Stack header and NativeTabs handle Liquid Glass automatically on iOS 26.
-- `expo-blur` is installed but reserved for future use in content-layer components if needed (e.g., overlay sheets).
-- **No custom gradient fades** to simulate blur edges. The native header handles transitions seamlessly.
-- **Background color**: `colors.background` (#FAF8FF) — the native header uses this as its base, with system materials applied on top.
+Custom Expo module `GradientBlurView` at `modules/GradientBlurView/`:
 
-### What changed from previous specs
+- **iOS implementation**: `UIVisualEffectView` with `UIBlurEffect(style: .systemUltraThinMaterialLight)`, masked by a `CAGradientLayer`
+- **Gradient mask**: Black (opaque) at top → black at `fadeStart` → clear (transparent) at bottom. This makes the blur fully visible in the upper portion and fade smoothly to nothing at the bottom.
+- **`fadeStart` prop** (0-1): Controls where the fade begins. Currently set to `0.55` — top 55% is fully blurred, bottom 45% fades to clear.
+- **Android fallback**: Falls back to `expo-blur` BlurView (no gradient mask available).
+- **Requires native rebuild** (EAS build) since it includes Swift code.
 
-- Removed custom `BlurView` header background.
-- Removed `LinearGradient` fade-out attempts.
-- Removed all `react-native-reanimated` interpolation for header height, font size, and avatar size.
+### Files
+
+```
+modules/GradientBlurView/
+  ios/MyModule.swift           — Expo Module definition, exposes fadeStart prop
+  ios/MyModuleView.swift       — UIVisualEffectView + CAGradientLayer mask
+  ios/MyModule.podspec         — CocoaPods spec
+  src/MyModuleView.tsx         — React Native wrapper
+  src/MyModule.types.ts        — TypeScript types
+  index.ts                     — Public exports
+  expo-module.config.json      — Expo module config
+```
 
 ---
 
@@ -122,13 +132,13 @@ This document defines the design changes applied after the feature spec implemen
 
 ### UX Conventions §3 (existing, unchanged)
 
-- **ParentAvatar** (parent's photo or initials, circular, small) appears in the top right corner of every screen.
+- **ParentAvatar** (parent's photo or initials, circular, small) appears in the header right of every tab screen.
 - Tapping navigates to the Settings screen.
 - No gear icon — ParentAvatar is the sole entry point.
 
 ### Implementation
 
-- `ParentAvatar` rendered via `headerRight` in each tab's `_layout.tsx`.
+- `ParentAvatar` passed as `rightContent` prop to `CollapsibleHeader`.
 - Self-fetches parent display name and photo from Supabase auth metadata.
 - Navigates to `/(settings)` on press.
 
@@ -136,38 +146,53 @@ This document defines the design changes applied after the feature spec implemen
 
 ## 6. File Structure Changes
 
-### Tab directories (new structure)
+### Tab directories
 
 ```
 app/(tabs)/
-  _layout.tsx          — NativeTabs with triggers + BottomAccessory
+  _layout.tsx              — NativeTabs with triggers + BottomAccessory
   home/
-    _layout.tsx        — Stack with headerLargeTitle
-    index.tsx          — HomeScreen route
+    _layout.tsx            — Stack with headerShown: false
+    index.tsx              — HomeScreen route
   activity/
-    _layout.tsx        — Stack with headerLargeTitle
-    index.tsx          — ActivityScreen route
+    _layout.tsx            — Stack with headerShown: false
+    index.tsx              — ActivityScreen route
   stats/
-    _layout.tsx        — Stack with headerLargeTitle + stats-specific headerRight
-    index.tsx          — StatsScreen route
-    [sessionId].tsx    — Session detail route
+    _layout.tsx            — Stack with headerShown: false (index), headerShown: true ([sessionId])
+    index.tsx              — StatsScreen route
+    [sessionId].tsx        — Session detail route (keeps native header for back navigation)
   profile/
-    _layout.tsx        — Stack with headerLargeTitle
-    index.tsx          — ProfileScreen route
+    _layout.tsx            — Stack with headerShown: false
+    index.tsx              — ProfileScreen route
 ```
+
+### New files
+
+- `src/shared/components/CollapsibleHeader.tsx` — shared header for all tabs
+- `modules/GradientBlurView/` — native Expo module for gradient-masked blur
 
 ### Deleted files
 
-- `src/shared/components/TabHeader.tsx` — custom animated collapsible header, no longer needed.
+- `src/shared/components/TabHeader.tsx` — replaced by CollapsibleHeader
 
 ---
 
-## 7. ScrollView Requirements for Large Title
+## 7. Patches
 
-Per Expo Router docs, the native large title collapse requires:
+### react-native-screens (4.23.0)
 
-1. `ScrollView` or `FlatList` is the **direct first child** of the screen component.
-2. If a wrapper `View` is necessary, set `collapsable={false}` on it.
-3. Add `contentInsetAdjustmentBehavior="automatic"` to the scrollable component.
+Patch at `patches/react-native-screens+4.23.0.patch`:
+- Fixes iOS 26 header button centering in `RNSScreenStackHeaderSubview.mm`
+- Centers subviews within the Liquid Glass backdrop on iOS 26+
+- Source: github.com/software-mansion/react-native-screens/issues/2990
+- Auto-applied via `postinstall` script in `package.json`
 
-Screens that currently wrap ScrollView in a container View (Home, Stats, Profile) need to ensure the ScrollView is the first rendered child, or the wrapper has `collapsable={false}`.
+---
+
+## 8. Dependencies Added
+
+- `expo-blur` — backdrop blur (used as Android fallback in CollapsibleHeader)
+- `expo-linear-gradient` — was already installed
+- `@sbaiahmed1/react-native-blur` — ProgressiveBlurView (installed but not currently used in final implementation)
+- `@react-native-masked-view/masked-view` — installed but not Fabric-compatible, unused
+- `patch-package` — auto-applies patches on install
