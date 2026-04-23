@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { createMMKV } from 'react-native-mmkv';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import type { LapTimerConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { LapTimerValue } from '@/shared/tracking-elements/types/element-values';
+
+const elementTimerStorage = createMMKV({ id: 'element-timers' });
 
 interface LapTimerElementProps {
   value: LapTimerValue;
   onValueChange: (value: LapTimerValue) => void;
   config: LapTimerConfig;
+  elementId?: string;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -17,10 +22,16 @@ function formatTime(totalSeconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${tenths}`;
 }
 
-export function LapTimerElement({ value, onValueChange, config }: LapTimerElementProps) {
+export function LapTimerElement({ value, onValueChange, config, elementId }: LapTimerElementProps) {
   const [isRunning, setIsRunning] = useState(false);
-  const startTimeRef = useRef<number | null>(null);
-  const baseElapsedRef = useRef(value.total_elapsed);
+  const mmkvKey = elementId ? `lt_start_${elementId}` : null;
+  const persistedStart = mmkvKey ? elementTimerStorage.getNumber(mmkvKey) : null;
+  const startTimeRef = useRef<number | null>(persistedStart ?? null);
+  const baseElapsedRef = useRef(
+    persistedStart != null
+      ? value.total_elapsed + (Date.now() - persistedStart) / 1000
+      : value.total_elapsed
+  );
   const lastLapElapsedRef = useRef(value.laps.reduce((sum, l) => sum + l, 0));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -34,8 +45,10 @@ export function LapTimerElement({ value, onValueChange, config }: LapTimerElemen
   }, []);
 
   const start = () => {
-    startTimeRef.current = Date.now();
+    const now = Date.now();
+    startTimeRef.current = now;
     baseElapsedRef.current = value.total_elapsed;
+    if (mmkvKey) elementTimerStorage.set(mmkvKey, now);
     setIsRunning(true);
     intervalRef.current = setInterval(() => {
       if (startTimeRef.current != null) {
@@ -47,10 +60,8 @@ export function LapTimerElement({ value, onValueChange, config }: LapTimerElemen
 
   const pause = () => {
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (mmkvKey) elementTimerStorage.remove(mmkvKey);
     if (startTimeRef.current != null) {
       const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
       baseElapsedRef.current = elapsed;
@@ -68,16 +79,32 @@ export function LapTimerElement({ value, onValueChange, config }: LapTimerElemen
     onValueChange({ laps: newLaps, total_elapsed: currentTotal });
   };
 
-  const reset = () => {
-    setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    startTimeRef.current = null;
-    baseElapsedRef.current = 0;
-    lastLapElapsedRef.current = 0;
-    onValueChange({ laps: [], total_elapsed: 0 });
+  const handleReset = () => {
+    Alert.alert(
+      'Reset timer',
+      'Reset timer and delete all laps?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            setIsRunning(false);
+            if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+            if (mmkvKey) elementTimerStorage.remove(mmkvKey);
+            startTimeRef.current = null;
+            baseElapsedRef.current = 0;
+            lastLapElapsedRef.current = 0;
+            onValueChange({ laps: [], total_elapsed: 0 });
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteLap = (index: number) => {
+    const newLaps = value.laps.filter((_, i) => i !== index);
+    onValueChange({ ...value, laps: newLaps });
   };
 
   const currentLapTime = value.total_elapsed - lastLapElapsedRef.current;
@@ -125,7 +152,7 @@ export function LapTimerElement({ value, onValueChange, config }: LapTimerElemen
 
         {value.total_elapsed > 0 && !isRunning && (
           <Pressable
-            onPress={reset}
+            onPress={handleReset}
             style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
           >
             <Text style={styles.secondaryButtonText}>Reset</Text>
@@ -133,50 +160,40 @@ export function LapTimerElement({ value, onValueChange, config }: LapTimerElemen
         )}
       </View>
 
-      {/* Lap list */}
+      {/* Lap list with swipe-to-delete */}
       {value.laps.length > 0 && (
-        <ScrollView style={styles.lapList} nestedScrollEnabled>
+        <View style={styles.lapList}>
           {value.laps.map((lapSec, index) => {
             const isGoodLap = config.targetLapTimeSeconds != null && lapSec <= config.targetLapTimeSeconds;
             return (
-              <View key={index} style={styles.lapRow}>
-                <Text style={styles.lapLabel}>Lap {index + 1}</Text>
-                <Text style={[styles.lapValue, isGoodLap && styles.lapValueGood]}>
-                  {formatTime(lapSec)}
-                </Text>
-              </View>
+              <SwipeToDeleteRow
+                key={index}
+                onDelete={() => deleteLap(index)}
+                confirmTitle="Delete lap"
+                confirmMessage={`Delete Lap ${index + 1}?`}
+              >
+                <View style={styles.lapRow}>
+                  <Text style={styles.lapLabel}>Lap {index + 1}</Text>
+                  <Text style={[styles.lapValue, isGoodLap && styles.lapValueGood]}>
+                    {formatTime(lapSec)}
+                  </Text>
+                </View>
+              </SwipeToDeleteRow>
             );
           })}
-        </ScrollView>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  time: {
-    ...typography.timer,
-    color: colors.textPrimary,
-  },
-  lapTime: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  target: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  targetReached: {
-    color: colors.success500,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  container: { alignItems: 'center', gap: spacing.md },
+  time: { ...typography.timer, color: colors.textPrimary },
+  lapTime: { ...typography.bodySmall, color: colors.textSecondary },
+  target: { ...typography.caption, color: colors.textSecondary },
+  targetReached: { color: colors.success500 },
+  buttonRow: { flexDirection: 'row', gap: spacing.sm },
   primaryButton: {
     backgroundColor: colors.primary500,
     paddingHorizontal: spacing.lg,
@@ -185,10 +202,7 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  primaryButtonText: {
-    ...typography.buttonLarge,
-    color: colors.textOnPrimary,
-  },
+  primaryButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
   warningButton: {
     backgroundColor: colors.warning500,
     paddingHorizontal: spacing.lg,
@@ -197,10 +211,7 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  warningButtonText: {
-    ...typography.buttonLarge,
-    color: colors.textOnPrimary,
-  },
+  warningButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
   secondaryButton: {
     backgroundColor: colors.primary50,
     paddingHorizontal: spacing.lg,
@@ -209,34 +220,22 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  secondaryButtonText: {
-    ...typography.buttonLarge,
-    color: colors.primary700,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  lapList: {
-    width: '100%',
-    maxHeight: 160,
-  },
+  secondaryButtonText: { ...typography.buttonLarge, color: colors.primary700 },
+  buttonPressed: { opacity: 0.7 },
+  lapList: { width: '100%' },
   lapRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
   },
-  lapLabel: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
+  lapLabel: { ...typography.bodySmall, color: colors.textSecondary },
   lapValue: {
     ...typography.bodySmall,
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
-  lapValueGood: {
-    color: colors.success500,
-  },
+  lapValueGood: { color: colors.success500 },
 });

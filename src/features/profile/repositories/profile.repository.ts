@@ -31,6 +31,8 @@ export interface ActivitySummaryRow {
   icon: string | null;
   category: string | null;
   is_active: number;
+  session_count: number;
+  last_session_date: string | null;
 }
 
 export interface ChildrenListRow {
@@ -73,9 +75,34 @@ export async function getLatestMeasurement(
 export async function getActivitiesSummary(childId: UUID): Promise<ActivitySummaryRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<ActivitySummaryRow>(
-    `SELECT id, name, icon, category, is_active
-     FROM activities WHERE child_id = ? AND is_active = 1
-     ORDER BY display_order ASC LIMIT 5`,
+    `SELECT a.id, a.name, a.icon, a.category, a.is_active,
+       COALESCE(s.cnt, 0) AS session_count,
+       s.last_date AS last_session_date
+     FROM activities a
+     LEFT JOIN (
+       SELECT activity_id, COUNT(*) AS cnt, MAX(started_at) AS last_date
+       FROM sessions GROUP BY activity_id
+     ) s ON s.activity_id = a.id
+     WHERE a.child_id = ? AND a.is_active = 1
+     ORDER BY a.display_order ASC`,
+    childId
+  );
+}
+
+export interface ExternalActivitySummaryRow {
+  id: string;
+  name: string;
+  schedule: string | null;
+  location: string | null;
+  notes: string | null;
+}
+
+export async function getExternalActivitiesSummary(childId: UUID): Promise<ExternalActivitySummaryRow[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<ExternalActivitySummaryRow>(
+    `SELECT id, name, schedule, location, notes
+     FROM external_activities WHERE child_id = ?
+     ORDER BY created_at ASC`,
     childId
   );
 }
@@ -89,6 +116,9 @@ export async function updateChild(
     country: string;
     grade_level: string;
     avatar_url: string;
+    school_calendar: string;
+    calendar_start_month: number | null;
+    calendar_end_month: number | null;
   }>
 ): Promise<void> {
   const db = await getDatabase();

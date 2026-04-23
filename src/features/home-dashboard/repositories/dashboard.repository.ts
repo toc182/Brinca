@@ -4,6 +4,10 @@ import type { UUID } from '@/types/domain.types';
 export async function getDashboardData(childId: UUID) {
   const db = await getDatabase();
 
+  const child = await db.getFirstAsync<{ name: string; avatar_url: string | null }>(
+    `SELECT name, avatar_url FROM children WHERE id = ?`, childId
+  );
+
   const balance = await db.getFirstAsync<{ total: number }>(
     `SELECT COALESCE(SUM(amount), 0) as total FROM currency_ledger WHERE child_id = ?`, childId
   );
@@ -26,17 +30,19 @@ export async function getDashboardData(childId: UUID) {
   );
 
   const recentSessions = await db.getAllAsync<{
-    id: string; activity_id: string; started_at: string; duration_seconds: number | null;
+    id: string; activity_id: string; started_at: string;
+    duration_seconds: number | null; is_complete: number;
   }>(
-    `SELECT s.id, s.activity_id, s.started_at, s.duration_seconds FROM sessions s
-     WHERE s.child_id = ? AND s.is_complete = 1 ORDER BY s.started_at DESC LIMIT 2`, childId
+    `SELECT s.id, s.activity_id, s.started_at, s.duration_seconds, s.is_complete
+     FROM sessions s
+     WHERE s.child_id = ? ORDER BY s.started_at DESC LIMIT 2`, childId
   );
 
   // Enrich recent sessions with activity names
   const enriched = [];
   for (const s of recentSessions) {
     const activity = await db.getFirstAsync<{ name: string }>(`SELECT name FROM activities WHERE id = ?`, s.activity_id);
-    enriched.push({ ...s, activityName: activity?.name ?? 'Unknown' });
+    enriched.push({ ...s, activityName: activity?.name ?? 'Unknown', isComplete: s.is_complete === 1 });
   }
 
   const accolades = await db.getAllAsync<{ accolade_id: string; unlocked_at: string }>(
@@ -47,7 +53,10 @@ export async function getDashboardData(childId: UUID) {
     `SELECT * FROM rewards WHERE child_id = ? AND state = 'saving' ORDER BY cost ASC LIMIT 1`, childId
   );
 
+  const hasAnySession = (totalSessions?.count ?? 0) > 0;
+
   return {
+    childPhotoUrl: child?.avatar_url ?? null,
     balance: balance?.total ?? 0,
     totalSessions: totalSessions?.count ?? 0,
     sessionsThisWeek: sessionsThisWeek?.count ?? 0,
@@ -55,5 +64,6 @@ export async function getDashboardData(childId: UUID) {
     recentSessions: enriched,
     accolades,
     closestReward,
+    hasAnySession,
   };
 }

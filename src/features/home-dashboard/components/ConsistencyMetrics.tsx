@@ -4,15 +4,13 @@ import { colors, typography, spacing, radii } from '@/shared/theme';
 interface ConsistencyMetricsProps {
   sessionsThisWeek: number;
   totalSessions: number;
-  streak: number;
 }
 
-export function ConsistencyMetrics({ sessionsThisWeek, totalSessions, streak }: ConsistencyMetricsProps) {
+export function ConsistencyMetrics({ sessionsThisWeek, totalSessions }: ConsistencyMetricsProps) {
   return (
     <View style={styles.container}>
       <MetricItem label="This week" value={String(sessionsThisWeek)} />
       <MetricItem label="Total" value={String(totalSessions)} />
-      {streak > 0 && <MetricItem label="Streak" value={`🔥 ${streak}`} />}
     </View>
   );
 }

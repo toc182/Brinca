@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 import { updateRewardState } from '../repositories/reward.repository';
-import { appendLedgerEntry } from '@/features/session-logging/repositories/currency-ledger.repository';
-import { insertAccoladeUnlock, isAccoladeUnlocked } from '@/features/session-logging/repositories/accolade.repository';
+import { appendLedgerEntry } from '../repositories/currency-ledger.repository';
+import { insertAccoladeUnlock, isAccoladeUnlocked } from '../repositories/accolade.repository';
 import { homeKeys } from '../queries/keys';
 
 export function useRedeemRewardMutation() {

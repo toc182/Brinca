@@ -42,6 +42,12 @@ export async function updateSessionNote(id: UUID, note: string) {
   await db.runAsync(`UPDATE sessions SET note = ? WHERE id = ?`, note, id);
 }
 
+export async function updateSessionPhoto(id: UUID, photoUrl: string | null) {
+  const db = await getDatabase();
+  await db.runAsync(`UPDATE sessions SET photo_url = ? WHERE id = ?`, photoUrl, id);
+  await appendToQueue('UPDATE', 'sessions', { id, photo_url: photoUrl });
+}
+
 export async function getCompletedSessionCount(childId: UUID): Promise<number> {
   const db = await getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(

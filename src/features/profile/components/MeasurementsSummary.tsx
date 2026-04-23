@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/shared/components/Card';
 import { colors, typography, spacing } from '@/shared/theme';
@@ -7,6 +7,7 @@ interface MeasurementsSummaryProps {
   latestWeight: { value: number; date: string } | null;
   latestHeight: { value: number; date: string } | null;
   measurementUnit: 'metric' | 'imperial';
+  onPress?: () => void;
 }
 
 function formatWeight(value: number, unit: 'metric' | 'imperial'): string {
@@ -51,29 +52,39 @@ export function MeasurementsSummary({
   latestWeight,
   latestHeight,
   measurementUnit,
+  onPress,
 }: MeasurementsSummaryProps) {
   return (
-    <Card style={styles.card}>
-      <Text style={styles.sectionTitle}>Measurements</Text>
-      <View style={styles.row}>
-        <MeasurementItem
-          label="Weight"
-          value={latestWeight ? formatWeight(latestWeight.value, measurementUnit) : null}
-          date={latestWeight?.date ?? null}
-        />
-        <MeasurementItem
-          label="Height"
-          value={latestHeight ? formatHeight(latestHeight.value, measurementUnit) : null}
-          date={latestHeight?.date ?? null}
-        />
-      </View>
-    </Card>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => pressed && onPress ? styles.pressed : undefined}
+      disabled={!onPress}
+    >
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Measurements</Text>
+        <View style={styles.row}>
+          <MeasurementItem
+            label="Weight"
+            value={latestWeight ? formatWeight(latestWeight.value, measurementUnit) : null}
+            date={latestWeight?.date ?? null}
+          />
+          <MeasurementItem
+            label="Height"
+            value={latestHeight ? formatHeight(latestHeight.value, measurementUnit) : null}
+            date={latestHeight?.date ?? null}
+          />
+        </View>
+      </Card>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     gap: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   sectionTitle: {
     ...typography.titleSmall,

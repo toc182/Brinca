@@ -2,27 +2,31 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 
-import { signOut } from '@/lib/supabase/auth';
+import { supabase } from '@/lib/supabase/client';
 import { closeDatabase } from '@/lib/sqlite/db';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useActiveSessionStore } from '@/stores/active-session.store';
+import { useOnboardingStore } from '@/stores/onboarding.store';
 
 /**
- * Two-step account deletion:
- * 1. Sign out from Supabase (invalidate auth)
- * 2. Clear local data: SQLite, MMKV stores, SecureStore
- * 3. Navigate to login
- *
- * Note: actual server-side deletion of user data should be handled
- * by a Supabase Edge Function triggered on auth.users deletion.
+ * Account deletion flow:
+ * 1. Call Edge Function for server-side data deletion (stub — TODO)
+ * 2. Sign out from Supabase (invalidate auth)
+ * 3. Clear local data: SQLite, MMKV stores, SecureStore
+ * 4. Navigate to login
  */
 export function useDeleteAccountMutation() {
   const router = useRouter();
 
   return useMutation({
     mutationFn: async () => {
+      // TODO: Call Edge Function for server-side data deletion
+      // This should delete: profiles, children, sessions, family_members,
+      // storage objects, and finally the auth.users row.
+      // await supabase.functions.invoke('delete-account', {});
+
       // Sign out from Supabase
-      await signOut();
+      await supabase.auth.signOut();
 
       // Close and clear SQLite
       await closeDatabase();
@@ -30,6 +34,7 @@ export function useDeleteAccountMutation() {
       // Clear Zustand persisted stores via MMKV
       useActiveChildStore.getState().clearActiveChild();
       useActiveSessionStore.getState().clearSession();
+      useOnboardingStore.getState().clearAll();
 
       // Clear secure store auth tokens
       try {

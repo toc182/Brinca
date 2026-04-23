@@ -44,9 +44,26 @@ export async function updateElement(id: UUID, fields: { label?: string; config?:
   if (sets.length === 0) return;
   values.push(id);
   await db.runAsync(`UPDATE tracking_elements SET ${sets.join(', ')} WHERE id = ?`, ...values);
+  const payload: Record<string, unknown> = { id };
+  if (fields.label !== undefined) payload.label = fields.label;
+  if (fields.config !== undefined) payload.config = JSON.stringify(fields.config);
+  await appendToQueue('UPDATE', 'tracking_elements', payload);
 }
 
 export async function deleteElement(id: UUID) {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM tracking_elements WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'tracking_elements', { id });
+}
+
+export async function reorderElements(elementIds: UUID[]) {
+  const db = await getDatabase();
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < elementIds.length; i++) {
+      await db.runAsync(`UPDATE tracking_elements SET display_order = ? WHERE id = ?`, i, elementIds[i]);
+    }
+  });
+  for (let i = 0; i < elementIds.length; i++) {
+    await appendToQueue('UPDATE', 'tracking_elements', { id: elementIds[i], display_order: i });
+  }
 }

@@ -12,6 +12,9 @@ interface UpdateChildInput {
     country: string;
     grade_level: string;
     avatar_url: string;
+    school_calendar: string;
+    calendar_start_month: number | null;
+    calendar_end_month: number | null;
   }>;
 }
 

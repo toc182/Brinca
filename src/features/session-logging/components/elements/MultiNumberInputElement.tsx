@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import type { MultiNumberInputConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { MultiNumberInputValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -57,7 +58,7 @@ export function MultiNumberInputElement({ value, onValueChange, config }: MultiN
       {/* Stats */}
       {value.values.length > 0 && (
         <View style={styles.statsRow}>
-          <Text style={styles.stat}>
+          <Text style={[styles.stat, isAtTarget && styles.statAtTarget]}>
             Count: {value.values.length}
             {hasTarget ? ` / ${config.targetEntries}` : ''}
           </Text>
@@ -65,38 +66,33 @@ export function MultiNumberInputElement({ value, onValueChange, config }: MultiN
         </View>
       )}
 
-      {/* Values list */}
+      {/* Values list with swipe-to-delete */}
       {value.values.length > 0 && (
-        <ScrollView style={styles.list} nestedScrollEnabled>
+        <View style={styles.list}>
           {value.values.map((v, index) => (
-            <View key={index} style={styles.entryRow}>
-              <Text style={styles.entryIndex}>{index + 1}.</Text>
-              <Text style={styles.entryValue}>
-                {v}{config.unit ? ` ${config.unit}` : ''}
-              </Text>
-              <Pressable
-                onPress={() => removeEntry(index)}
-                style={({ pressed }) => [styles.removeButton, pressed && styles.removeButtonPressed]}
-              >
-                <Text style={styles.removeText}>x</Text>
-              </Pressable>
-            </View>
+            <SwipeToDeleteRow
+              key={index}
+              onDelete={() => removeEntry(index)}
+              confirmTitle="Remove entry"
+              confirmMessage={`Remove entry ${index + 1}?`}
+            >
+              <View style={styles.entryRow}>
+                <Text style={styles.entryIndex}>{index + 1}.</Text>
+                <Text style={styles.entryValue}>
+                  {v}{config.unit ? ` ${config.unit}` : ''}
+                </Text>
+              </View>
+            </SwipeToDeleteRow>
           ))}
-        </ScrollView>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
+  container: { gap: spacing.sm },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   input: {
     ...typography.body,
     color: colors.textPrimary,
@@ -107,10 +103,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },
-  unit: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
+  unit: { ...typography.bodySmall, color: colors.textSecondary },
   addButton: {
     backgroundColor: colors.primary500,
     paddingHorizontal: spacing.md,
@@ -119,51 +112,22 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.min,
     justifyContent: 'center',
   },
-  addButtonPressed: {
-    opacity: 0.7,
-  },
-  addButtonText: {
-    ...typography.buttonSmall,
-    color: colors.textOnPrimary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: spacing.xxs,
-  },
-  stat: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  list: {
-    maxHeight: 180,
-  },
+  addButtonPressed: { opacity: 0.7 },
+  addButtonText: { ...typography.buttonSmall, color: colors.textOnPrimary },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: spacing.xxs },
+  stat: { ...typography.caption, color: colors.textSecondary },
+  statAtTarget: { color: colors.success500 },
+  list: {},
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
     gap: spacing.xs,
+    backgroundColor: colors.surface,
   },
-  entryIndex: {
-    ...typography.caption,
-    color: colors.textPlaceholder,
-    width: 28,
-  },
-  entryValue: {
-    ...typography.body,
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  removeButton: {
-    padding: spacing.xs,
-  },
-  removeButtonPressed: {
-    opacity: 0.5,
-  },
-  removeText: {
-    ...typography.caption,
-    color: colors.error500,
-  },
+  entryIndex: { ...typography.caption, color: colors.textPlaceholder, width: 28 },
+  entryValue: { ...typography.body, color: colors.textPrimary, flex: 1 },
 });

@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { createMMKV } from 'react-native-mmkv';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { IntervalTimerConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { IntervalTimerValue } from '@/shared/tracking-elements/types/element-values';
+
+const elementTimerStorage = createMMKV({ id: 'element-timers' });
 
 interface IntervalTimerElementProps {
   value: IntervalTimerValue;
   onValueChange: (value: IntervalTimerValue) => void;
   config: IntervalTimerConfig;
+  elementId?: string;
 }
 
 type Phase = 'work' | 'rest';
@@ -19,17 +24,28 @@ function formatTime(totalSeconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-export function IntervalTimerElement({ value, onValueChange, config }: IntervalTimerElementProps) {
+export function IntervalTimerElement({ value, onValueChange, config, elementId }: IntervalTimerElementProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<Phase>('work');
   const [phaseRemaining, setPhaseRemaining] = useState(config.workDurationSeconds);
+  const [phaseBanner, setPhaseBanner] = useState<string | null>(null);
+
+  const mmkvKey = elementId ? `it_start_${elementId}` : null;
+  const persistedStart = mmkvKey ? elementTimerStorage.getNumber(mmkvKey) : null;
+
   const phaseStartRef = useRef<number | null>(null);
   const basePhaseDurationRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cycleRef = useRef(value.completed_cycles);
   const skippedRef = useRef(value.skipped_phases);
-  const totalStartRef = useRef<number | null>(null);
-  const baseTotalRef = useRef(value.total_elapsed);
+  const totalStartRef = useRef<number | null>(persistedStart ?? null);
+  const baseTotalRef = useRef(
+    persistedStart != null
+      ? value.total_elapsed + (Date.now() - persistedStart) / 1000
+      : value.total_elapsed
+  );
+
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
 
   const isComplete = value.completed_cycles >= config.cycles;
 
@@ -39,6 +55,20 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
     };
   }, []);
 
+  const showPhaseBanner = (label: string) => {
+    setPhaseBanner(label);
+    bannerOpacity.setValue(1);
+    Animated.timing(bannerOpacity, { toValue: 0, duration: 2000, delay: 500, useNativeDriver: true }).start(() => {
+      setPhaseBanner(null);
+    });
+  };
+
+  const onPhaseTransition = (newPhase: Phase) => {
+    // Vibrate once and trigger haptic at each phase transition
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    showPhaseBanner(newPhase === 'work' ? 'WORK' : 'REST');
+  };
+
   const tick = () => {
     if (phaseStartRef.current == null) return;
 
@@ -47,7 +77,6 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
     const remaining = Math.max(0, phaseDuration - phaseElapsed);
     setPhaseRemaining(remaining);
 
-    // Update total elapsed
     if (totalStartRef.current != null) {
       const totalElapsed = baseTotalRef.current + (Date.now() - totalStartRef.current) / 1000;
       onValueChange({
@@ -64,26 +93,22 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
 
   const advancePhase = () => {
     if (phase === 'work') {
-      // Work done -> move to rest
       setPhase('rest');
       setPhaseRemaining(config.restDurationSeconds);
       basePhaseDurationRef.current = 0;
       phaseStartRef.current = Date.now();
+      onPhaseTransition('rest');
     } else {
-      // Rest done -> complete a cycle
       const newCycles = cycleRef.current + 1;
       cycleRef.current = newCycles;
 
       if (newCycles >= config.cycles) {
-        // All done
+        // All complete — haptic for completion
         stop();
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         if (totalStartRef.current != null) {
           const totalElapsed = baseTotalRef.current + (Date.now() - totalStartRef.current) / 1000;
-          onValueChange({
-            completed_cycles: newCycles,
-            total_elapsed: totalElapsed,
-            skipped_phases: skippedRef.current,
-          });
+          onValueChange({ completed_cycles: newCycles, total_elapsed: totalElapsed, skipped_phases: skippedRef.current });
         }
         return;
       }
@@ -92,34 +117,33 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
       setPhaseRemaining(config.workDurationSeconds);
       basePhaseDurationRef.current = 0;
       phaseStartRef.current = Date.now();
+      onPhaseTransition('work');
     }
   };
 
   const start = () => {
     if (isComplete) return;
-    phaseStartRef.current = Date.now();
+    const now = Date.now();
+    phaseStartRef.current = now;
     basePhaseDurationRef.current = 0;
-    totalStartRef.current = Date.now();
+    totalStartRef.current = now;
     baseTotalRef.current = value.total_elapsed;
+    if (mmkvKey) elementTimerStorage.set(mmkvKey, now);
     setIsRunning(true);
     intervalRef.current = setInterval(tick, 100);
   };
 
   const stop = () => {
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (mmkvKey) elementTimerStorage.remove(mmkvKey);
     phaseStartRef.current = null;
     totalStartRef.current = null;
   };
 
   const pause = () => {
     stop();
-    if (totalStartRef.current != null) {
-      baseTotalRef.current = value.total_elapsed;
-    }
+    baseTotalRef.current = value.total_elapsed;
   };
 
   const skip = () => {
@@ -128,20 +152,39 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
     advancePhase();
   };
 
-  const reset = () => {
-    stop();
-    setPhase('work');
-    setPhaseRemaining(config.workDurationSeconds);
-    basePhaseDurationRef.current = 0;
-    cycleRef.current = 0;
-    skippedRef.current = 0;
-    baseTotalRef.current = 0;
-    onValueChange({ completed_cycles: 0, total_elapsed: 0, skipped_phases: 0 });
+  const handleReset = () => {
+    Alert.alert(
+      'Reset timer',
+      'Reset interval timer?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            stop();
+            setPhase('work');
+            setPhaseRemaining(config.workDurationSeconds);
+            basePhaseDurationRef.current = 0;
+            cycleRef.current = 0;
+            skippedRef.current = 0;
+            baseTotalRef.current = 0;
+            onValueChange({ completed_cycles: 0, total_elapsed: 0, skipped_phases: 0 });
+          },
+        },
+      ]
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Phase indicator */}
+      {/* Phase transition banner */}
+      {phaseBanner && (
+        <Animated.View style={[styles.phaseBannerContainer, { opacity: bannerOpacity }]}>
+          <Text style={styles.phaseBannerText}>{phaseBanner}</Text>
+        </Animated.View>
+      )}
+
       <View style={[styles.phaseBadge, phase === 'work' ? styles.workBadge : styles.restBadge]}>
         <Text style={styles.phaseText}>{phase === 'work' ? 'WORK' : 'REST'}</Text>
       </View>
@@ -183,7 +226,7 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
 
         {value.total_elapsed > 0 && !isRunning && (
           <Pressable
-            onPress={reset}
+            onPress={handleReset}
             style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
           >
             <Text style={styles.secondaryButtonText}>Reset</Text>
@@ -195,42 +238,25 @@ export function IntervalTimerElement({ value, onValueChange, config }: IntervalT
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    gap: spacing.md,
+  container: { alignItems: 'center', gap: spacing.md },
+  phaseBannerContainer: {
+    position: 'absolute',
+    top: -20,
+    backgroundColor: colors.primary500,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.md,
+    zIndex: 10,
   },
-  phaseBadge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xxs,
-    borderRadius: radii.full,
-  },
-  workBadge: {
-    backgroundColor: colors.accent500,
-  },
-  restBadge: {
-    backgroundColor: colors.secondary500,
-  },
-  phaseText: {
-    ...typography.captionSmall,
-    color: colors.textOnPrimary,
-    textTransform: 'uppercase',
-  },
-  time: {
-    ...typography.timer,
-    color: colors.textPrimary,
-  },
-  cycleInfo: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  completeLabel: {
-    ...typography.buttonSmall,
-    color: colors.success500,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  phaseBannerText: { ...typography.buttonSmall, color: colors.textOnPrimary },
+  phaseBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xxs, borderRadius: radii.full },
+  workBadge: { backgroundColor: colors.accent500 },
+  restBadge: { backgroundColor: colors.secondary500 },
+  phaseText: { ...typography.captionSmall, color: colors.textOnPrimary, textTransform: 'uppercase' },
+  time: { ...typography.timer, color: colors.textPrimary },
+  cycleInfo: { ...typography.bodySmall, color: colors.textSecondary },
+  completeLabel: { ...typography.buttonSmall, color: colors.success500 },
+  buttonRow: { flexDirection: 'row', gap: spacing.sm },
   primaryButton: {
     backgroundColor: colors.primary500,
     paddingHorizontal: spacing.lg,
@@ -239,10 +265,7 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  primaryButtonText: {
-    ...typography.buttonLarge,
-    color: colors.textOnPrimary,
-  },
+  primaryButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
   warningButton: {
     backgroundColor: colors.warning500,
     paddingHorizontal: spacing.lg,
@@ -251,10 +274,7 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  warningButtonText: {
-    ...typography.buttonLarge,
-    color: colors.textOnPrimary,
-  },
+  warningButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
   secondaryButton: {
     backgroundColor: colors.primary50,
     paddingHorizontal: spacing.lg,
@@ -263,11 +283,6 @@ const styles = StyleSheet.create({
     minHeight: touchTargets.adult,
     justifyContent: 'center',
   },
-  secondaryButtonText: {
-    ...typography.buttonLarge,
-    color: colors.primary700,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
+  secondaryButtonText: { ...typography.buttonLarge, color: colors.primary700 },
+  buttonPressed: { opacity: 0.7 },
 });

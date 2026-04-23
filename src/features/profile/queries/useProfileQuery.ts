@@ -5,7 +5,21 @@ import {
   getChildById,
   getLatestMeasurement,
   getActivitiesSummary,
+  getExternalActivitiesSummary,
 } from '../repositories/profile.repository';
+
+export interface ActivityItem {
+  id: string;
+  name: string;
+  icon: string | null;
+  category: string | null;
+  type: 'app' | 'external';
+  sessionCount?: number;
+  lastSessionDate?: string | null;
+  schedule?: string | null;
+  location?: string | null;
+  notes?: string | null;
+}
 
 export interface ProfileData {
   child: {
@@ -20,12 +34,7 @@ export interface ProfileData {
   } | null;
   latestWeight: { value: number; date: string } | null;
   latestHeight: { value: number; date: string } | null;
-  activities: Array<{
-    id: string;
-    name: string;
-    icon: string | null;
-    category: string | null;
-  }>;
+  activities: ActivityItem[];
 }
 
 export function useProfileQuery(childId: string | null) {
@@ -37,11 +46,33 @@ export function useProfileQuery(childId: string | null) {
         return { child: null, latestWeight: null, latestHeight: null, activities: [] };
       }
 
-      const [weightRow, heightRow, activityRows] = await Promise.all([
+      const [weightRow, heightRow, activityRows, externalRows] = await Promise.all([
         getLatestMeasurement(childId!, 'weight'),
         getLatestMeasurement(childId!, 'height'),
         getActivitiesSummary(childId!),
+        getExternalActivitiesSummary(childId!),
       ]);
+
+      const appActivities: ActivityItem[] = activityRows.map((a) => ({
+        id: a.id,
+        name: a.name,
+        icon: a.icon,
+        category: a.category,
+        type: 'app' as const,
+        sessionCount: a.session_count,
+        lastSessionDate: a.last_session_date,
+      }));
+
+      const externalActivities: ActivityItem[] = externalRows.map((e) => ({
+        id: e.id,
+        name: e.name,
+        icon: null,
+        category: null,
+        type: 'external' as const,
+        schedule: e.schedule,
+        location: e.location,
+        notes: e.notes,
+      }));
 
       return {
         child: {
@@ -56,12 +87,7 @@ export function useProfileQuery(childId: string | null) {
         },
         latestWeight: weightRow ? { value: weightRow.value, date: weightRow.date } : null,
         latestHeight: heightRow ? { value: heightRow.value, date: heightRow.date } : null,
-        activities: activityRows.map((a) => ({
-          id: a.id,
-          name: a.name,
-          icon: a.icon,
-          category: a.category,
-        })),
+        activities: [...appActivities, ...externalActivities],
       };
     },
     enabled: !!childId,

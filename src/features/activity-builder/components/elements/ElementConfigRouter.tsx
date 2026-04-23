@@ -5,8 +5,10 @@ import { SplitCounterConfig } from './SplitCounterConfig';
 import { MultistepCounterConfig } from './MultistepCounterConfig';
 import { CountdownTimerConfig } from './CountdownTimerConfig';
 import { IntervalTimerConfig } from './IntervalTimerConfig';
+import { LapTimerConfig } from './LapTimerConfig';
 import { ChecklistConfig } from './ChecklistConfig';
 import { SelectConfig } from './SelectConfig';
+import { YesNoConfig } from './YesNoConfig';
 import { RatingScaleConfig } from './RatingScaleConfig';
 import { EmojiFaceScaleConfig } from './EmojiFaceScaleConfig';
 import { NumberInputConfig } from './NumberInputConfig';
@@ -35,8 +37,9 @@ export function ElementConfigRouter({ elementId, type, config, onConfigChange }:
     case 'multistep_counter':
       return <MultistepCounterConfig {...props} />;
     case 'stopwatch':
-    case 'lap_timer':
       return <NoConfig label="No configuration needed." />;
+    case 'lap_timer':
+      return <LapTimerConfig {...props} />;
     case 'countdown_timer':
       return <CountdownTimerConfig {...props} />;
     case 'interval_timer':
@@ -45,16 +48,16 @@ export function ElementConfigRouter({ elementId, type, config, onConfigChange }:
       return <ChecklistConfig {...props} />;
     case 'single_select':
     case 'multi_select':
-      return <SelectConfig {...props} />;
+      return <SelectConfig {...props} type={type} />;
     case 'yes_no':
-      return <NoConfig label="No configuration needed." />;
+      return <YesNoConfig {...props} />;
     case 'rating_scale':
       return <RatingScaleConfig {...props} />;
     case 'emoji_face_scale':
       return <EmojiFaceScaleConfig {...props} />;
     case 'number_input':
     case 'multi_number_input':
-      return <NumberInputConfig {...props} />;
+      return <NumberInputConfig {...props} type={type} />;
     case 'free_text_note':
       return <NoConfig label="No configuration needed." />;
     case 'voice_note':

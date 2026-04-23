@@ -51,9 +51,16 @@ export async function updateActivity(id: UUID, fields: { name?: string; icon?: s
   if (sets.length === 0) return;
   values.push(id);
   await db.runAsync(`UPDATE activities SET ${sets.join(', ')} WHERE id = ?`, ...values);
+  const payload: Record<string, unknown> = { id };
+  if (fields.name !== undefined) payload.name = fields.name;
+  if (fields.icon !== undefined) payload.icon = fields.icon;
+  if (fields.category !== undefined) payload.category = fields.category;
+  if (fields.is_active !== undefined) payload.is_active = fields.is_active ? 1 : 0;
+  await appendToQueue('UPDATE', 'activities', payload);
 }
 
 export async function deleteActivity(id: UUID) {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM activities WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'activities', { id });
 }

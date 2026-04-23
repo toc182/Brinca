@@ -29,6 +29,7 @@ import { startSyncEngine } from '@/lib/sync/engine';
 import '@/shared/i18n/config';
 import { colors } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
+import { useOnboardingStore } from '@/stores/onboarding.store';
 import { getFirstChild } from '@/features/onboarding/repositories/child.repository';
 import { getFirstActivity } from '@/features/onboarding/repositories/activity.repository';
 import * as Sentry from '@sentry/react-native';
@@ -97,8 +98,21 @@ export default Sentry.wrap(function RootLayout() {
         const session = await getSession();
 
         if (!session) {
-          setAuthState('unauthenticated');
+          // Check if user signed up but hasn't verified email yet
+          const { pendingVerificationEmail } = useOnboardingStore.getState();
+          if (pendingVerificationEmail) {
+            setAuthState('onboarding-verification');
+          } else {
+            setAuthState('unauthenticated');
+          }
         } else {
+          // Session exists — check if we're mid-setup (email just verified but
+          // profile/family not yet created)
+          const { pendingVerificationEmail } = useOnboardingStore.getState();
+          if (pendingVerificationEmail) {
+            setAuthState('onboarding-verification');
+            return;
+          }
           // Check onboarding progress
           const activeChild = useActiveChildStore.getState();
           if (activeChild.childId && activeChild.familyId) {
@@ -161,6 +175,8 @@ export default Sentry.wrap(function RootLayout() {
 
     if (authState === 'unauthenticated' && !inAuthGroup) {
       router.replace('/(auth)/login');
+    } else if (authState === 'onboarding-verification' && !inAuthGroup) {
+      router.replace('/(auth)/onboarding/verify-email');
     } else if (authState === 'onboarding-child' && !inAuthGroup) {
       router.replace('/(auth)/onboarding/step-2');
     } else if (authState === 'onboarding-activity' && !inAuthGroup) {
@@ -194,7 +210,7 @@ export default Sentry.wrap(function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(settings)" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="(modals)" options={{ headerShown: false }} />
+        <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
     </QueryClientProvider>
     </AuthContext.Provider>

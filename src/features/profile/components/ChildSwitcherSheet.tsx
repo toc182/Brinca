@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { GearSix } from 'phosphor-react-native';
 
 import { Avatar } from '@/shared/components/Avatar';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -19,6 +20,7 @@ interface ChildSwitcherSheetProps {
   activeChildId: string | null;
   onSelectChild: (child: ChildItem) => void;
   onAddChild: () => void;
+  onGoToAccountsCenter?: () => void;
 }
 
 function calculateAge(dateOfBirth: string | null): string {
@@ -39,6 +41,7 @@ export function ChildSwitcherSheet({
   activeChildId,
   onSelectChild,
   onAddChild,
+  onGoToAccountsCenter,
 }: ChildSwitcherSheetProps) {
   const snapPoints = useMemo(() => ['40%', '60%'], []);
 
@@ -99,6 +102,16 @@ export function ChildSwitcherSheet({
           </View>
           <Text style={styles.addLabel}>Add child</Text>
         </Pressable>
+
+        {onGoToAccountsCenter ? (
+          <Pressable
+            style={({ pressed }) => [styles.accountsRow, pressed && styles.pressed]}
+            onPress={onGoToAccountsCenter}
+          >
+            <GearSix size={20} color={colors.textSecondary} />
+            <Text style={styles.accountsLabel}>Go to Accounts Center</Text>
+          </Pressable>
+        ) : null}
       </BottomSheetView>
     </BottomSheet>
   );
@@ -176,5 +189,19 @@ const styles = StyleSheet.create({
   addLabel: {
     ...typography.titleSmall,
     color: colors.primary500,
+  },
+  accountsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    gap: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderSubtle,
+    marginTop: spacing.xs,
+  },
+  accountsLabel: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
 });

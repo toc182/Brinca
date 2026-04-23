@@ -1,72 +1,140 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Dimensions, StyleSheet, View, type ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { colors, radii } from '../theme';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SHIMMER_DELAY_MS = 250;
+const SHIMMER_DURATION_MS = 1500;
+const SHIMMER_FROM = -SCREEN_WIDTH * 1.5;
+const SHIMMER_TO = SCREEN_WIDTH * 1.5;
+
 interface SkeletonPlaceholderProps {
-  width: number | `${number}%`;
-  height: number;
-  borderRadius?: number;
+  children: React.ReactNode;
   style?: ViewStyle;
 }
 
 /**
  * Skeleton shimmer loading placeholder.
- * Violet-tinted per brand-decisions.md §11.
- * Base: #E8E5F2, highlight: #F4F2FA, 1500ms sweep.
+ * Wraps arbitrary layout-shape Views and sweeps a shimmer gradient over them.
+ *
+ * Base color: #E8E5F2 (shimmerBase). Highlight: #F4F2FA (shimmerHighlight).
+ * Shimmer sweeps left-to-right at ~17° angle, 1500ms linear infinite.
+ * 250ms delay before animation starts. Reduce-motion: static gray, no animation.
+ *
+ * Usage:
+ *   <SkeletonPlaceholder>
+ *     <View style={{ height: 16, width: '70%', borderRadius: 8 }} />
+ *     <View style={{ height: 16, width: '50%', borderRadius: 8, marginTop: 8 }} />
+ *   </SkeletonPlaceholder>
  */
-export function SkeletonPlaceholder({
-  width,
-  height,
-  borderRadius = radii.sm,
-  style,
-}: SkeletonPlaceholderProps) {
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+export function SkeletonPlaceholder({ children, style }: SkeletonPlaceholderProps) {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const translateX = useSharedValue(SHIMMER_FROM);
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.timing(shimmerAnim, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: true,
-      })
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [shimmerAnim]);
+    isMounted.current = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      if (isMounted.current) setReduceMotion(enabled);
+    });
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
-  const translateX = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-200, 200],
-  });
+  useEffect(() => {
+    if (reduceMotion) {
+      cancelAnimation(translateX);
+      translateX.value = SHIMMER_FROM;
+      return;
+    }
+
+    translateX.value = withDelay(
+      SHIMMER_DELAY_MS,
+      withRepeat(
+        withTiming(SHIMMER_TO, { duration: SHIMMER_DURATION_MS }),
+        -1,
+        false,
+      ),
+    );
+
+    return () => {
+      cancelAnimation(translateX);
+    };
+  }, [reduceMotion, translateX]);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const styledChildren = injectShimmerBackground(children);
 
   return (
-    <View
-      style={[
-        styles.container,
-        { width, height, borderRadius },
-        style,
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.shimmer,
-          { transform: [{ translateX }] },
-        ]}
-      />
+    <View style={[styles.container, style]}>
+      {styledChildren}
+      {!reduceMotion && (
+        <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle]}>
+          <LinearGradient
+            colors={[
+              'transparent',
+              `${colors.shimmerHighlight}99`,
+              colors.shimmerHighlight,
+              `${colors.shimmerHighlight}99`,
+              'transparent',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[StyleSheet.absoluteFill, styles.gradient]}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
 
+/**
+ * Recursively injects shimmerBase background into all View children.
+ * Children define the layout shapes; the shimmer gradient sweeps over them.
+ */
+function injectShimmerBackground(node: React.ReactNode): React.ReactNode {
+  if (!React.isValidElement(node)) return node;
+
+  const element = node as React.ReactElement<{
+    style?: ViewStyle | ViewStyle[];
+    children?: React.ReactNode;
+    borderRadius?: number;
+  }>;
+
+  const injectedStyle: ViewStyle = {
+    backgroundColor: colors.shimmerBase,
+    borderRadius: element.props.borderRadius ?? radii.sm,
+  };
+
+  const mergedStyle: ViewStyle = StyleSheet.flatten([injectedStyle, element.props.style]);
+
+  return React.cloneElement(element, {
+    style: mergedStyle,
+    children: element.props.children
+      ? React.Children.map(element.props.children, injectShimmerBackground)
+      : undefined,
+  });
+}
+
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.shimmerBase,
     overflow: 'hidden',
   },
-  shimmer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.shimmerHighlight,
-    opacity: 0.6,
+  gradient: {
+    transform: [{ skewX: '-17deg' }],
   },
 });

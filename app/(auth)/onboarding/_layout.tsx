@@ -15,6 +15,8 @@ export default function OnboardingLayout() {
       }}
     >
       <Stack.Screen name="step-1" />
+      <Stack.Screen name="verify-email" />
+      <Stack.Screen name="verify-expired" />
       <Stack.Screen name="step-2" />
       <Stack.Screen name="step-3" />
     </Stack>

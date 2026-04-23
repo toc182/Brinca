@@ -95,6 +95,62 @@ export function getDefaultValue(type: ElementType): Record<string, unknown> {
   }
 }
 
+/**
+ * Returns true if the recorded value meets the element's configured target.
+ * Used to light up the green check corner badge on the drill screen.
+ */
+export function isTargetMet(type: ElementType, config: Record<string, unknown>, value: Record<string, unknown>): boolean {
+  switch (type) {
+    case 'counter':
+    case 'combined_counter':
+      return config.target != null && (value.count as number) >= (config.target as number);
+    case 'split_counter': {
+      const leftOk = config.targetLeft == null || (value.left as number) >= (config.targetLeft as number);
+      const rightOk = config.targetRight == null || (value.right as number) >= (config.targetRight as number);
+      return leftOk && rightOk;
+    }
+    case 'multistep_counter':
+      return config.targetReps != null && (value.reps as number) >= (config.targetReps as number);
+    case 'stopwatch':
+      return config.targetSeconds != null && (value.elapsed_seconds as number) >= (config.targetSeconds as number);
+    case 'countdown_timer':
+      return (value.remaining_seconds as number) <= 0;
+    case 'lap_timer':
+      return config.targetLaps != null && ((value.laps as unknown[]).length) >= (config.targetLaps as number);
+    case 'interval_timer':
+      return (value.completed_cycles as number) >= (config.cycles as number);
+    case 'checklist': {
+      const items = value.items as Array<{ checked?: boolean }> ?? [];
+      const checkedCount = items.filter((i) => i.checked).length;
+      return config.targetItems != null ? checkedCount >= (config.targetItems as number) : checkedCount > 0;
+    }
+    case 'single_select':
+      return config.targetOptionId != null && value.selected === config.targetOptionId;
+    case 'multi_select': {
+      const sel = value.selected as string[] ?? [];
+      return config.targetCount != null ? sel.length >= (config.targetCount as number) : sel.length > 0;
+    }
+    case 'yes_no':
+      return config.targetAnswer != null && value.answer === config.targetAnswer;
+    case 'rating_scale':
+      return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
+    case 'emoji_face_scale':
+      return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
+    case 'number_input':
+      return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
+    case 'multi_number_input': {
+      const vals = value.values as number[] ?? [];
+      return config.targetEntries != null ? vals.length >= (config.targetEntries as number) : vals.length > 0;
+    }
+    case 'free_text_note':
+      return typeof value.text === 'string' && value.text.length > 0;
+    case 'voice_note':
+      return typeof value.file_uri === 'string' && value.file_uri.length > 0;
+    default:
+      return false;
+  }
+}
+
 export function getDefaultConfig(type: ElementType): Record<string, unknown> {
   switch (type) {
     case 'counter': return {};

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { CombinedCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { CombinedCounterValue } from '@/shared/tracking-elements/types/element-values';
@@ -18,9 +18,7 @@ export function CombinedCounterElement({ value, onValueChange, config }: Combine
   const isAtTarget = hasTarget && count >= config.target!;
 
   const decrement = () => {
-    if (count > 0) {
-      onValueChange({ count: count - 1 });
-    }
+    if (count > 0) onValueChange({ count: count - 1 });
   };
 
   const increment = () => {
@@ -40,55 +38,68 @@ export function CombinedCounterElement({ value, onValueChange, config }: Combine
     setIsEditing(false);
   };
 
+  const handleReset = () => {
+    Alert.alert('Reset counter', 'Reset counter to zero?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: () => onValueChange({ count: 0 }) },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
-      <Pressable
-        onPress={decrement}
-        style={({ pressed }) => [
-          styles.button,
-          styles.buttonMinus,
-          pressed && styles.buttonPressed,
-          count === 0 && styles.buttonDisabled,
-        ]}
-        disabled={count === 0}
-      >
-        <Text style={[styles.buttonText, count === 0 && styles.buttonTextDisabled]}>-</Text>
-      </Pressable>
+      <View style={styles.counterRow}>
+        <Pressable
+          onPress={decrement}
+          style={({ pressed }) => [
+            styles.button, styles.buttonMinus,
+            pressed && styles.buttonPressed,
+            count === 0 && styles.buttonDisabled,
+          ]}
+          disabled={count === 0}
+        >
+          <Text style={[styles.buttonText, count === 0 && styles.buttonTextDisabled]}>-</Text>
+        </Pressable>
 
-      <View style={styles.countContainer}>
-        {isEditing ? (
-          <TextInput
-            style={styles.input}
-            value={editText}
-            onChangeText={setEditText}
-            onBlur={commitEdit}
-            onSubmitEditing={commitEdit}
-            keyboardType="number-pad"
-            autoFocus
-            selectTextOnFocus
-          />
-        ) : (
-          <Pressable onPress={startEditing}>
-            <Text style={[styles.count, isAtTarget && styles.countAtTarget]}>{count}</Text>
-          </Pressable>
-        )}
-        {hasTarget && (
-          <Text style={styles.target}>/ {config.target}</Text>
-        )}
+        <View style={styles.countContainer}>
+          {isEditing ? (
+            <TextInput
+              style={styles.input}
+              value={editText}
+              onChangeText={setEditText}
+              onBlur={commitEdit}
+              onSubmitEditing={commitEdit}
+              keyboardType="number-pad"
+              autoFocus
+              selectTextOnFocus
+            />
+          ) : (
+            <Pressable onPress={startEditing}>
+              <Text style={[styles.count, isAtTarget && styles.countAtTarget]}>{count}</Text>
+            </Pressable>
+          )}
+          {hasTarget && <Text style={styles.target}>/ {config.target}</Text>}
+        </View>
+
+        <Pressable
+          onPress={increment}
+          style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
+        >
+          <Text style={styles.buttonText}>+</Text>
+        </Pressable>
       </View>
 
-      <Pressable
-        onPress={increment}
-        style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
-      >
-        <Text style={styles.buttonText}>+</Text>
-      </Pressable>
+      {count > 0 && (
+        <Pressable onPress={handleReset} style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}>
+          <Text style={styles.resetText}>Reset</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { alignItems: 'center', gap: spacing.sm },
+  counterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -101,36 +112,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonMinus: {
-    backgroundColor: colors.primary50,
-  },
-  buttonPlus: {
-    backgroundColor: colors.primary500,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.surfaceDisabled,
-  },
-  buttonText: {
-    ...typography.titleMedium,
-    color: colors.primary700,
-  },
-  buttonTextDisabled: {
-    color: colors.textDisabled,
-  },
-  countContainer: {
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  count: {
-    ...typography.counter,
-    color: colors.textPrimary,
-  },
-  countAtTarget: {
-    color: colors.success500,
-  },
+  buttonMinus: { backgroundColor: colors.primary50 },
+  buttonPlus: { backgroundColor: colors.primary500 },
+  buttonPressed: { opacity: 0.7 },
+  buttonDisabled: { backgroundColor: colors.surfaceDisabled },
+  buttonText: { ...typography.titleMedium, color: colors.primary700 },
+  buttonTextDisabled: { color: colors.textDisabled },
+  countContainer: { alignItems: 'center', minWidth: 80 },
+  count: { ...typography.counter, color: colors.textPrimary },
+  countAtTarget: { color: colors.success500 },
   input: {
     ...typography.counter,
     color: colors.textPrimary,
@@ -140,8 +130,7 @@ const styles = StyleSheet.create({
     minWidth: 80,
     padding: 0,
   },
-  target: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
+  target: { ...typography.caption, color: colors.textSecondary },
+  resetButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  resetText: { ...typography.caption, color: colors.error500 },
 });

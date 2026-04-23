@@ -36,6 +36,8 @@ export const useUIPreferencesStore = create<UIPreferencesState>()(
     })),
     {
       name: 'ui-preferences-storage',
+      version: 1,
+      migrate: (persisted) => persisted as Record<string, unknown>,
       storage: createJSONStorage(() => mmkvStorage),
     }
   )

@@ -68,12 +68,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   buttonYesActive: {
-    backgroundColor: colors.success50,
-    borderColor: colors.success500,
+    backgroundColor: colors.accent500,
+    borderColor: colors.accent500,
   },
   buttonNoActive: {
-    backgroundColor: colors.error50,
-    borderColor: colors.error500,
+    backgroundColor: colors.accent500,
+    borderColor: colors.accent500,
   },
   buttonPressed: {
     opacity: 0.7,

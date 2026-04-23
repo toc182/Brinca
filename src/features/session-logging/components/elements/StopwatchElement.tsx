@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { createMMKV } from 'react-native-mmkv';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { StopwatchConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { StopwatchValue } from '@/shared/tracking-elements/types/element-values';
+
+const elementTimerStorage = createMMKV({ id: 'element-timers' });
 
 interface StopwatchElementProps {
   value: StopwatchValue;
   onValueChange: (value: StopwatchValue) => void;
   config: StopwatchConfig;
+  elementId?: string;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -20,10 +24,18 @@ function formatTime(totalSeconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-export function StopwatchElement({ value, onValueChange, config }: StopwatchElementProps) {
+export function StopwatchElement({ value, onValueChange, config, elementId }: StopwatchElementProps) {
   const [isRunning, setIsRunning] = useState(false);
-  const startTimeRef = useRef<number | null>(null);
-  const baseElapsedRef = useRef(value.elapsed_seconds);
+  const mmkvKey = elementId ? `sw_start_${elementId}` : null;
+
+  // Restore persisted startTime on mount (survives app kill if timer was running)
+  const persistedStart = mmkvKey ? elementTimerStorage.getNumber(mmkvKey) : null;
+  const startTimeRef = useRef<number | null>(persistedStart ?? null);
+  const baseElapsedRef = useRef(
+    persistedStart != null
+      ? value.elapsed_seconds + (Date.now() - persistedStart) / 1000
+      : value.elapsed_seconds
+  );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasTarget = config.targetSeconds != null;
@@ -38,8 +50,10 @@ export function StopwatchElement({ value, onValueChange, config }: StopwatchElem
   }, []);
 
   const start = () => {
-    startTimeRef.current = Date.now();
+    const now = Date.now();
+    startTimeRef.current = now;
     baseElapsedRef.current = value.elapsed_seconds;
+    if (mmkvKey) elementTimerStorage.set(mmkvKey, now);
     setIsRunning(true);
 
     intervalRef.current = setInterval(() => {
@@ -52,10 +66,8 @@ export function StopwatchElement({ value, onValueChange, config }: StopwatchElem
 
   const pause = () => {
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (mmkvKey) elementTimerStorage.remove(mmkvKey);
     if (startTimeRef.current != null) {
       const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
       baseElapsedRef.current = elapsed;
@@ -66,10 +78,8 @@ export function StopwatchElement({ value, onValueChange, config }: StopwatchElem
 
   const reset = () => {
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (mmkvKey) elementTimerStorage.remove(mmkvKey);
     startTimeRef.current = null;
     baseElapsedRef.current = 0;
     onValueChange({ elapsed_seconds: 0 });

@@ -41,6 +41,20 @@ export async function insertMeasurement(
   );
 }
 
+export async function updateMeasurement(
+  id: UUID,
+  value: number,
+  date: string
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE measurements SET value = ?, date = ?, updated_at = datetime('now') WHERE id = ?`,
+    value,
+    date,
+    id
+  );
+}
+
 export async function deleteMeasurement(id: UUID): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM measurements WHERE id = ?`, id);

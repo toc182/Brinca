@@ -32,10 +32,8 @@ export function MiniPlayerBar() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 80,
-    left: spacing.sm,
-    right: spacing.sm,
+    marginHorizontal: spacing.sm,
+    marginVertical: spacing.xs,
     backgroundColor: colors.primary500,
     borderRadius: radii.md,
     ...shadows.md,

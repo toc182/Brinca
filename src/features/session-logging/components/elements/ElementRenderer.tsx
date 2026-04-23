@@ -27,6 +27,8 @@ interface ElementRendererProps {
   value: Record<string, unknown>;
   onValueChange: (value: Record<string, unknown>) => void;
   config: Record<string, unknown>;
+  /** Optional element ID used by timer elements to persist startTime in MMKV. */
+  elementId?: string;
 }
 
 /**
@@ -34,7 +36,7 @@ interface ElementRendererProps {
  * Props arrive as generic Records from the session-logging layer;
  * we cast through `unknown` to satisfy strict TS without `any`.
  */
-export function ElementRenderer({ type, value, onValueChange, config }: ElementRendererProps) {
+export function ElementRenderer({ type, value, onValueChange, config, elementId }: ElementRendererProps) {
   // Helper to safely cast the callback. Each child emits its own typed value
   // which is a subset of Record<string, unknown> at runtime.
   const cb = onValueChange as unknown;
@@ -82,6 +84,7 @@ export function ElementRenderer({ type, value, onValueChange, config }: ElementR
           value={value as unknown as ValueForType<'stopwatch'>}
           onValueChange={cb as (v: ValueForType<'stopwatch'>) => void}
           config={config as unknown as ConfigForType<'stopwatch'>}
+          elementId={elementId}
         />
       );
 
@@ -91,6 +94,7 @@ export function ElementRenderer({ type, value, onValueChange, config }: ElementR
           value={value as unknown as ValueForType<'countdown_timer'>}
           onValueChange={cb as (v: ValueForType<'countdown_timer'>) => void}
           config={config as unknown as ConfigForType<'countdown_timer'>}
+          elementId={elementId}
         />
       );
 
@@ -100,6 +104,7 @@ export function ElementRenderer({ type, value, onValueChange, config }: ElementR
           value={value as unknown as ValueForType<'lap_timer'>}
           onValueChange={cb as (v: ValueForType<'lap_timer'>) => void}
           config={config as unknown as ConfigForType<'lap_timer'>}
+          elementId={elementId}
         />
       );
 
@@ -109,6 +114,7 @@ export function ElementRenderer({ type, value, onValueChange, config }: ElementR
           value={value as unknown as ValueForType<'interval_timer'>}
           onValueChange={cb as (v: ValueForType<'interval_timer'>) => void}
           config={config as unknown as ConfigForType<'interval_timer'>}
+          elementId={elementId}
         />
       );
 

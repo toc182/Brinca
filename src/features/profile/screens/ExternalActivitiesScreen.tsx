@@ -3,31 +3,40 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useActiveChildStore } from '@/stores/active-child.store';
-import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Input } from '@/shared/components/Input';
+import { BottomSheet } from '@/shared/components/BottomSheet';
+import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
+import { Toast } from '@/shared/components/Toast';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 
 import { profileKeys } from '../queries/keys';
 import {
   getExternalActivitiesByChild,
   deleteExternalActivity,
+  updateExternalActivity,
   type ExternalActivityRow,
 } from '../repositories/external-activity.repository';
 import { useAddExternalActivityMutation } from '../mutations/useAddExternalActivityMutation';
 
+interface FormState {
+  editId: string | null;
+  name: string;
+  schedule: string;
+  location: string;
+  notes: string;
+}
+
 export function ExternalActivitiesScreen() {
   const childId = useActiveChildStore((s) => s.childId);
   const queryClient = useQueryClient();
-  const { showDestructiveAlert } = useDestructiveAlert();
   const addMutation = useAddExternalActivityMutation();
 
-  const [showForm, setShowForm] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [scheduleInput, setScheduleInput] = useState('');
-  const [locationInput, setLocationInput] = useState('');
-  const [notesInput, setNotesInput] = useState('');
+  const [formState, setFormState] = useState<FormState | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const { data: activities = [], refetch } = useQuery({
     queryKey: profileKeys.externalActivities(childId ?? ''),
@@ -35,136 +44,182 @@ export function ExternalActivitiesScreen() {
     enabled: !!childId,
   });
 
-  const resetForm = useCallback(() => {
-    setShowForm(false);
-    setNameInput('');
-    setScheduleInput('');
-    setLocationInput('');
-    setNotesInput('');
-  }, []);
+  const handleOpenForm = useCallback(
+    (entry?: ExternalActivityRow) => {
+      setNameError(null);
+      if (entry) {
+        setFormState({
+          editId: entry.id,
+          name: entry.name,
+          schedule: entry.schedule ?? '',
+          location: entry.location ?? '',
+          notes: entry.notes ?? '',
+        });
+      } else {
+        setFormState({
+          editId: null,
+          name: '',
+          schedule: '',
+          location: '',
+          notes: '',
+        });
+      }
+    },
+    []
+  );
 
-  const handleAdd = useCallback(async () => {
-    if (!childId || !nameInput.trim()) return;
+  const handleSave = useCallback(async () => {
+    if (!formState || !childId) return;
 
-    await addMutation.mutateAsync({
-      childId,
-      name: nameInput.trim(),
-      schedule: scheduleInput.trim() || null,
-      location: locationInput.trim() || null,
-      notes: notesInput.trim() || null,
+    if (!formState.name.trim()) {
+      setNameError('This field is required.');
+      return;
+    }
+
+    if (formState.editId) {
+      await updateExternalActivity(formState.editId, {
+        name: formState.name.trim(),
+        schedule: formState.schedule.trim() || null,
+        location: formState.location.trim() || null,
+        notes: formState.notes.trim() || null,
+      });
+      setToastMessage('Changes saved.');
+    } else {
+      await addMutation.mutateAsync({
+        childId,
+        name: formState.name.trim(),
+        schedule: formState.schedule.trim() || null,
+        location: formState.location.trim() || null,
+        notes: formState.notes.trim() || null,
+      });
+      setToastMessage('Changes saved.');
+    }
+
+    setFormState(null);
+    queryClient.invalidateQueries({
+      queryKey: profileKeys.externalActivities(childId),
     });
-    resetForm();
     refetch();
-  }, [childId, nameInput, scheduleInput, locationInput, notesInput, addMutation, resetForm, refetch]);
+    setToastVisible(true);
+  }, [formState, childId, addMutation, queryClient, refetch]);
 
   const handleDelete = useCallback(
-    (id: string, name: string) => {
-      showDestructiveAlert({
-        title: 'Delete activity',
-        message: `Are you sure you want to delete "${name}"?`,
-        onConfirm: async () => {
-          await deleteExternalActivity(id);
-          queryClient.invalidateQueries({
-            queryKey: profileKeys.externalActivities(childId ?? ''),
-          });
-          refetch();
-        },
+    async (id: string) => {
+      await deleteExternalActivity(id);
+      queryClient.invalidateQueries({
+        queryKey: profileKeys.externalActivities(childId ?? ''),
       });
+      refetch();
     },
-    [showDestructiveAlert, childId, queryClient, refetch]
+    [childId, queryClient, refetch]
   );
 
   const renderItem = useCallback(
     ({ item }: { item: ExternalActivityRow }) => (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+      <SwipeToDeleteRow
+        onDelete={() => handleDelete(item.id)}
+        confirmTitle="Delete activity"
+        confirmMessage="Delete this activity? This cannot be undone."
+      >
+        <Pressable
+          style={styles.card}
+          onPress={() => handleOpenForm(item)}
+        >
           <Text style={styles.activityName}>{item.name}</Text>
-          <Pressable
-            onPress={() => handleDelete(item.id, item.name)}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
-        {item.schedule ? (
-          <Text style={styles.detail}>Schedule: {item.schedule}</Text>
-        ) : null}
-        {item.location ? (
-          <Text style={styles.detail}>Location: {item.location}</Text>
-        ) : null}
-        {item.notes ? (
-          <Text style={styles.detail}>Notes: {item.notes}</Text>
-        ) : null}
-      </View>
+          {item.schedule ? (
+            <Text style={styles.detail}>Schedule: {item.schedule}</Text>
+          ) : null}
+          {item.location ? (
+            <Text style={styles.detail}>Location: {item.location}</Text>
+          ) : null}
+          {item.notes ? (
+            <Text style={styles.detail}>Notes: {item.notes}</Text>
+          ) : null}
+        </Pressable>
+      </SwipeToDeleteRow>
     ),
-    [handleDelete]
+    [handleDelete, handleOpenForm]
   );
 
   return (
     <View style={styles.container}>
-      {showForm ? (
-        <View style={styles.form}>
-          <Input
-            label="Activity name"
-            value={nameInput}
-            onChangeText={setNameInput}
-            placeholder="e.g. Swimming"
-            required
-          />
-          <Input
-            label="Schedule"
-            value={scheduleInput}
-            onChangeText={setScheduleInput}
-            placeholder="e.g. Mon & Wed 4-5pm"
-          />
-          <Input
-            label="Location"
-            value={locationInput}
-            onChangeText={setLocationInput}
-            placeholder="e.g. City Pool"
-          />
-          <Input
-            label="Notes"
-            value={notesInput}
-            onChangeText={setNotesInput}
-            placeholder="Additional notes"
-          />
-          <View style={styles.formActions}>
-            <Button
-              title="Cancel"
-              variant="secondary"
-              size="small"
-              onPress={resetForm}
-            />
-            <Button
-              title="Add"
-              size="small"
-              onPress={handleAdd}
-              disabled={!nameInput.trim() || addMutation.isPending}
-            />
-          </View>
-        </View>
-      ) : (
-        <Button
-          title="Add external activity"
-          variant="secondary"
-          size="small"
-          onPress={() => setShowForm(true)}
-          style={styles.addButton}
-        />
-      )}
-
       <FlatList
         data={activities}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <EmptyState
-            title="No external activities"
-            body="Track activities not managed in Brinca, like swimming classes or art school."
+        ListHeaderComponent={
+          <Button
+            title="Add activity"
+            variant="secondary"
+            size="small"
+            onPress={() => handleOpenForm()}
+            style={styles.addButton}
           />
         }
+        ListEmptyComponent={
+          <EmptyState
+            title="No external activities yet."
+            body="Add activities your child does outside the app."
+          />
+        }
+      />
+
+      {formState ? (
+        <BottomSheet
+          snapPoints={['60%']}
+          onDismiss={() => setFormState(null)}
+        >
+          <View style={styles.form}>
+            <Text style={styles.formTitle}>
+              {formState.editId ? 'Edit activity' : 'Add activity'}
+            </Text>
+
+            <Input
+              label="Activity name"
+              value={formState.name}
+              onChangeText={(v) => {
+                setFormState({ ...formState, name: v });
+                setNameError(null);
+              }}
+              placeholder="e.g. Swimming"
+              required
+              error={nameError ?? undefined}
+              maxLength={50}
+            />
+            <Input
+              label="Schedule"
+              value={formState.schedule}
+              onChangeText={(v) => setFormState({ ...formState, schedule: v })}
+              placeholder="e.g. Mon & Wed 4-5pm"
+            />
+            <Input
+              label="Location"
+              value={formState.location}
+              onChangeText={(v) => setFormState({ ...formState, location: v })}
+              placeholder="e.g. City Pool"
+            />
+            <Input
+              label="Notes"
+              value={formState.notes}
+              onChangeText={(v) => setFormState({ ...formState, notes: v })}
+              placeholder="Additional notes"
+            />
+
+            <Button
+              title="Save"
+              onPress={handleSave}
+              disabled={!formState.name.trim() || addMutation.isPending}
+            />
+          </View>
+        </BottomSheet>
+      ) : null}
+
+      <Toast
+        message={toastMessage}
+        variant="success"
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
       />
     </View>
   );
@@ -174,29 +229,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.md,
   },
-  form: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
+  list: {
     padding: spacing.md,
     gap: spacing.xs,
-    marginBottom: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.borderSubtle,
-  },
-  formActions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    justifyContent: 'flex-end',
+    paddingBottom: spacing.xxl,
   },
   addButton: {
     marginBottom: spacing.md,
     alignSelf: 'flex-start',
-  },
-  list: {
-    gap: spacing.xs,
-    paddingBottom: spacing.xxl,
   },
   card: {
     backgroundColor: colors.surface,
@@ -206,25 +247,21 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderSubtle,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   activityName: {
     ...typography.titleSmall,
     color: colors.textPrimary,
-    flex: 1,
   },
   detail: {
     ...typography.caption,
     color: colors.textSecondary,
   },
-  pressed: {
-    opacity: 0.7,
+  // Bottom sheet form
+  form: {
+    padding: spacing.md,
+    gap: spacing.md,
   },
-  deleteText: {
-    ...typography.caption,
-    color: colors.error500,
+  formTitle: {
+    ...typography.titleSmall,
+    color: colors.textPrimary,
   },
 });

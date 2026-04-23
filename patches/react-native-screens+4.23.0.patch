@@ -1,0 +1,22 @@
+diff --git a/node_modules/react-native-screens/ios/RNSScreenStackHeaderSubview.mm b/node_modules/react-native-screens/ios/RNSScreenStackHeaderSubview.mm
+index aca7a79..8bffa1e 100644
+--- a/node_modules/react-native-screens/ios/RNSScreenStackHeaderSubview.mm
++++ b/node_modules/react-native-screens/ios/RNSScreenStackHeaderSubview.mm
+@@ -119,6 +119,17 @@ namespace react = facebook::react;
+ - (void)layoutSubviews
+ {
+   [super layoutSubviews];
++
++  if (@available(iOS 26.0, *)) {
++    if (self.subviews.count > 0) {
++      UIView *child = self.subviews[0];
++      CGRect frame = child.frame;
++      CGFloat x = (self.bounds.size.width - frame.size.width) / 2.0;
++      CGFloat y = (self.bounds.size.height - frame.size.height) / 2.0;
++      child.frame = CGRectMake(x, y, frame.size.width, frame.size.height);
++    }
++  }
++
+   [self updateShadowStateInContextOfAncestorView:[self findNavigationBar]];
+ }
+ 

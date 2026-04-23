@@ -4,6 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
+import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
+
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -36,6 +38,7 @@ export function CreateDrillScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const queryClient = useQueryClient();
+  const { showDestructiveAlert } = useDestructiveAlert();
 
   const [name, setName] = useState('');
   const [elements, setElements] = useState<PendingElement[]>([]);
@@ -51,7 +54,12 @@ export function CreateDrillScreen() {
   };
 
   const handleRemoveElement = (localId: string) => {
-    setElements((prev) => prev.filter((e) => e.localId !== localId));
+    showDestructiveAlert({
+      title: 'Remove this element?',
+      message: 'The element will be removed from this drill.',
+      destructiveLabel: 'Remove',
+      onConfirm: () => setElements((prev) => prev.filter((e) => e.localId !== localId)),
+    });
   };
 
   const handleSave = async () => {

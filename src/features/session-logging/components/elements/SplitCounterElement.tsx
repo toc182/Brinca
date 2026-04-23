@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { SplitCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { SplitCounterValue } from '@/shared/tracking-elements/types/element-values';
@@ -13,6 +13,20 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
   const leftAtTarget = config.targetLeft != null && value.left >= config.targetLeft;
   const rightAtTarget = config.targetRight != null && value.right >= config.targetRight;
 
+  const handleResetLeft = () => {
+    Alert.alert('Reset counter', 'Reset counter to zero?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: () => onValueChange({ ...value, left: 0 }) },
+    ]);
+  };
+
+  const handleResetRight = () => {
+    Alert.alert('Reset counter', 'Reset counter to zero?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Reset', style: 'destructive', onPress: () => onValueChange({ ...value, right: 0 }) },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       {/* Left counter */}
@@ -22,8 +36,7 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
           <Pressable
             onPress={() => value.left > 0 && onValueChange({ ...value, left: value.left - 1 })}
             style={({ pressed }) => [
-              styles.button,
-              styles.buttonMinus,
+              styles.button, styles.buttonMinus,
               pressed && styles.buttonPressed,
               value.left === 0 && styles.buttonDisabled,
             ]}
@@ -42,6 +55,11 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
         {config.targetLeft != null && (
           <Text style={styles.target}>/ {config.targetLeft}</Text>
         )}
+        {value.left > 0 && (
+          <Pressable onPress={handleResetLeft} style={({ pressed }) => [styles.resetButton, pressed && { opacity: 0.7 }]}>
+            <Text style={styles.resetText}>Reset</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.divider} />
@@ -53,8 +71,7 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
           <Pressable
             onPress={() => value.right > 0 && onValueChange({ ...value, right: value.right - 1 })}
             style={({ pressed }) => [
-              styles.button,
-              styles.buttonMinus,
+              styles.button, styles.buttonMinus,
               pressed && styles.buttonPressed,
               value.right === 0 && styles.buttonDisabled,
             ]}
@@ -73,38 +90,22 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
         {config.targetRight != null && (
           <Text style={styles.target}>/ {config.targetRight}</Text>
         )}
+        {value.right > 0 && (
+          <Pressable onPress={handleResetRight} style={({ pressed }) => [styles.resetButton, pressed && { opacity: 0.7 }]}>
+            <Text style={styles.resetText}>Reset</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  side: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  label: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  divider: {
-    width: 1,
-    backgroundColor: colors.borderSubtle,
-    alignSelf: 'stretch',
-    marginHorizontal: spacing.sm,
-  },
+  container: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center' },
+  side: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  label: { ...typography.caption, color: colors.textSecondary, textTransform: 'uppercase' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  divider: { width: 1, backgroundColor: colors.borderSubtle, alignSelf: 'stretch', marginHorizontal: spacing.sm },
   button: {
     width: touchTargets.adult,
     height: touchTargets.adult,
@@ -112,40 +113,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonMinus: {
-    backgroundColor: colors.primary50,
-  },
-  buttonPlus: {
-    backgroundColor: colors.primary500,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.surfaceDisabled,
-  },
-  buttonText: {
-    ...typography.buttonSmall,
-    color: colors.primary700,
-  },
-  buttonTextLight: {
-    ...typography.buttonSmall,
-    color: colors.textOnPrimary,
-  },
-  buttonTextDisabled: {
-    color: colors.textDisabled,
-  },
-  count: {
-    ...typography.titleLarge,
-    color: colors.textPrimary,
-    minWidth: 40,
-    textAlign: 'center',
-  },
-  countAtTarget: {
-    color: colors.success500,
-  },
-  target: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
+  buttonMinus: { backgroundColor: colors.primary50 },
+  buttonPlus: { backgroundColor: colors.primary500 },
+  buttonPressed: { opacity: 0.7 },
+  buttonDisabled: { backgroundColor: colors.surfaceDisabled },
+  buttonText: { ...typography.buttonSmall, color: colors.primary700 },
+  buttonTextLight: { ...typography.buttonSmall, color: colors.textOnPrimary },
+  buttonTextDisabled: { color: colors.textDisabled },
+  count: { ...typography.titleLarge, color: colors.textPrimary, minWidth: 40, textAlign: 'center' },
+  countAtTarget: { color: colors.success500 },
+  target: { ...typography.caption, color: colors.textSecondary },
+  resetButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  resetText: { ...typography.caption, color: colors.error500 },
 });

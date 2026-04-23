@@ -11,7 +11,12 @@ interface SingleSelectElementProps {
 
 export function SingleSelectElement({ value, onValueChange, config }: SingleSelectElementProps) {
   const select = (optionId: string) => {
-    onValueChange({ selected: optionId });
+    // Tap selected option to deselect
+    if (value.selected === optionId) {
+      onValueChange({ selected: null });
+    } else {
+      onValueChange({ selected: optionId });
+    }
   };
 
   return (

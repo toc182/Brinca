@@ -47,11 +47,16 @@ export async function updateDrill(id: UUID, fields: { name?: string; is_active?:
   if (sets.length === 0) return;
   values.push(id);
   await db.runAsync(`UPDATE drills SET ${sets.join(', ')} WHERE id = ?`, ...values);
+  const payload: Record<string, unknown> = { id };
+  if (fields.name !== undefined) payload.name = fields.name;
+  if (fields.is_active !== undefined) payload.is_active = fields.is_active ? 1 : 0;
+  await appendToQueue('UPDATE', 'drills', payload);
 }
 
 export async function deleteDrill(id: UUID) {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM drills WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'drills', { id });
 }
 
 export async function reorderDrills(drillIds: UUID[]) {
@@ -61,4 +66,7 @@ export async function reorderDrills(drillIds: UUID[]) {
       await db.runAsync(`UPDATE drills SET display_order = ? WHERE id = ?`, i, drillIds[i]);
     }
   });
+  for (let i = 0; i < drillIds.length; i++) {
+    await appendToQueue('UPDATE', 'drills', { id: drillIds[i], display_order: i });
+  }
 }

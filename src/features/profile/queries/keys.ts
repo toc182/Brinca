@@ -5,4 +5,5 @@ export const profileKeys = {
   externalActivities: (childId: string) => ['profile', 'external-activities', childId] as const,
   activitiesSummary: (childId: string) => ['profile', 'activities-summary', childId] as const,
   accountProfile: (userId: string) => ['profile', 'account', userId] as const,
+  photos: (childId: string) => ['profile', 'photos', childId] as const,
 };

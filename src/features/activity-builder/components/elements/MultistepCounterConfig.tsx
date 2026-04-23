@@ -16,9 +16,13 @@ export function MultistepCounterConfig({ elementId, config, onConfigChange }: Pr
   const [substeps, setSubsteps] = useState<string[]>(
     Array.isArray(config.substeps) ? (config.substeps as string[]) : ['Step 1']
   );
+  const [targetReps, setTargetReps] = useState(String(config.targetReps ?? ''));
 
   const save = async (updated: string[]) => {
-    await updateElement(elementId, { config: { ...config, substeps: updated } });
+    const parsed = parseInt(targetReps, 10);
+    await updateElement(elementId, {
+      config: { ...config, substeps: updated, targetReps: targetReps.trim() && !isNaN(parsed) ? parsed : undefined },
+    });
     onConfigChange();
   };
 
@@ -41,6 +45,8 @@ export function MultistepCounterConfig({ elementId, config, onConfigChange }: Pr
     setSubsteps(updated);
   };
 
+  const handleTargetRepsBlur = () => save(substeps);
+
   return (
     <View style={styles.container}>
       {substeps.map((step, i) => (
@@ -60,6 +66,7 @@ export function MultistepCounterConfig({ elementId, config, onConfigChange }: Pr
         </View>
       ))}
       <Button title="Add substep" onPress={addSubstep} variant="text" size="small" />
+      <Input label="Target reps (optional)" value={targetReps} onChangeText={setTargetReps} onBlur={handleTargetRepsBlur} keyboardType="number-pad" />
     </View>
   );
 }

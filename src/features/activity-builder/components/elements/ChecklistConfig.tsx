@@ -16,9 +16,17 @@ export function ChecklistConfig({ elementId, config, onConfigChange }: Props) {
   const [items, setItems] = useState<{ id: string; name: string }[]>(
     Array.isArray(config.items) ? (config.items as { id: string; name: string }[]) : [{ id: '1', name: 'Item 1' }]
   );
+  const [targetItems, setTargetItems] = useState(String(config.targetItems ?? ''));
 
-  const save = async (updated: { id: string; name: string }[]) => {
-    await updateElement(elementId, { config: { ...config, items: updated } });
+  const save = async (updated: { id: string; name: string }[], currentTargetItems = targetItems) => {
+    const parsed = parseInt(currentTargetItems, 10);
+    await updateElement(elementId, {
+      config: {
+        ...config,
+        items: updated,
+        targetItems: currentTargetItems.trim() && !isNaN(parsed) ? parsed : undefined,
+      },
+    });
     onConfigChange();
   };
 
@@ -41,10 +49,34 @@ export function ChecklistConfig({ elementId, config, onConfigChange }: Props) {
     setItems(updated);
   };
 
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= items.length) return;
+    const updated = [...items];
+    [updated[index], updated[swapIndex]] = [updated[swapIndex], updated[index]];
+    setItems(updated);
+    save(updated);
+  };
+
   return (
     <View style={styles.container}>
+      <Input
+        label="Target items completed (optional)"
+        value={targetItems}
+        onChangeText={setTargetItems}
+        onBlur={() => save(items)}
+        keyboardType="number-pad"
+      />
       {items.map((item, i) => (
         <View key={item.id} style={styles.row}>
+          <View style={styles.reorderButtons}>
+            <Pressable onPress={() => moveItem(i, 'up')} style={styles.reorderButton} disabled={i === 0}>
+              <Text style={[styles.reorderText, i === 0 && styles.reorderTextDisabled]}>▲</Text>
+            </Pressable>
+            <Pressable onPress={() => moveItem(i, 'down')} style={styles.reorderButton} disabled={i === items.length - 1}>
+              <Text style={[styles.reorderText, i === items.length - 1 && styles.reorderTextDisabled]}>▼</Text>
+            </Pressable>
+          </View>
           <Input label={`Item ${i + 1}`} value={item.name} onChangeText={(v) => updateItem(i, v)} onBlur={() => save(items)} style={styles.input} />
           {items.length > 1 && (
             <Pressable onPress={() => removeItem(i)} style={styles.removeButton}>
@@ -64,4 +96,8 @@ const styles = StyleSheet.create({
   input: { flex: 1 },
   removeButton: { width: 32, height: 32, borderRadius: radii.full, backgroundColor: colors.error50, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   removeText: { color: colors.error600, fontWeight: '700', fontSize: 14 },
+  reorderButtons: { flexDirection: 'column', gap: 2, marginBottom: 24 },
+  reorderButton: { width: 24, height: 14, alignItems: 'center', justifyContent: 'center' },
+  reorderText: { fontSize: 10, color: colors.textSecondary },
+  reorderTextDisabled: { color: colors.borderDefault },
 });

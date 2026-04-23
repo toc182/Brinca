@@ -40,7 +40,17 @@ export const useActiveChildStore = create<ActiveChildState>()(
     })),
     {
       name: 'active-child-storage',
+      version: 1,
+      migrate: (persisted) => persisted as Record<string, unknown>,
       storage: createJSONStorage(() => mmkvStorage),
+      onRehydrateStorage: () => (state) => {
+        // All three fields must be set together — if any is missing, clear all.
+        if (state && (!state.childId || !state.childName || !state.familyId)) {
+          state.childId = null;
+          state.childName = null;
+          state.familyId = null;
+        }
+      },
     }
   )
 );

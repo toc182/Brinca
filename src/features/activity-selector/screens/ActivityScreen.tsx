@@ -1,121 +1,140 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-
-import { Button } from '@/shared/components/Button';
+import { useFocusEffect } from 'expo-router';
+import { useSharedValue } from 'react-native-reanimated';
+import { BottomSheet } from '@/shared/components/BottomSheet';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { colors, typography, spacing, radii, shadows } from '@/shared/theme';
+import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { ParentAvatar } from '@/shared/components/ParentAvatar';
+import { CollapsibleHeader, useCollapsibleHeaderHeight } from '@/shared/components/CollapsibleHeader';
+import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
+import { colors, spacing, typography } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
-import { useActiveSession } from '@/features/session-logging/hooks/useActiveSession';
-import { useActivitiesQuery } from '@/features/activity-builder/queries/useActivitiesQuery';
-import { useStartSessionMutation } from '@/features/session-logging/mutations/useStartSessionMutation';
-import { useSessionTimer } from '@/features/session-logging/hooks/useSessionTimer';
+
+import { useActiveSession } from '../hooks/useActiveSession';
+import { useActivitiesQuery } from '../queries/useActivitiesQuery';
+import { useStartSessionMutation } from '../mutations/useStartSessionMutation';
+import { ActivityPickerSheet } from '../components/ActivityPickerSheet';
 
 export function ActivityScreen() {
   const router = useRouter();
+  const scrollY = useSharedValue(0);
   const childId = useActiveChildStore((s) => s.childId);
-  const { isActive, activityName } = useActiveSession();
-  const { data: activities } = useActivitiesQuery(childId);
+  const childName = useActiveChildStore((s) => s.childName);
+  const { isActive } = useActiveSession();
+  const { data: activities, isPending } = useActivitiesQuery(childId);
   const startSession = useStartSessionMutation();
-  const timer = useSessionTimer();
-  const [showPicker, setShowPicker] = useState(false);
+  const [showSheet, setShowSheet] = useState(true);
 
-  const handleSelectActivity = useCallback((activity: { id: string; name: string }) => {
-    if (!childId) return;
-    setShowPicker(false);
-    startSession.mutate(
-      { childId, activityId: activity.id, activityName: activity.name },
-      {
-        onSuccess: () => {
-          timer.start();
-          router.push('/(modals)/session' as never);
-        },
+  // When the tab gains focus: navigate straight to session if one is active,
+  // otherwise ensure the sheet is visible.
+  useFocusEffect(
+    useCallback(() => {
+      if (isActive) {
+        router.push('/(modals)/session' as never);
+      } else {
+        setShowSheet(true);
       }
-    );
-  }, [childId, startSession, timer, router]);
+    }, [isActive, router])
+  );
 
-  // If session is active, show resume UI
-  if (isActive) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.activeLabel}>Session in progress</Text>
-        <Text style={styles.activityName}>{activityName}</Text>
-        <Text style={styles.timer}>{timer.formatted}</Text>
-        <Button
-          title="Resume session"
-          onPress={() => router.push('/(modals)/session' as never)}
-          style={styles.resumeButton}
-        />
-      </View>
-    );
-  }
+  const handleSelectActivity = useCallback(
+    (activity: { id: string; name: string; icon: string | null }) => {
+      if (!childId) return;
+      startSession.mutate(
+        { childId, activityId: activity.id, activityName: activity.name },
+        {
+          onSuccess: () => {
+            setShowSheet(false);
+            router.push('/(modals)/session' as never);
+          },
+        }
+      );
+    },
+    [childId, startSession, router]
+  );
+
+  const handleDismiss = useCallback(() => {
+    setShowSheet(false);
+  }, []);
 
   return (
     <View style={styles.container}>
-      {!activities?.length ? (
-        <EmptyState
-          title="No activities"
-          body="Create an activity first, then come back to start a session."
-        />
-      ) : (
-        <>
-          <Button
-            title="Start session"
-            onPress={() => setShowPicker(true)}
-            style={styles.startButton}
-          />
-          <Modal
-            visible={showPicker}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowPicker(false)}
-          >
-            <Pressable style={styles.overlay} onPress={() => setShowPicker(false)}>
-              <View style={styles.sheet}>
-                <Text style={styles.sheetTitle}>Choose an activity</Text>
-                <FlatList
-                  data={activities}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      style={styles.activityRow}
-                      onPress={() => handleSelectActivity({ id: item.id, name: item.name })}
-                    >
-                      <Text style={styles.activityRowText}>{item.name}</Text>
-                    </Pressable>
-                  )}
-                />
-              </View>
-            </Pressable>
-          </Modal>
-        </>
+      <CollapsibleHeader title={childName ?? 'Activity'} scrollY={scrollY} rightContent={<ParentAvatar />} />
+      {showSheet && !isActive && (
+        <BottomSheet snapPoints={['50%']} onDismiss={handleDismiss}>
+          {isPending ? (
+            <ActivityListSkeleton />
+          ) : !activities?.length ? (
+            <EmptyState
+              title="No activities yet"
+              body="Add your first activity in Settings."
+              ctaLabel="Go to Settings"
+              onCtaPress={() => {
+                setShowSheet(false);
+                router.push('/(settings)' as never);
+              }}
+            />
+          ) : (
+            <View style={styles.sheetContent}>
+              <Text style={styles.sheetTitle}>Select an activity</Text>
+              <ActivityPickerSheet
+                activities={activities}
+                onSelect={handleSelectActivity}
+              />
+            </View>
+          )}
+        </BottomSheet>
       )}
     </View>
   );
 }
 
+function ActivityListSkeleton() {
+  return (
+    <View style={styles.skeletonContainer}>
+      <SkeletonPlaceholder>
+        <View style={styles.skeletonTitle} />
+      </SkeletonPlaceholder>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <SkeletonPlaceholder key={i} style={styles.skeletonRow}>
+          <View style={styles.skeletonRowInner} />
+        </SkeletonPlaceholder>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
-  startButton: { minWidth: 200 },
-  activeLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs },
-  activityName: { ...typography.titleMedium, color: colors.textPrimary, marginBottom: spacing.sm },
-  timer: { ...typography.timer, color: colors.primary500, marginBottom: spacing.lg },
-  resumeButton: { minWidth: 200 },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    padding: spacing.lg,
-    maxHeight: '50%',
-  },
-  sheetTitle: { ...typography.titleMedium, color: colors.textPrimary, marginBottom: spacing.md },
-  activityRow: {
-    padding: spacing.md,
-    borderRadius: radii.md,
+  container: {
+    flex: 1,
     backgroundColor: colors.background,
-    marginBottom: spacing.xs,
-    ...shadows.sm,
   },
-  activityRowText: { ...typography.bodySmall, color: colors.textPrimary },
+  sheetContent: {
+    flex: 1,
+  },
+  sheetTitle: {
+    ...typography.titleMedium,
+    color: colors.textPrimary,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  skeletonContainer: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  skeletonTitle: {
+    height: 24,
+    width: '50%',
+    borderRadius: 8,
+    marginBottom: spacing.xs,
+  },
+  skeletonRow: {
+    borderRadius: 8,
+  },
+  skeletonRowInner: {
+    height: 48,
+    borderRadius: 8,
+  },
 });
