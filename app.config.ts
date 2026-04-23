@@ -1,7 +1,9 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
-  name: 'Brinca',
+  name: IS_DEV ? 'Brinca (Dev)' : 'Brinca',
   slug: 'brinca',
   version: '1.0.0',
   orientation: 'portrait',
@@ -15,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.brinca.app',
+    bundleIdentifier: IS_DEV ? 'com.brinca.app.dev' : 'com.brinca.app',
     infoPlist: {
       NSMicrophoneUsageDescription:
         'Brinca uses the microphone only when you tap record on a Voice Note during a practice session.',
@@ -27,7 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#FAF8FF',
     },
-    package: 'com.brinca.app',
+    package: IS_DEV ? 'com.brinca.app.dev' : 'com.brinca.app',
   },
   web: {
     bundler: 'metro',

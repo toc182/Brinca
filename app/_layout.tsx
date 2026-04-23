@@ -135,7 +135,26 @@ export default Sentry.wrap(function RootLayout() {
                 setAuthState('onboarding-child');
               }
             } else {
-              setAuthState('onboarding-child');
+              // No familyId locally — try fetching from Supabase (reinstall case)
+              const { data: members } = await supabase
+                .from('family_members')
+                .select('family_id')
+                .eq('user_id', session.user.id)
+                .limit(1);
+              if (members && members.length > 0) {
+                const remoteFamilyId = members[0].family_id;
+                const child = await getFirstChild(remoteFamilyId);
+                if (child) {
+                  useActiveChildStore.getState().setActiveChild(child.id, child.name, remoteFamilyId);
+                  const activity = await getFirstActivity(child.id);
+                  setAuthState(activity ? 'authenticated' : 'onboarding-activity');
+                } else {
+                  useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
+                  setAuthState('onboarding-child');
+                }
+              } else {
+                setAuthState('onboarding-child');
+              }
             }
           }
         }
