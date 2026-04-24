@@ -172,11 +172,12 @@ export default Sentry.wrap(function RootLayout() {
           .eq('child_id', remoteChild.id)
           .limit(1);
 
-        setAuthState(
-          remoteActivities && remoteActivities.length > 0
-            ? 'authenticated'
-            : 'onboarding-activity'
-        );
+        if (remoteActivities && remoteActivities.length > 0) {
+          setAuthState('authenticated');
+        } else {
+          useOnboardingStore.getState().setPendingChildId(remoteChild.id);
+          setAuthState('onboarding-activity');
+        }
       } catch (error) {
         console.error('Init failed:', error);
         setAuthState('unauthenticated');
