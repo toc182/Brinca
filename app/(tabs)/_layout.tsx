@@ -1,8 +1,12 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { MiniPlayerBar } from '@/features/session-logging/components/MiniPlayerBar';
+import { useActiveSessionStore } from '@/stores/active-session.store';
 
 export default function TabLayout() {
+  const sessionStatus = useActiveSessionStore((s) => s.status);
+  const showMiniPlayer = sessionStatus !== 'idle' && sessionStatus !== 'complete';
+
   return (
     <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="home">
@@ -25,9 +29,11 @@ export default function TabLayout() {
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.BottomAccessory>
-        <MiniPlayerBar />
-      </NativeTabs.BottomAccessory>
+      {showMiniPlayer && (
+        <NativeTabs.BottomAccessory>
+          <MiniPlayerBar />
+        </NativeTabs.BottomAccessory>
+      )}
     </NativeTabs>
   );
 }
