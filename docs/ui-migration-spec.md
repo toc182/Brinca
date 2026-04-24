@@ -17,7 +17,7 @@ This document defines the design changes applied after the feature spec implemen
 ### Implementation
 
 - **Component**: `NativeTabs` from `expo-router/unstable-native-tabs` (replaces JS `Tabs` from `expo-router`)
-- **Tab bar styling**: Fully native — Liquid Glass on iOS 26, standard translucent on older versions. No custom styles.
+- **Tab bar styling**: Fully native — Liquid Glass on iOS 26, standard translucent on older versions. Active tab tint set to `primary-500` (`#6D4AE0`).
 - **Icons**: SF Symbols with default/selected variants:
   - Home: `house` / `house.fill`
   - Activity: `bolt` / `bolt.fill`
@@ -29,7 +29,7 @@ This document defines the design changes applied after the feature spec implemen
 ### What changed from previous specs
 
 - Removed Phosphor icons — replaced with SF Symbols.
-- Removed all custom tab bar styling.
+- Removed all custom tab bar styling except brand tint color.
 - Removed `ActivityTabIcon` component with session-active color logic.
 
 ---

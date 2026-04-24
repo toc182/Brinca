@@ -1,6 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
 import { MiniPlayerBar } from '@/features/session-logging/components/MiniPlayerBar';
+import { colors } from '@/shared/theme';
 import { useActiveSessionStore } from '@/stores/active-session.store';
 
 export default function TabLayout() {
@@ -8,7 +9,7 @@ export default function TabLayout() {
   const showMiniPlayer = sessionStatus !== 'idle' && sessionStatus !== 'complete';
 
   return (
-    <NativeTabs minimizeBehavior="onScrollDown">
+    <NativeTabs minimizeBehavior="onScrollDown" tintColor={colors.primary500}>
       <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} />
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
