@@ -23,20 +23,23 @@ export function ActivityScreen() {
   const childId = useActiveChildStore((s) => s.childId);
   const childName = useActiveChildStore((s) => s.childName);
   const { isActive } = useActiveSession();
-  const { data: activities, isPending } = useActivitiesQuery(childId);
+  const { data: activities, isPending, refetch } = useActivitiesQuery(childId);
   const startSession = useStartSessionMutation();
   const [showSheet, setShowSheet] = useState(true);
+  const [sheetKey, setSheetKey] = useState(0);
 
   // When the tab gains focus: navigate straight to session if one is active,
-  // otherwise ensure the sheet is visible.
+  // otherwise ensure the sheet is visible and data is fresh.
   useFocusEffect(
     useCallback(() => {
       if (isActive) {
         router.push('/(modals)/session' as never);
       } else {
         setShowSheet(true);
+        setSheetKey((k) => k + 1);
       }
-    }, [isActive, router])
+      refetch();
+    }, [isActive, router, refetch])
   );
 
   const handleSelectActivity = useCallback(
@@ -63,7 +66,7 @@ export function ActivityScreen() {
     <View style={styles.container}>
       <CollapsibleHeader title={childName ?? 'Activity'} scrollY={scrollY} rightContent={<ParentAvatar />} />
       {showSheet && !isActive && (
-        <BottomSheet snapPoints={['50%']} onDismiss={handleDismiss}>
+        <BottomSheet key={sheetKey} snapPoints={['50%']} onDismiss={handleDismiss}>
           {isPending ? (
             <ActivityListSkeleton />
           ) : !activities?.length ? (
