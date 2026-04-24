@@ -21,7 +21,6 @@ import { Avatar } from '@/shared/components/Avatar';
 import { Screen } from '@/shared/components/Screen';
 import { colors, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
-import { supabase } from '@/lib/supabase/client';
 import { useCreateChildMutation } from '../mutations/useCreateChildMutation';
 import { useAuthContext } from '@/shared/contexts/AuthContext';
 import { useOnboardingStore } from '@/stores/onboarding.store';
@@ -43,28 +42,9 @@ export function OnboardingStep2Screen() {
   const { setAuthState } = useAuthContext();
   const store = useOnboardingStore();
 
-  // familyId comes from route params on first visit; falls back to store on resume
-  const [familyId, setFamilyId] = useState(params.familyId ?? store.pendingFamilyId ?? '');
-
-  // On reinstall, familyId may be lost locally — fetch from Supabase
-  useEffect(() => {
-    if (familyId) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return;
-      supabase
-        .from('family_members')
-        .select('family_id')
-        .eq('user_id', data.user.id)
-        .limit(1)
-        .then(({ data: members }) => {
-          if (members && members.length > 0) {
-            const fid = members[0].family_id;
-            setFamilyId(fid);
-            store.setPendingFamilyId(fid);
-          }
-        });
-    });
-  }, [familyId, store]);
+  // familyId comes from route params (first visit) or store (resume / reinstall recovery).
+  // The root layout sets pendingFamilyId in the store before routing here.
+  const familyId = params.familyId ?? store.pendingFamilyId ?? '';
 
   // Restore form state from store (back-navigation or cold-start resume)
   const [name, setName] = useState(store.step2Name);

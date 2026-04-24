@@ -14,7 +14,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -30,7 +30,6 @@ import '@/shared/i18n/config';
 import { colors } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useOnboardingStore } from '@/stores/onboarding.store';
-import { getFirstChild } from '@/features/onboarding/repositories/child.repository';
 import { getFirstActivity } from '@/features/onboarding/repositories/activity.repository';
 import * as Sentry from '@sentry/react-native';
 
@@ -72,7 +71,7 @@ const queryClient = new QueryClient({
 
 export default Sentry.wrap(function RootLayout() {
   const [appReady, setAppReady] = useState(false);
-  const [initialRouteHandled, setInitialRouteHandled] = useState(false);
+  const initialRouteHandled = useRef(false);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const authContextValue = useMemo(() => ({ setAuthState }), []);
 
@@ -98,66 +97,86 @@ export default Sentry.wrap(function RootLayout() {
         const session = await getSession();
 
         if (!session) {
-          // Check if user signed up but hasn't verified email yet
           const { pendingVerificationEmail } = useOnboardingStore.getState();
-          if (pendingVerificationEmail) {
-            setAuthState('onboarding-verification');
-          } else {
-            setAuthState('unauthenticated');
-          }
-        } else {
-          // Session exists — check if we're mid-setup (email just verified but
-          // profile/family not yet created)
-          const { pendingVerificationEmail } = useOnboardingStore.getState();
-          if (pendingVerificationEmail) {
-            setAuthState('onboarding-verification');
-            return;
-          }
-          // Check onboarding progress
-          const activeChild = useActiveChildStore.getState();
-          if (activeChild.childId && activeChild.familyId) {
-            const activity = await getFirstActivity(activeChild.childId);
-            if (activity) {
-              setAuthState('authenticated');
-            } else {
-              setAuthState('onboarding-activity');
-            }
-          } else {
-            // Try to find child in SQLite from family
-            const familyId = activeChild.familyId;
-            if (familyId) {
-              const child = await getFirstChild(familyId);
-              if (child) {
-                useActiveChildStore.getState().setActiveChild(child.id, child.name, familyId);
-                const activity = await getFirstActivity(child.id);
-                setAuthState(activity ? 'authenticated' : 'onboarding-activity');
-              } else {
-                setAuthState('onboarding-child');
-              }
-            } else {
-              // No familyId locally — try fetching from Supabase (reinstall case)
-              const { data: members } = await supabase
-                .from('family_members')
-                .select('family_id')
-                .eq('user_id', session.user.id)
-                .limit(1);
-              if (members && members.length > 0) {
-                const remoteFamilyId = members[0].family_id;
-                const child = await getFirstChild(remoteFamilyId);
-                if (child) {
-                  useActiveChildStore.getState().setActiveChild(child.id, child.name, remoteFamilyId);
-                  const activity = await getFirstActivity(child.id);
-                  setAuthState(activity ? 'authenticated' : 'onboarding-activity');
-                } else {
-                  useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
-                  setAuthState('onboarding-child');
-                }
-              } else {
-                setAuthState('onboarding-child');
-              }
-            }
-          }
+          setAuthState(pendingVerificationEmail ? 'onboarding-verification' : 'unauthenticated');
+          return;
         }
+
+        // Session found — may be stale from Keychain surviving a reinstall.
+        // Validate server-side before trusting it.
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) {
+          await supabase.auth.signOut().catch(() => {});
+          setAuthState('unauthenticated');
+          return;
+        }
+
+        // Valid session — check mid-verification state
+        const { pendingVerificationEmail } = useOnboardingStore.getState();
+        if (pendingVerificationEmail) {
+          setAuthState('onboarding-verification');
+          return;
+        }
+
+        // Check onboarding progress — try local state first
+        const activeChild = useActiveChildStore.getState();
+        if (activeChild.childId && activeChild.familyId) {
+          const activity = await getFirstActivity(activeChild.childId);
+          setAuthState(activity ? 'authenticated' : 'onboarding-activity');
+          return;
+        }
+
+        // Local state incomplete (normal on reinstall — MMKV/SQLite wiped
+        // but Keychain retains session). Recover entirely from Supabase.
+        const userId = userData.user.id;
+
+        // 1. Find family
+        const { data: members } = await supabase
+          .from('family_members')
+          .select('family_id')
+          .eq('user_id', userId)
+          .limit(1);
+
+        if (!members || members.length === 0) {
+          setAuthState('onboarding-child');
+          return;
+        }
+
+        const remoteFamilyId = members[0].family_id;
+
+        // 2. Find child (query Supabase, not local SQLite)
+        const { data: remoteChildren } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('family_id', remoteFamilyId)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (!remoteChildren || remoteChildren.length === 0) {
+          useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
+          setAuthState('onboarding-child');
+          return;
+        }
+
+        const remoteChild = remoteChildren[0];
+        useActiveChildStore.getState().setActiveChild(
+          remoteChild.id,
+          remoteChild.name,
+          remoteFamilyId,
+        );
+
+        // 3. Find activity (query Supabase, not local SQLite)
+        const { data: remoteActivities } = await supabase
+          .from('activities')
+          .select('id')
+          .eq('child_id', remoteChild.id)
+          .limit(1);
+
+        setAuthState(
+          remoteActivities && remoteActivities.length > 0
+            ? 'authenticated'
+            : 'onboarding-activity'
+        );
       } catch (error) {
         console.error('Init failed:', error);
         setAuthState('unauthenticated');
@@ -186,30 +205,43 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [appReady, fontsLoaded, fontError]);
 
-  // Route based on auth state
+  // Route based on auth state.
+  // On initial load: always navigate explicitly (segments may not reflect
+  // the rendered route on the first render cycle).
+  // After initial load: react to ongoing state changes (e.g. sign-out).
   useEffect(() => {
     if (!appReady || authState === 'loading') return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    if (!initialRouteHandled.current) {
+      initialRouteHandled.current = true;
+      switch (authState) {
+        case 'unauthenticated':
+          router.replace('/(auth)/login');
+          break;
+        case 'onboarding-verification':
+          router.replace('/(auth)/onboarding/verify-email');
+          break;
+        case 'onboarding-child':
+          router.replace('/(auth)/onboarding/step-2');
+          break;
+        case 'onboarding-activity':
+          router.replace('/(auth)/onboarding/step-3');
+          break;
+        case 'authenticated':
+          router.replace('/(tabs)/home');
+          break;
+      }
+      return;
+    }
 
+    // Ongoing state changes — redirect across group boundaries
+    const inAuthGroup = segments[0] === '(auth)';
     if (authState === 'unauthenticated' && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (authState === 'onboarding-verification' && !inAuthGroup) {
-      router.replace('/(auth)/onboarding/verify-email');
-    } else if (authState === 'onboarding-child' && !inAuthGroup) {
-      router.replace('/(auth)/onboarding/step-2');
-    } else if (authState === 'onboarding-activity' && !inAuthGroup) {
-      router.replace('/(auth)/onboarding/step-3');
     } else if (authState === 'authenticated' && inAuthGroup) {
       router.replace('/(tabs)/home');
-    } else if (authState === 'authenticated' && !initialRouteHandled && segments[0] !== '(tabs)') {
-      router.replace('/(tabs)/home');
     }
-
-    if (!initialRouteHandled) {
-      setInitialRouteHandled(true);
-    }
-  }, [authState, segments, appReady, router, initialRouteHandled]);
+  }, [authState, segments, appReady, router]);
 
   if (!appReady || (!fontsLoaded && !fontError)) {
     return <View style={styles.loading} />;
