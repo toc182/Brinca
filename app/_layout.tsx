@@ -122,7 +122,7 @@ export default Sentry.wrap(function RootLayout() {
         const activeChild = useActiveChildStore.getState();
         if (activeChild.childId && activeChild.familyId) {
           setAuthState('authenticated');
-          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
+          rehydrateActivities(activeChild.childId, activeChild.familyId, queryClient).catch(console.error);
           return;
         }
 
@@ -169,7 +169,7 @@ export default Sentry.wrap(function RootLayout() {
         // a family + child. Whether activities exist in Supabase is a sync
         // question — send them home and let the sync engine handle the rest.
         setAuthState('authenticated');
-        rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
+        rehydrateActivities(remoteChild.id, remoteFamilyId, queryClient).catch(console.error);
       } catch (error) {
         console.error('Init failed:', error);
         setAuthState('unauthenticated');
