@@ -5,22 +5,21 @@ import { supabase } from '../supabase/client';
 import type { UUID } from '@/types/domain.types';
 
 /**
- * One-time pull of family → child → activities from Supabase into local SQLite.
- * Runs after reinstall when Keychain retains the session but the
- * app sandbox (MMKV + SQLite) was wiped by iOS.
+ * Ensure the family and child rows exist in local SQLite.
+ * Must run BEFORE auth resolves to 'authenticated' so that any
+ * subsequent data operations (create activity, start session, etc.)
+ * pass FK constraints.
  *
- * Inserts prerequisite rows (family, child) first so FK constraints pass,
- * then pulls activities. Uses INSERT OR IGNORE to avoid duplicates.
- * Does NOT queue pulled rows for sync (they already exist in Supabase).
+ * On a normal launch, both rows exist and this is two fast SELECT checks.
+ * On reinstall, it pulls from Supabase (~500ms for 2 queries + 2 inserts).
  */
-export async function rehydrateActivities(
+export async function ensureLocalFKChain(
   childId: UUID,
   familyId: UUID,
-  queryClient: QueryClient,
 ): Promise<void> {
   const db = await getDatabase();
 
-  // 1. Ensure the family row exists locally
+  // 1. Family row
   const localFamily = await db.getFirstAsync<{ id: string }>(
     'SELECT id FROM families WHERE id = ?',
     familyId,
@@ -45,7 +44,7 @@ export async function rehydrateActivities(
     }
   }
 
-  // 2. Ensure the child row exists locally
+  // 2. Child row (depends on family existing)
   const localChild = await db.getFirstAsync<{ id: string }>(
     'SELECT id FROM children WHERE id = ?',
     childId,
@@ -77,8 +76,19 @@ export async function rehydrateActivities(
       );
     }
   }
+}
 
-  // 3. Pull activities if local table is empty for this child
+/**
+ * Pull activities from Supabase into local SQLite.
+ * Runs AFTER auth resolves — non-blocking, fire-and-forget.
+ * Assumes ensureLocalFKChain has already run (child row exists).
+ */
+export async function rehydrateActivities(
+  childId: UUID,
+  queryClient: QueryClient,
+): Promise<void> {
+  const db = await getDatabase();
+
   const localCount = await db.getFirstAsync<{ count: number }>(
     'SELECT COUNT(*) as count FROM activities WHERE child_id = ?',
     childId,

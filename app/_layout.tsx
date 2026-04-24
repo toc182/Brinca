@@ -30,7 +30,7 @@ import '@/shared/i18n/config';
 import { colors } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useOnboardingStore } from '@/stores/onboarding.store';
-import { rehydrateActivities } from '@/lib/sync/rehydrate';
+import { ensureLocalFKChain, rehydrateActivities } from '@/lib/sync/rehydrate';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -121,8 +121,9 @@ export default Sentry.wrap(function RootLayout() {
         // Check onboarding progress — try local state first
         const activeChild = useActiveChildStore.getState();
         if (activeChild.childId && activeChild.familyId) {
+          await ensureLocalFKChain(activeChild.childId, activeChild.familyId);
           setAuthState('authenticated');
-          rehydrateActivities(activeChild.childId, activeChild.familyId, queryClient).catch(console.error);
+          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
           return;
         }
 
@@ -168,8 +169,9 @@ export default Sentry.wrap(function RootLayout() {
         // Reinstall recovery: user already completed onboarding if they have
         // a family + child. Whether activities exist in Supabase is a sync
         // question — send them home and let the sync engine handle the rest.
+        await ensureLocalFKChain(remoteChild.id, remoteFamilyId);
         setAuthState('authenticated');
-        rehydrateActivities(remoteChild.id, remoteFamilyId, queryClient).catch(console.error);
+        rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
       } catch (error) {
         console.error('Init failed:', error);
         setAuthState('unauthenticated');
