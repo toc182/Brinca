@@ -165,19 +165,10 @@ export default Sentry.wrap(function RootLayout() {
           remoteFamilyId,
         );
 
-        // 3. Find activity (query Supabase, not local SQLite)
-        const { data: remoteActivities } = await supabase
-          .from('activities')
-          .select('id')
-          .eq('child_id', remoteChild.id)
-          .limit(1);
-
-        if (remoteActivities && remoteActivities.length > 0) {
-          setAuthState('authenticated');
-        } else {
-          useOnboardingStore.getState().setPendingChildId(remoteChild.id);
-          setAuthState('onboarding-activity');
-        }
+        // Reinstall recovery: user already completed onboarding if they have
+        // a family + child. Whether activities exist in Supabase is a sync
+        // question — send them home and let the sync engine handle the rest.
+        setAuthState('authenticated');
       } catch (error) {
         console.error('Init failed:', error);
         setAuthState('unauthenticated');
