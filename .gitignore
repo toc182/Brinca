@@ -1,6 +1,10 @@
 node_modules/
 .expo/
 dist/
+
+# Native projects are generated per-machine by `expo prebuild` / `expo run:ios`
+/ios
+/android
 *.jks
 *.p8
 *.p12

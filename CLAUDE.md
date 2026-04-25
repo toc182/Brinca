@@ -49,7 +49,13 @@ npx supabase db push
 - **Native changes** (new native packages, SDK upgrades): full rebuild required:
   1. `eas build --platform ios --profile production`
   2. `eas submit --platform ios --latest`
-- Dev environment is Windows — no local iOS builds (requires macOS/Xcode). All iOS builds go through EAS.
+
+## Dev environments
+Dual setup — same git repo, different local build capabilities:
+- **Mac (home):** local iOS builds via `bunx expo run:ios`. Xcode + CocoaPods + Watchman installed. Use for native debugging, fast iteration, native module work.
+- **Windows (office):** no local iOS builds. JS work via Metro against an existing dev client; any iOS native rebuild goes through EAS dev profile.
+- **Production / TestFlight:** always EAS, from either machine.
+- `ios/` and `android/` are gitignored — each machine regenerates them from `app.config.ts` via prebuild. Never commit them.
 
 ## Verification
 After ANY change: bun run typecheck && bun test
