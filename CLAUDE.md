@@ -44,6 +44,13 @@ bun run lint         # ESLint
 maestro test e2e/flows/
 npx supabase db push
 
+## Deploying
+- **JS-only changes:** `eas update --branch production --message "description"` — OTA, no build charge
+- **Native changes** (new native packages, SDK upgrades): full rebuild required:
+  1. `eas build --platform ios --profile production`
+  2. `eas submit --platform ios --latest`
+- Dev environment is Windows — no local iOS builds (requires macOS/Xcode). All iOS builds go through EAS.
+
 ## Verification
 After ANY change: bun run typecheck && bun test
 
@@ -71,6 +78,7 @@ docs/         — Feature specs, architecture, design, compliance
 - Route files in app/ are thin wrappers — all logic lives in src/features/
 
 ## NEVER do
+- NO asking "want me to do X?" when the next step is obvious — just do it. If you need to read a file, read it. If you need real values, look them up. Only ask when there's genuine ambiguity or risk.
 - NO any — use unknown
 - NO TouchableOpacity — use Pressable
 - NO inline styles — use StyleSheet.create

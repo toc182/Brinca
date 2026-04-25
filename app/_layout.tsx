@@ -28,6 +28,7 @@ import { supabase } from '@/lib/supabase/client';
 import { startSyncEngine } from '@/lib/sync/engine';
 import '@/shared/i18n/config';
 import { colors } from '@/shared/theme';
+import { GlobalToast } from '@/shared/components/GlobalToast';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useOnboardingStore } from '@/stores/onboarding.store';
 import { ensureLocalFKChain, rehydrateActivities } from '@/lib/sync/rehydrate';
@@ -121,7 +122,7 @@ export default Sentry.wrap(function RootLayout() {
         // Check onboarding progress — try local state first
         const activeChild = useActiveChildStore.getState();
         if (activeChild.childId && activeChild.familyId) {
-          await ensureLocalFKChain(activeChild.childId, activeChild.familyId);
+          await ensureLocalFKChain(activeChild.childId, activeChild.familyId, activeChild.childName);
           setAuthState('authenticated');
           rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
           return;
@@ -169,7 +170,7 @@ export default Sentry.wrap(function RootLayout() {
         // Reinstall recovery: user already completed onboarding if they have
         // a family + child. Whether activities exist in Supabase is a sync
         // question — send them home and let the sync engine handle the rest.
-        await ensureLocalFKChain(remoteChild.id, remoteFamilyId);
+        await ensureLocalFKChain(remoteChild.id, remoteFamilyId, remoteChild.name);
         setAuthState('authenticated');
         rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
       } catch (error) {
@@ -185,9 +186,62 @@ export default Sentry.wrap(function RootLayout() {
 
   // Listen for auth changes
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_OUT') {
         setAuthState('unauthenticated');
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Re-run the recovery logic so a successful login after init()
+        // failure actually moves the user past the login screen.
+        const activeChild = useActiveChildStore.getState();
+        if (activeChild.childId && activeChild.familyId) {
+          await ensureLocalFKChain(activeChild.childId, activeChild.familyId, activeChild.childName);
+          setAuthState('authenticated');
+          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
+          return;
+        }
+
+        // No local child state — recover from Supabase
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData?.user) return;
+
+        const { data: members } = await supabase
+          .from('family_members')
+          .select('family_id')
+          .eq('user_id', userData.user.id)
+          .limit(1);
+
+        if (!members || members.length === 0) {
+          setAuthState('onboarding-child');
+          return;
+        }
+
+        const remoteFamilyId = members[0].family_id;
+        const { data: remoteChildren } = await supabase
+          .from('children')
+          .select('id, name')
+          .eq('family_id', remoteFamilyId)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (!remoteChildren || remoteChildren.length === 0) {
+          useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
+          setAuthState('onboarding-child');
+          return;
+        }
+
+        const remoteChild = remoteChildren[0];
+        useActiveChildStore.getState().setActiveChild(
+          remoteChild.id,
+          remoteChild.name,
+          remoteFamilyId,
+        );
+
+        await ensureLocalFKChain(remoteChild.id, remoteFamilyId, remoteChild.name);
+        setAuthState('authenticated');
+        rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
       }
     });
     return () => subscription.unsubscribe();
@@ -258,6 +312,7 @@ export default Sentry.wrap(function RootLayout() {
         <Stack.Screen name="(settings)" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
+      <GlobalToast />
     </QueryClientProvider>
     </AuthContext.Provider>
     </SafeAreaProvider>

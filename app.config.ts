@@ -53,6 +53,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         project: process.env.SENTRY_PROJECT ?? '',
       },
     ],
+    'expo-updates',
   ],
   updates: {
     url: 'https://u.expo.dev/2bbf775c-5028-48e5-a574-1e213e939d4e',

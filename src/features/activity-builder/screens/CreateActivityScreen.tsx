@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
+import * as Sentry from '@sentry/react-native';
+
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -29,15 +31,19 @@ export function CreateActivityScreen() {
   const isValid = name.trim().length >= 1 && name.trim().length <= 50;
 
   const handleCreate = async () => {
-    if (!childId || !isValid) return;
+    if (!childId) { console.warn('[CreateActivity] childId is null'); return; }
+    if (!isValid) { console.warn('[CreateActivity] name is invalid'); return; }
     setIsSubmitting(true);
     try {
       const id = randomUUID();
       await insertActivity(id, childId, name.trim(), icon, category);
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
       router.replace(`/(settings)/activities/${id}` as never);
-    } catch {
-      showToast('error', 'Could not create activity. Please try again.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[CreateActivity] insertActivity failed:', error);
+      showToast('error', `Activity error: ${msg}`);
+      Sentry.captureException(error, { extra: { childId, name: name.trim(), icon, category } });
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +101,7 @@ export function CreateActivityScreen() {
       <Button
         title="Create activity"
         onPress={handleCreate}
-        disabled={!isValid || isSubmitting}
+        disabled={!childId || !isValid || isSubmitting}
         style={styles.button}
       />
     </ScrollView>

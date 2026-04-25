@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import * as Sentry from '@sentry/react-native';
 
 import { getDatabase } from '../sqlite/db';
 import { supabase } from '../supabase/client';
@@ -12,11 +13,18 @@ import type { UUID } from '@/types/domain.types';
  *
  * On a normal launch, both rows exist and this is two fast SELECT checks.
  * On reinstall, it pulls from Supabase (~500ms for 2 queries + 2 inserts).
+ *
+ * If the Supabase queries fail (token timing, RLS race, network), the
+ * function falls back to inserting minimal rows using the data already
+ * known by the caller. The sync engine will backfill full data later.
  */
 export async function ensureLocalFKChain(
   childId: UUID,
   familyId: UUID,
+  childName?: string | null,
 ): Promise<void> {
+  console.log('[FK] ensureLocalFKChain called with', { childId, familyId, childName });
+  Sentry.addBreadcrumb({ category: 'fk-chain', message: 'ensureLocalFKChain called', data: { childId, familyId, hasChildName: !!childName } });
   const db = await getDatabase();
 
   // 1. Family row
@@ -25,7 +33,7 @@ export async function ensureLocalFKChain(
     familyId,
   );
   if (!localFamily) {
-    const { data: family } = await supabase
+    const { data: family, error: familyError } = await supabase
       .from('families')
       .select('id, currency_name, measurement_unit, created_at, updated_at')
       .eq('id', familyId)
@@ -41,7 +49,35 @@ export async function ensureLocalFKChain(
         family.created_at,
         family.updated_at,
       );
+    } else {
+      console.warn('[FK] Family Supabase query failed for id:', familyId, 'error:', familyError);
+      Sentry.captureMessage(`FK chain: family query failed for ${familyId}`, {
+        level: 'warning',
+        extra: { familyId, errorCode: familyError?.code, errorMessage: familyError?.message },
+      });
+      // Fallback: insert minimal row so child FK can reference it
+      const now = new Date().toISOString();
+      await db.runAsync(
+        `INSERT OR IGNORE INTO families (id, currency_name, measurement_unit, created_at, updated_at)
+         VALUES (?, 'Coins', 'metric', ?, ?)`,
+        familyId,
+        now,
+        now,
+      );
+      Sentry.addBreadcrumb({ category: 'fk-chain', message: 'family fallback insert executed', data: { familyId } });
     }
+  }
+
+  // Verify family row exists before proceeding to child
+  const familyCheck = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM families WHERE id = ?',
+    familyId,
+  );
+  if (!familyCheck) {
+    const msg = `FK chain: family row missing after insert attempt for ${familyId}`;
+    console.error('[FK]', msg);
+    Sentry.captureMessage(msg, 'error');
+    return; // Cannot insert child without family
   }
 
   // 2. Child row (depends on family existing)
@@ -50,7 +86,7 @@ export async function ensureLocalFKChain(
     childId,
   );
   if (!localChild) {
-    const { data: child } = await supabase
+    const { data: child, error: childError } = await supabase
       .from('children')
       .select('id, family_id, name, avatar_url, date_of_birth, gender, country, grade_level, school_calendar, calendar_start_month, calendar_end_month, created_at, updated_at')
       .eq('id', childId)
@@ -74,7 +110,43 @@ export async function ensureLocalFKChain(
         child.created_at,
         child.updated_at,
       );
+    } else {
+      console.warn('[FK] Child Supabase query failed for id:', childId, 'error:', childError);
+      Sentry.captureMessage(`FK chain: child query failed for ${childId}`, {
+        level: 'warning',
+        extra: { childId, familyId, errorCode: childError?.code, errorMessage: childError?.message, hasChildName: !!childName },
+      });
+      // Fallback: insert minimal row so activity FK can reference it
+      if (childName) {
+        const now = new Date().toISOString();
+        await db.runAsync(
+          `INSERT OR IGNORE INTO children (id, family_id, name, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          childId,
+          familyId,
+          childName,
+          now,
+          now,
+        );
+        Sentry.addBreadcrumb({ category: 'fk-chain', message: 'child fallback insert executed', data: { childId, familyId } });
+      } else {
+        Sentry.captureMessage(`FK chain: child fallback skipped — no childName provided`, {
+          level: 'error',
+          extra: { childId, familyId },
+        });
+      }
     }
+  }
+
+  // Final verification
+  const childCheck = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM children WHERE id = ?',
+    childId,
+  );
+  if (!childCheck) {
+    const msg = `FK chain: child row missing after insert attempt for ${childId}`;
+    console.error('[FK]', msg);
+    Sentry.captureMessage(msg, 'error');
   }
 }
 
