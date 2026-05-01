@@ -6,7 +6,8 @@ export type AuthState =
   | 'onboarding-verification'
   | 'onboarding-child'
   | 'onboarding-activity'
-  | 'authenticated';
+  | 'authenticated'
+  | 'auth-error';
 
 export const AuthContext = createContext<{
   setAuthState: (state: AuthState) => void;

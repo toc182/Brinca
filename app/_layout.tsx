@@ -14,9 +14,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext } from '@/shared/contexts/AuthContext';
 import type { AuthState } from '@/shared/contexts/AuthContext';
@@ -31,7 +32,9 @@ import { colors } from '@/shared/theme';
 import { GlobalToast } from '@/shared/components/GlobalToast';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useOnboardingStore } from '@/stores/onboarding.store';
-import { ensureLocalFKChain, rehydrateActivities } from '@/lib/sync/rehydrate';
+import { rehydrateActivities } from '@/lib/sync/rehydrate';
+import { resolveAuthFromUser, ensureFKChainAndVerify } from '@/lib/supabase/auth-recovery';
+import { ErrorState } from '@/shared/components/ErrorState';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
@@ -76,6 +79,13 @@ export default Sentry.wrap(function RootLayout() {
   const [authState, setAuthState] = useState<AuthState>('loading');
   const authContextValue = useMemo(() => ({ setAuthState }), []);
 
+  const authStateRef = useRef<AuthState>('loading');
+  const recoveryInFlight = useRef<Promise<void> | null>(null);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
+
   const router = useRouter();
   const segments = useSegments();
 
@@ -87,6 +97,66 @@ export default Sentry.wrap(function RootLayout() {
     Lexend_700Bold,
     JetBrainsMono_500Medium,
   });
+
+  const recover = useCallback(async (): Promise<void> => {
+    if (recoveryInFlight.current) {
+      return recoveryInFlight.current;
+    }
+    const run = (async () => {
+      setAuthState('loading');
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) {
+          await supabase.auth.signOut().catch(() => {});
+          setAuthState('unauthenticated');
+          return;
+        }
+
+        const { pendingVerificationEmail } = useOnboardingStore.getState();
+        if (pendingVerificationEmail) {
+          setAuthState('onboarding-verification');
+          return;
+        }
+
+        const activeChild = useActiveChildStore.getState();
+        if (activeChild.childId && activeChild.familyId) {
+          await ensureFKChainAndVerify(
+            activeChild.childId,
+            activeChild.familyId,
+            activeChild.childName,
+          );
+          setAuthState('authenticated');
+          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
+          return;
+        }
+
+        const result = await resolveAuthFromUser(userData.user.id);
+        if (result.state === 'authenticated') {
+          useActiveChildStore.getState().setActiveChild(
+            result.childId,
+            result.childName,
+            result.familyId,
+          );
+          setAuthState('authenticated');
+          rehydrateActivities(result.childId, queryClient).catch(console.error);
+        } else {
+          if (result.pendingFamilyId) {
+            useOnboardingStore.getState().setPendingFamilyId(result.pendingFamilyId);
+          }
+          setAuthState('onboarding-child');
+        }
+      } catch (error) {
+        Sentry.captureException(error, { extra: { context: 'auth-recovery' } });
+        setAuthState('auth-error');
+      }
+    })();
+    recoveryInFlight.current = run;
+    try {
+      await run;
+    } finally {
+      recoveryInFlight.current = null;
+    }
+  }, []);
 
   // Initialize DB + Sentry + sync engine + check auth state
   useEffect(() => {
@@ -103,86 +173,17 @@ export default Sentry.wrap(function RootLayout() {
           return;
         }
 
-        // Session found — may be stale from Keychain surviving a reinstall.
-        // Validate server-side before trusting it.
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userError || !userData.user) {
-          await supabase.auth.signOut().catch(() => {});
-          setAuthState('unauthenticated');
-          return;
-        }
-
-        // Valid session — check mid-verification state
-        const { pendingVerificationEmail } = useOnboardingStore.getState();
-        if (pendingVerificationEmail) {
-          setAuthState('onboarding-verification');
-          return;
-        }
-
-        // Check onboarding progress — try local state first
-        const activeChild = useActiveChildStore.getState();
-        if (activeChild.childId && activeChild.familyId) {
-          await ensureLocalFKChain(activeChild.childId, activeChild.familyId, activeChild.childName);
-          setAuthState('authenticated');
-          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
-          return;
-        }
-
-        // Local state incomplete (normal on reinstall — MMKV/SQLite wiped
-        // but Keychain retains session). Recover entirely from Supabase.
-        const userId = userData.user.id;
-
-        // 1. Find family
-        const { data: members } = await supabase
-          .from('family_members')
-          .select('family_id')
-          .eq('user_id', userId)
-          .limit(1);
-
-        if (!members || members.length === 0) {
-          setAuthState('onboarding-child');
-          return;
-        }
-
-        const remoteFamilyId = members[0].family_id;
-
-        // 2. Find child (query Supabase, not local SQLite)
-        const { data: remoteChildren } = await supabase
-          .from('children')
-          .select('id, name')
-          .eq('family_id', remoteFamilyId)
-          .order('created_at', { ascending: true })
-          .limit(1);
-
-        if (!remoteChildren || remoteChildren.length === 0) {
-          useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
-          setAuthState('onboarding-child');
-          return;
-        }
-
-        const remoteChild = remoteChildren[0];
-        useActiveChildStore.getState().setActiveChild(
-          remoteChild.id,
-          remoteChild.name,
-          remoteFamilyId,
-        );
-
-        // Reinstall recovery: user already completed onboarding if they have
-        // a family + child. Whether activities exist in Supabase is a sync
-        // question — send them home and let the sync engine handle the rest.
-        await ensureLocalFKChain(remoteChild.id, remoteFamilyId, remoteChild.name);
-        setAuthState('authenticated');
-        rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
+        await recover();
       } catch (error) {
-        console.error('Init failed:', error);
-        setAuthState('unauthenticated');
+        Sentry.captureException(error, { extra: { context: 'init' } });
+        setAuthState('auth-error');
       } finally {
         setAppReady(true);
       }
     }
 
     init();
-  }, []);
+  }, [recover]);
 
   // Listen for auth changes
   useEffect(() => {
@@ -191,61 +192,19 @@ export default Sentry.wrap(function RootLayout() {
         setAuthState('unauthenticated');
         return;
       }
-
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Re-run the recovery logic so a successful login after init()
-        // failure actually moves the user past the login screen.
-        const activeChild = useActiveChildStore.getState();
-        if (activeChild.childId && activeChild.familyId) {
-          await ensureLocalFKChain(activeChild.childId, activeChild.familyId, activeChild.childName);
-          setAuthState('authenticated');
-          rehydrateActivities(activeChild.childId, queryClient).catch(console.error);
-          return;
-        }
-
-        // No local child state — recover from Supabase
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) return;
-
-        const { data: members } = await supabase
-          .from('family_members')
-          .select('family_id')
-          .eq('user_id', userData.user.id)
-          .limit(1);
-
-        if (!members || members.length === 0) {
-          setAuthState('onboarding-child');
-          return;
-        }
-
-        const remoteFamilyId = members[0].family_id;
-        const { data: remoteChildren } = await supabase
-          .from('children')
-          .select('id, name')
-          .eq('family_id', remoteFamilyId)
-          .order('created_at', { ascending: true })
-          .limit(1);
-
-        if (!remoteChildren || remoteChildren.length === 0) {
-          useOnboardingStore.getState().setPendingFamilyId(remoteFamilyId);
-          setAuthState('onboarding-child');
-          return;
-        }
-
-        const remoteChild = remoteChildren[0];
-        useActiveChildStore.getState().setActiveChild(
-          remoteChild.id,
-          remoteChild.name,
-          remoteFamilyId,
-        );
-
-        await ensureLocalFKChain(remoteChild.id, remoteFamilyId, remoteChild.name);
-        setAuthState('authenticated');
-        rehydrateActivities(remoteChild.id, queryClient).catch(console.error);
+      if (event === 'SIGNED_IN') {
+        await recover();
+        return;
+      }
+      if (event === 'TOKEN_REFRESHED') {
+        // Don't auto-dismiss the auth-error UI on a background token refresh —
+        // the user's retry tap is the explicit recovery signal.
+        if (authStateRef.current === 'auth-error') return;
+        await recover();
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [recover]);
 
   // Hide splash when ready
   useEffect(() => {
@@ -299,6 +258,7 @@ export default Sentry.wrap(function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
     <SafeAreaProvider>
+    <KeyboardProvider>
     <AuthContext.Provider value={authContextValue}>
     <QueryClientProvider client={queryClient}>
       <Stack
@@ -312,9 +272,15 @@ export default Sentry.wrap(function RootLayout() {
         <Stack.Screen name="(settings)" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
       </Stack>
+      {authState === 'auth-error' && (
+        <View style={styles.errorOverlay}>
+          <ErrorState onRetry={recover} />
+        </View>
+      )}
       <GlobalToast />
     </QueryClientProvider>
     </AuthContext.Provider>
+    </KeyboardProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -327,5 +293,14 @@ const styles = StyleSheet.create({
   loading: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  errorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.background,
+    zIndex: 1000,
   },
 });

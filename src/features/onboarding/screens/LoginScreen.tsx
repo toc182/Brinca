@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -24,9 +25,6 @@ export function LoginScreen() {
     signInMutation.mutate(
       { email: email.trim(), password },
       {
-        onSuccess: () => {
-          router.replace('/(tabs)/home');
-        },
         onError: (error) => {
           showToast('error', t('error.loginFailed'));
         },
@@ -36,7 +34,7 @@ export function LoginScreen() {
 
   return (
     <Screen>
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.scrollView}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
@@ -90,7 +88,7 @@ export function LoginScreen() {
       <Button
         title="Sign in"
         onPress={handleSignIn}
-        disabled={!isValid || signInMutation.isPending}
+        disabled={!isValid || signInMutation.isPending || signInMutation.isSuccess}
         style={styles.signInButton}
       />
 
@@ -100,7 +98,7 @@ export function LoginScreen() {
         variant="text"
         style={styles.createAccountButton}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
     </Screen>
   );
 }
