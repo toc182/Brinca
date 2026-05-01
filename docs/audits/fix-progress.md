@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 6 done, ~12 remaining.
+- 🟡 MEDIUM phase — 7 done, ~11 remaining.
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -39,7 +39,7 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 
 ### Onboarding / auth flow
 - [x] LoginScreen navigates before FK chain ready — code-correctness #19 — commit `b97eb0d` (closed via auth bundle)
-- [ ] Stale displayName/personaType in email-verify callback — code-correctness #20
+- [x] Stale displayName/personaType in email-verify callback — code-correctness #20 — commit `bf8bfe3` (verification deferred — needs real email-link round-trip)
 
 ### State persistence
 - [ ] Zustand `migrate` ignores version param (4 stores) — code-correctness #21
