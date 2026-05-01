@@ -103,7 +103,12 @@ export const useOnboardingStore = create<OnboardingState>()(
     {
       name: 'onboarding-storage',
       version: 1,
-      migrate: (persisted) => persisted as Record<string, unknown>,
+      migrate: (persisted: unknown, _version: number): OnboardingState => {
+        // Currently at version 1 — no migrations needed yet.
+        // When bumping the version above, add explicit per-version translation
+        // here (e.g., if (version === 1) { /* rename or default new fields */ }).
+        return persisted as OnboardingState;
+      },
       storage: createJSONStorage(() => mmkvStorage),
     }
   )

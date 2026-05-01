@@ -53,7 +53,12 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
     {
       name: 'active-session-storage',
       version: 1,
-      migrate: (persisted) => persisted as Record<string, unknown>,
+      migrate: (persisted: unknown, _version: number): ActiveSessionState => {
+        // Currently at version 1 — no migrations needed yet.
+        // When bumping the version above, add explicit per-version translation
+        // here (e.g., if (version === 1) { /* rename or default new fields */ }).
+        return persisted as ActiveSessionState;
+      },
       storage: createJSONStorage(() => mmkvStorage),
       onRehydrateStorage: () => (state) => {
         // Self-heal: if status is not idle but sessionId is missing, reset.

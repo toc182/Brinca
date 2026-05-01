@@ -41,7 +41,12 @@ export const useActiveChildStore = create<ActiveChildState>()(
     {
       name: 'active-child-storage',
       version: 1,
-      migrate: (persisted) => persisted as Record<string, unknown>,
+      migrate: (persisted: unknown, _version: number): ActiveChildState => {
+        // Currently at version 1 — no migrations needed yet.
+        // When bumping the version above, add explicit per-version translation
+        // here (e.g., if (version === 1) { /* rename or default new fields */ }).
+        return persisted as ActiveChildState;
+      },
       storage: createJSONStorage(() => mmkvStorage),
       onRehydrateStorage: () => (state) => {
         // All three fields must be set together — if any is missing, clear all.
