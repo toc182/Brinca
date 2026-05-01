@@ -23,7 +23,9 @@ export async function ensureLocalFKChain(
   familyId: UUID,
   childName?: string | null,
 ): Promise<void> {
-  console.log('[FK] ensureLocalFKChain called with', { childId, familyId, childName });
+  if (__DEV__) {
+    console.log('[FK] ensureLocalFKChain called with', { childId, familyId, childName });
+  }
   Sentry.addBreadcrumb({ category: 'fk-chain', message: 'ensureLocalFKChain called', data: { childId, familyId, hasChildName: !!childName } });
   const db = await getDatabase();
 
@@ -50,7 +52,9 @@ export async function ensureLocalFKChain(
         family.updated_at,
       );
     } else {
-      console.warn('[FK] Family Supabase query failed for id:', familyId, 'error:', familyError);
+      if (__DEV__) {
+        console.warn('[FK] Family Supabase query failed for id:', familyId, 'error:', familyError);
+      }
       Sentry.captureMessage(`FK chain: family query failed for ${familyId}`, {
         level: 'warning',
         extra: { familyId, errorCode: familyError?.code, errorMessage: familyError?.message },
@@ -75,7 +79,9 @@ export async function ensureLocalFKChain(
   );
   if (!familyCheck) {
     const msg = `FK chain: family row missing after insert attempt for ${familyId}`;
-    console.error('[FK]', msg);
+    if (__DEV__) {
+      console.error('[FK]', msg);
+    }
     Sentry.captureMessage(msg, 'error');
     return; // Cannot insert child without family
   }
@@ -111,7 +117,9 @@ export async function ensureLocalFKChain(
         child.updated_at,
       );
     } else {
-      console.warn('[FK] Child Supabase query failed for id:', childId, 'error:', childError);
+      if (__DEV__) {
+        console.warn('[FK] Child Supabase query failed for id:', childId, 'error:', childError);
+      }
       Sentry.captureMessage(`FK chain: child query failed for ${childId}`, {
         level: 'warning',
         extra: { childId, familyId, errorCode: childError?.code, errorMessage: childError?.message, hasChildName: !!childName },
@@ -145,7 +153,9 @@ export async function ensureLocalFKChain(
   );
   if (!childCheck) {
     const msg = `FK chain: child row missing after insert attempt for ${childId}`;
-    console.error('[FK]', msg);
+    if (__DEV__) {
+      console.error('[FK]', msg);
+    }
     Sentry.captureMessage(msg, 'error');
   }
 }

@@ -8,6 +8,7 @@ import * as Sentry from '@sentry/react-native';
 
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useActiveChildStore } from '@/stores/active-child.store';
@@ -31,8 +32,8 @@ export function CreateActivityScreen() {
   const isValid = name.trim().length >= 1 && name.trim().length <= 50;
 
   const handleCreate = async () => {
-    if (!childId) { console.warn('[CreateActivity] childId is null'); return; }
-    if (!isValid) { console.warn('[CreateActivity] name is invalid'); return; }
+    if (!childId) { if (__DEV__) console.warn('[CreateActivity] childId is null'); return; }
+    if (!isValid) { if (__DEV__) console.warn('[CreateActivity] name is invalid'); return; }
     setIsSubmitting(true);
     try {
       const id = randomUUID();
@@ -50,6 +51,7 @@ export function CreateActivityScreen() {
   };
 
   return (
+    <Screen edges={['bottom']}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -105,6 +107,7 @@ export function CreateActivityScreen() {
         style={styles.button}
       />
     </ScrollView>
+    </Screen>
   );
 }
 
