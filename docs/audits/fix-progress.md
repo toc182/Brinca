@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 7 done, ~11 remaining.
+- 🟡 MEDIUM phase — 8 done, ~10 remaining.
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -42,7 +42,7 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [x] Stale displayName/personaType in email-verify callback — code-correctness #20 — commit `bf8bfe3` (verification deferred — needs real email-link round-trip)
 
 ### State persistence
-- [ ] Zustand `migrate` ignores version param (4 stores) — code-correctness #21
+- [x] Zustand `migrate` ignores version param (4 stores) — code-correctness #21 — commit `46d63d9`
 
 ### Mutations / cache invalidation
 - [x] `useFinishSessionMutation` invalidates inside `mutationFn` — code-correctness #22 — commit `0be72ee`
