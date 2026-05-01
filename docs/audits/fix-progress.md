@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 4 done, ~14 remaining.
+- 🟡 MEDIUM phase — 6 done, ~12 remaining.
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -55,8 +55,12 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - `profile.repository.getLatestMeasurement` adds `created_at DESC` tiebreaker to the SQL — same-day measurements were returning an arbitrary row (the oldest in practice)
 
 ### Timers / UX
-- [ ] Stopwatch loses time after app-kill — code-correctness #25
-- [ ] Image picker errors swallowed — code-correctness #26
+- [x] Stopwatch loses time after app-kill — code-correctness #25 — commit `d6db6f1`
+- [x] Image picker errors swallowed — code-correctness #26 — commit `d6db6f1` (verification waits for next native build)
+
+### Side fixes folded into commit `d6db6f1` (not audit findings; surfaced during on-device testing)
+- Stopwatch sanity cap: auto-stop and freeze at last-saved value if 2+ hours have passed since the saved start, mirroring the session-level inactivity threshold
+- `app.config.ts` adds `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` — without these the picker cannot open at all on iOS (native config; needs rebuild to take effect)
 
 ### Architecture (intra-feature)
 - [ ] `BonusPresetSection` and `TierRewardSection` bypass TanStack Query — architecture intra-feature #1, #2
