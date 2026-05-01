@@ -110,10 +110,10 @@ export function SessionScreen() {
     }
   }, [sessionId, refetchResults]);
 
-  const handleFinishSession = () => {
+  const handleFinishSession = async () => {
     if (!sessionId || !childId) return;
     if (note.trim()) {
-      void updateSessionNote(sessionId, note.trim());
+      await updateSessionNote(sessionId, note.trim());
     }
     finishSession.mutate(
       { sessionId, childId, elapsedSeconds: timer.elapsedSeconds },

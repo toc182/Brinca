@@ -7,6 +7,7 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 import { colors, typography, radii, spacing } from '../theme';
 
@@ -16,6 +17,10 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   required?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  // Set true when this Input is rendered inside a BottomSheet so the sheet
+  // can react to keyboard show/hide. Without it the sheet stays put and the
+  // keyboard can cover the input.
+  inBottomSheet?: boolean;
 }
 
 export function Input({
@@ -24,6 +29,7 @@ export function Input({
   required = false,
   disabled = false,
   style,
+  inBottomSheet = false,
   ...textInputProps
 }: InputProps) {
   const [focused, setFocused] = useState(false);
@@ -41,13 +47,15 @@ export function Input({
     disabled ? styles.labelDisabled : undefined,
   ];
 
+  const TextInputComponent = inBottomSheet ? BottomSheetTextInput : TextInput;
+
   return (
     <View style={[styles.container, style]}>
       <Text style={labelStyle}>
         {label}
         {required && <Text style={styles.required}> *</Text>}
       </Text>
-      <TextInput
+      <TextInputComponent
         {...textInputProps}
         editable={!disabled}
         style={inputStyle}

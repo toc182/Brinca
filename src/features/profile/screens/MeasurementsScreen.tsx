@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Input } from '@/shared/components/Input';
 import { BottomSheet } from '@/shared/components/BottomSheet';
+import { Screen } from '@/shared/components/Screen';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { Toast } from '@/shared/components/Toast';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -18,10 +19,10 @@ import { profileKeys } from '../queries/keys';
 import {
   getMeasurementsByChild,
   deleteMeasurement,
-  updateMeasurement,
   type MeasurementRow,
 } from '../repositories/measurement.repository';
 import { useAddMeasurementMutation } from '../mutations/useAddMeasurementMutation';
+import { useUpdateMeasurementMutation } from '../mutations/useUpdateMeasurementMutation';
 
 function formatValue(value: number, type: MeasurementType, unit: 'metric' | 'imperial'): string {
   if (type === 'weight') {
@@ -120,6 +121,7 @@ export function MeasurementsScreen() {
   const childId = useActiveChildStore((s) => s.childId);
   const measurementUnit = useUIPreferencesStore((s) => s.measurementUnit);
   const addMeasurement = useAddMeasurementMutation();
+  const updateMeasurement = useUpdateMeasurementMutation();
 
   const [formState, setFormState] = useState<MeasurementFormState | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -164,7 +166,12 @@ export function MeasurementsScreen() {
     const dateStr = formState.date.toISOString().slice(0, 10);
 
     if (formState.editId) {
-      await updateMeasurement(formState.editId, numericValue, dateStr);
+      await updateMeasurement.mutateAsync({
+        id: formState.editId,
+        childId,
+        value: numericValue,
+        date: dateStr,
+      });
     } else {
       await addMeasurement.mutateAsync({
         childId,
@@ -176,7 +183,7 @@ export function MeasurementsScreen() {
 
     setFormState(null);
     setToastVisible(true);
-  }, [formState, childId, addMeasurement]);
+  }, [formState, childId, addMeasurement, updateMeasurement]);
 
   const handleDateChange = useCallback(
     (_event: unknown, selectedDate?: Date) => {
@@ -191,6 +198,7 @@ export function MeasurementsScreen() {
   if (!childId) return null;
 
   return (
+    <Screen edges={['bottom']}>
     <View style={styles.container}>
       <FlatList
         data={[]}
@@ -234,6 +242,7 @@ export function MeasurementsScreen() {
               placeholder={`Enter value`}
               error={valueError ?? undefined}
               required
+              inBottomSheet
             />
 
             <View style={styles.unitRow}>
@@ -265,7 +274,7 @@ export function MeasurementsScreen() {
             <Button
               title="Save"
               onPress={handleSave}
-              disabled={!formState.value.trim() || addMeasurement.isPending}
+              disabled={!formState.value.trim() || addMeasurement.isPending || updateMeasurement.isPending}
             />
           </View>
         </BottomSheet>
@@ -278,6 +287,7 @@ export function MeasurementsScreen() {
         onDismiss={() => setToastVisible(false)}
       />
     </View>
+    </Screen>
   );
 }
 

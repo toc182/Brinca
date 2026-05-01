@@ -15,22 +15,15 @@ export function useFinishSessionMutation() {
       elapsedSeconds: number;
     }) => {
       const endedAt = new Date().toISOString();
-
-      // 1. Mark session complete
       await finishSession(sessionId, endedAt, elapsedSeconds);
-
-      // 2. Evaluate tier rewards and create ledger entries
       const tierResults = await evaluateTiers(sessionId, childId);
-
-      // 3. Evaluate accolades
       const newAccolades = await evaluateAccolades(childId);
-
-      // 4. Invalidate queries (clearSession called by screen after navigation)
+      return { tierResults, newAccolades, durationSeconds: elapsedSeconds };
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
       queryClient.invalidateQueries({ queryKey: ['recent-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-
-      return { tierResults, newAccolades, durationSeconds: elapsedSeconds };
     },
   });
 }

@@ -66,7 +66,7 @@ export async function getLatestMeasurement(
 ): Promise<MeasurementRow | null> {
   const db = await getDatabase();
   return db.getFirstAsync<MeasurementRow>(
-    `SELECT * FROM measurements WHERE child_id = ? AND type = ? ORDER BY date DESC LIMIT 1`,
+    `SELECT * FROM measurements WHERE child_id = ? AND type = ? ORDER BY date DESC, created_at DESC LIMIT 1`,
     childId,
     type
   );

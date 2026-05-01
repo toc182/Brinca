@@ -12,6 +12,8 @@ interface BottomSheetProps {
   children: React.ReactNode;
   snapPoints: Array<string | number>;
   onDismiss?: () => void;
+  keyboardBehavior?: 'extend' | 'fillParent' | 'interactive';
+  keyboardBlurBehavior?: 'none' | 'restore';
 }
 
 /**
@@ -23,7 +25,13 @@ interface BottomSheetProps {
  * Usage: the sheet opens immediately on mount (index 0).
  * To close programmatically, unmount this component or use the ref approach.
  */
-export function BottomSheet({ children, snapPoints, onDismiss }: BottomSheetProps) {
+export function BottomSheet({
+  children,
+  snapPoints,
+  onDismiss,
+  keyboardBehavior = 'interactive',
+  keyboardBlurBehavior = 'restore',
+}: BottomSheetProps) {
   const sheetRef = useRef<GorhomBottomSheet>(null);
 
   const renderBackdrop = useCallback(
@@ -51,6 +59,8 @@ export function BottomSheet({ children, snapPoints, onDismiss }: BottomSheetProp
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
+      keyboardBehavior={keyboardBehavior}
+      keyboardBlurBehavior={keyboardBlurBehavior}
     >
       <BottomSheetView style={styles.content}>
         {children}
