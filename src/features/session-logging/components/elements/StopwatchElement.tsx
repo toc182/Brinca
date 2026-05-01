@@ -7,6 +7,10 @@ import type { StopwatchValue } from '@/shared/tracking-elements/types/element-va
 
 const elementTimerStorage = createMMKV({ id: 'element-timers' });
 
+// If the parent doesn't return to the app within this window, we stop the
+// timer at its last-saved value instead of letting it count up indefinitely.
+const STALE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 interface StopwatchElementProps {
   value: StopwatchValue;
   onValueChange: (value: StopwatchValue) => void;
@@ -25,16 +29,21 @@ function formatTime(totalSeconds: number): string {
 }
 
 export function StopwatchElement({ value, onValueChange, config, elementId }: StopwatchElementProps) {
-  const [isRunning, setIsRunning] = useState(false);
   const mmkvKey = elementId ? `sw_start_${elementId}` : null;
+  const baseKey = elementId ? `sw_base_${elementId}` : null;
 
-  // Restore persisted startTime on mount (survives app kill if timer was running)
+  // If startTime was persisted, the timer was running when the app was killed.
+  // Auto-resume — unless more than STALE_TIMEOUT_MS has passed, in which case
+  // we treat it as paused at the last-saved value to avoid a runaway clock.
   const persistedStart = mmkvKey ? elementTimerStorage.getNumber(mmkvKey) : null;
-  const startTimeRef = useRef<number | null>(persistedStart ?? null);
+  const persistedBase = baseKey ? elementTimerStorage.getNumber(baseKey) : null;
+  const isStaleStart =
+    persistedStart != null && Date.now() - persistedStart > STALE_TIMEOUT_MS;
+
+  const [isRunning, setIsRunning] = useState(persistedStart != null && !isStaleStart);
+  const startTimeRef = useRef<number | null>(isStaleStart ? null : persistedStart ?? null);
   const baseElapsedRef = useRef(
-    persistedStart != null
-      ? value.elapsed_seconds + (Date.now() - persistedStart) / 1000
-      : value.elapsed_seconds
+    isStaleStart ? value.elapsed_seconds : persistedBase ?? value.elapsed_seconds,
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -42,11 +51,26 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
   const isAtTarget = hasTarget && value.elapsed_seconds >= config.targetSeconds!;
 
   useEffect(() => {
+    if (isStaleStart) {
+      // Clean up the stale persisted state so the next start is fresh.
+      if (mmkvKey) elementTimerStorage.remove(mmkvKey);
+      if (baseKey) elementTimerStorage.remove(baseKey);
+      return;
+    }
+    if (persistedStart != null) {
+      intervalRef.current = setInterval(() => {
+        if (startTimeRef.current != null) {
+          const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
+          onValueChange({ elapsed_seconds: elapsed });
+        }
+      }, 100);
+    }
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const start = () => {
@@ -54,6 +78,7 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
     startTimeRef.current = now;
     baseElapsedRef.current = value.elapsed_seconds;
     if (mmkvKey) elementTimerStorage.set(mmkvKey, now);
+    if (baseKey) elementTimerStorage.set(baseKey, value.elapsed_seconds);
     setIsRunning(true);
 
     intervalRef.current = setInterval(() => {
@@ -68,6 +93,7 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
     setIsRunning(false);
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (mmkvKey) elementTimerStorage.remove(mmkvKey);
+    if (baseKey) elementTimerStorage.remove(baseKey);
     if (startTimeRef.current != null) {
       const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
       baseElapsedRef.current = elapsed;
@@ -80,6 +106,7 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
     setIsRunning(false);
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (mmkvKey) elementTimerStorage.remove(mmkvKey);
+    if (baseKey) elementTimerStorage.remove(baseKey);
     startTimeRef.current = null;
     baseElapsedRef.current = 0;
     onValueChange({ elapsed_seconds: 0 });

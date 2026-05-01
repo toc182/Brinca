@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
@@ -108,32 +109,50 @@ export function DrillScreen() {
       {
         text: 'Camera',
         onPress: async () => {
-          const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: 'images',
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) {
-            const uri = result.assets[0].uri;
-            setPhotoUri(uri);
-            if (drillResultIdRef.current) {
-              await updateDrillResultPhoto(drillResultIdRef.current, uri);
+          try {
+            const perm = await ImagePicker.requestCameraPermissionsAsync();
+            if (!perm.granted) {
+              showToast('error', 'Camera permission is required. Enable it in Settings to add a photo.');
+              return;
             }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: 'images',
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              const uri = result.assets[0].uri;
+              setPhotoUri(uri);
+              if (drillResultIdRef.current) {
+                await updateDrillResultPhoto(drillResultIdRef.current, uri);
+              }
+            }
+          } catch {
+            showToast('error', 'Could not open the camera. Try again.');
           }
         },
       },
       {
         text: 'Photo library',
         onPress: async () => {
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: 'images',
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) {
-            const uri = result.assets[0].uri;
-            setPhotoUri(uri);
-            if (drillResultIdRef.current) {
-              await updateDrillResultPhoto(drillResultIdRef.current, uri);
+          try {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+              showToast('error', 'Photo library permission is required. Enable it in Settings to add a photo.');
+              return;
             }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: 'images',
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              const uri = result.assets[0].uri;
+              setPhotoUri(uri);
+              if (drillResultIdRef.current) {
+                await updateDrillResultPhoto(drillResultIdRef.current, uri);
+              }
+            }
+          } catch {
+            showToast('error', 'Could not open the photo library. Try again.');
           }
         },
       },
@@ -182,7 +201,11 @@ export function DrillScreen() {
 
   return (
     <Screen>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Context header */}
         <View style={styles.contextRow}>
           <Text style={styles.contextText}>
@@ -258,7 +281,7 @@ export function DrillScreen() {
           onPress={handleFinishDrill}
           style={styles.finishButton}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </Screen>
   );
 }
