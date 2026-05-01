@@ -37,6 +37,18 @@ export function EmailVerificationScreen() {
   const [resending, setResending] = useState(false);
   const setupTriggered = useRef(false);
 
+  // Mirror the latest displayName/personaType into refs so the auth listener
+  // (which captures the mount-time closure) reads current values when the
+  // deep link fires — not whatever was set on first render.
+  const displayNameRef = useRef(displayName);
+  const personaTypeRef = useRef(personaType);
+  useEffect(() => {
+    displayNameRef.current = displayName;
+  }, [displayName]);
+  useEffect(() => {
+    personaTypeRef.current = personaType;
+  }, [personaType]);
+
   // Countdown timer for resend cooldown
   useEffect(() => {
     if (countdown <= 0) return;
@@ -63,8 +75,8 @@ export function EmailVerificationScreen() {
     completeSetup.mutate(
       {
         userId: session.user.id,
-        displayName,
-        personaType,
+        displayName: displayNameRef.current,
+        personaType: personaTypeRef.current,
       },
       {
         onSuccess: ({ familyId }) => {
