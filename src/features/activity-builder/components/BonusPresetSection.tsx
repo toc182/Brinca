@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/shared/components/Button';
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
-import { getBonusPresets, deleteBonusPreset } from '../repositories/bonus-preset.repository';
+import { useBonusPresetsQuery } from '../queries/useBonusPresetsQuery';
+import { useDeleteBonusPresetMutation } from '../mutations/useDeleteBonusPresetMutation';
 import { activityBuilderKeys } from '../queries/keys';
 import { BonusPresetBottomSheet } from './BonusPresetBottomSheet';
 
@@ -24,15 +25,12 @@ interface BonusPresetSectionProps {
 export function BonusPresetSection({ parentType, parentId }: BonusPresetSectionProps) {
   const queryClient = useQueryClient();
   const { showDestructiveAlert } = useDestructiveAlert();
+  const deletePresetMutation = useDeleteBonusPresetMutation();
 
   const [sheetPreset, setSheetPreset] = useState<BonusPresetRow | null | undefined>(undefined);
   // undefined = sheet closed, null = adding new, BonusPresetRow = editing existing
 
-  const { data: presets } = useQuery({
-    queryKey: activityBuilderKeys.bonusPresets(parentType, parentId),
-    queryFn: () => getBonusPresets(parentType, parentId),
-    enabled: !!parentId,
-  });
+  const { data: presets } = useBonusPresetsQuery(parentType, parentId);
 
   const handleSaved = () => {
     queryClient.invalidateQueries({
@@ -45,15 +43,15 @@ export function BonusPresetSection({ parentType, parentId }: BonusPresetSectionP
     showDestructiveAlert({
       title: 'Delete bonus preset',
       message: `Delete the ${preset.amount}-coin bonus preset? This cannot be undone.`,
-      onConfirm: async () => {
-        try {
-          await deleteBonusPreset(preset.id);
-          queryClient.invalidateQueries({
-            queryKey: activityBuilderKeys.bonusPresets(parentType, parentId),
-          });
-        } catch {
-          showToast('error', 'Could not delete bonus preset.');
-        }
+      onConfirm: () => {
+        deletePresetMutation.mutate(
+          { id: preset.id, parentType, parentId },
+          {
+            onError: () => {
+              showToast('error', 'Could not delete bonus preset.');
+            },
+          },
+        );
       },
     });
   };

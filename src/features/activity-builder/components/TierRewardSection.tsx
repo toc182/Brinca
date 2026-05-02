@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/shared/components/Button';
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
-import { getTierRewards, deleteTierReward } from '../repositories/tier-reward.repository';
+import { useTierRewardsQuery } from '../queries/useTierRewardsQuery';
+import { useDeleteTierRewardMutation } from '../mutations/useDeleteTierRewardMutation';
 import { activityBuilderKeys } from '../queries/keys';
 import { TierRewardBottomSheet, type ConditionItem } from './TierRewardBottomSheet';
 
@@ -31,15 +32,12 @@ export function TierRewardSection({
 }: TierRewardSectionProps) {
   const queryClient = useQueryClient();
   const { showDestructiveAlert } = useDestructiveAlert();
+  const deleteTierMutation = useDeleteTierRewardMutation();
 
   const [sheetTier, setSheetTier] = useState<TierRewardRow | null | undefined>(undefined);
   // undefined = sheet closed, null = adding new, TierRewardRow = editing existing
 
-  const { data: tiers } = useQuery({
-    queryKey: activityBuilderKeys.tierRewards(parentType, parentId),
-    queryFn: () => getTierRewards(parentType, parentId),
-    enabled: !!parentId,
-  });
+  const { data: tiers } = useTierRewardsQuery(parentType, parentId);
 
   const handleSaved = () => {
     queryClient.invalidateQueries({
@@ -52,15 +50,15 @@ export function TierRewardSection({
     showDestructiveAlert({
       title: 'Delete tier',
       message: `Delete "${tier.name}"? This cannot be undone.`,
-      onConfirm: async () => {
-        try {
-          await deleteTierReward(tier.id);
-          queryClient.invalidateQueries({
-            queryKey: activityBuilderKeys.tierRewards(parentType, parentId),
-          });
-        } catch {
-          showToast('error', 'Could not delete tier.');
-        }
+      onConfirm: () => {
+        deleteTierMutation.mutate(
+          { id: tier.id, parentType, parentId },
+          {
+            onError: () => {
+              showToast('error', 'Could not delete tier.');
+            },
+          },
+        );
       },
     });
   };
