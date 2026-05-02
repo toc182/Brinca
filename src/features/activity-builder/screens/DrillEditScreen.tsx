@@ -166,7 +166,7 @@ export function DrillEditScreen() {
       const id = randomUUID();
       const config = getDefaultConfig(type);
       await insertElement(id, drillId, type, ELEMENT_LABELS[type], config);
-      refetchElements();
+      await refetchElements();
       setEditingElementId(id);
     } catch {
       showToast('error', 'Could not add element.');
