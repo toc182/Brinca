@@ -36,6 +36,7 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
   const phaseStartRef = useRef<number | null>(null);
   const basePhaseDurationRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const phaseRef = useRef<Phase>('work');
   const cycleRef = useRef(value.completed_cycles);
   const skippedRef = useRef(value.skipped_phases);
   const totalStartRef = useRef<number | null>(persistedStart ?? null);
@@ -73,7 +74,7 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
     if (phaseStartRef.current == null) return;
 
     const phaseElapsed = basePhaseDurationRef.current + (Date.now() - phaseStartRef.current) / 1000;
-    const phaseDuration = phase === 'work' ? config.workDurationSeconds : config.restDurationSeconds;
+    const phaseDuration = phaseRef.current === 'work' ? config.workDurationSeconds : config.restDurationSeconds;
     const remaining = Math.max(0, phaseDuration - phaseElapsed);
     setPhaseRemaining(remaining);
 
@@ -92,7 +93,8 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
   };
 
   const advancePhase = () => {
-    if (phase === 'work') {
+    if (phaseRef.current === 'work') {
+      phaseRef.current = 'rest';
       setPhase('rest');
       setPhaseRemaining(config.restDurationSeconds);
       basePhaseDurationRef.current = 0;
@@ -113,6 +115,7 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
         return;
       }
 
+      phaseRef.current = 'work';
       setPhase('work');
       setPhaseRemaining(config.workDurationSeconds);
       basePhaseDurationRef.current = 0;
@@ -163,6 +166,7 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
           style: 'destructive',
           onPress: () => {
             stop();
+            phaseRef.current = 'work';
             setPhase('work');
             setPhaseRemaining(config.workDurationSeconds);
             basePhaseDurationRef.current = 0;
