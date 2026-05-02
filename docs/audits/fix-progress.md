@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 8 done, ~10 remaining.
+- 🟡 MEDIUM phase — 9 done, ~9 remaining.
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -63,7 +63,7 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - `app.config.ts` adds `NSCameraUsageDescription` + `NSPhotoLibraryUsageDescription` — without these the picker cannot open at all on iOS (native config; needs rebuild to take effect)
 
 ### Architecture (intra-feature)
-- [ ] `BonusPresetSection` and `TierRewardSection` bypass TanStack Query — architecture intra-feature #1, #2
+- [x] `BonusPresetSection` and `TierRewardSection` bypass TanStack Query — architecture intra-feature #1, #2 — commit `7a0f8e1`
 - [ ] 12 element-config components call `updateElement` outside any mutation — architecture intra-feature #3
 - [ ] 5 session-logging screens call write-path repo functions directly — architecture intra-feature #4, #5
 
