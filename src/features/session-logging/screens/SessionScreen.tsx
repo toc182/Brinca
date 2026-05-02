@@ -16,9 +16,10 @@ import { DrillListItem } from '../components/DrillListItem';
 import { SessionNotes } from '../components/SessionNotes';
 import { useSessionTimer } from '../hooks/useSessionTimer';
 import { useFinishSessionMutation } from '../mutations/useFinishSessionMutation';
+import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteMutation';
+import { useUpdateSessionNoteMutation } from '../mutations/useUpdateSessionNoteMutation';
+import { useDrillResultsQuery } from '../queries/useDrillResultsQuery';
 import { getDrillsByActivity } from '@/features/activity-builder/repositories/drill.repository';
-import { getDrillResultsBySession, getOrCreateDrillResult, markDrillComplete } from '../repositories/drill-result.repository';
-import { updateSessionNote } from '../repositories/session.repository';
 
 const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -32,6 +33,8 @@ export function SessionScreen() {
   const insets = useSafeAreaInsets();
   const timer = useSessionTimer();
   const finishSession = useFinishSessionMutation();
+  const markDrillComplete = useMarkDrillCompleteMutation();
+  const updateSessionNote = useUpdateSessionNoteMutation();
 
   const [note, setNote] = useState('');
   const [sessionPhotoUri, setSessionPhotoUri] = useState<string | null>(null);
@@ -74,11 +77,7 @@ export function SessionScreen() {
     enabled: !!activityId,
   });
 
-  const { data: drillResults, refetch: refetchResults } = useQuery({
-    queryKey: ['drill-results', sessionId],
-    queryFn: () => getDrillResultsBySession(sessionId!),
-    enabled: !!sessionId,
-  });
+  const { data: drillResults } = useDrillResultsQuery(sessionId);
 
   const completedDrillIds = new Set(
     drillResults?.filter((dr) => dr.is_complete).map((dr) => dr.drill_id)
@@ -102,18 +101,16 @@ export function SessionScreen() {
   const handleMarkComplete = useCallback(async (drillId: string) => {
     if (!sessionId) return;
     try {
-      const drillResultId = await getOrCreateDrillResult(sessionId, drillId);
-      await markDrillComplete(drillResultId);
-      await refetchResults();
+      await markDrillComplete.mutateAsync({ sessionId, drillId });
     } catch {
       // silently fail — user can retry by tapping again
     }
-  }, [sessionId, refetchResults]);
+  }, [sessionId, markDrillComplete]);
 
   const handleFinishSession = async () => {
     if (!sessionId || !childId) return;
     if (note.trim()) {
-      await updateSessionNote(sessionId, note.trim());
+      await updateSessionNote.mutateAsync({ sessionId, note: note.trim() });
     }
     finishSession.mutate(
       { sessionId, childId, elapsedSeconds: timer.elapsedSeconds },

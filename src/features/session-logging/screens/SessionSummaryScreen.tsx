@@ -14,9 +14,9 @@ import { getLevelProgress } from '@/shared/gamification/level-thresholds';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { RewardBreakdown } from '../components/summary/RewardBreakdown';
 import { AccoladeUnlockDisplay } from '../components/summary/AccoladeUnlock';
-import { getDrillResultsWithDrillNames } from '../repositories/drill-result.repository';
-import { getSessionById } from '../repositories/session.repository';
-import { getCompletedSessionCount } from '../repositories/session.repository';
+import { useDrillResultsWithNamesQuery } from '../queries/useDrillResultsWithNamesQuery';
+import { useSessionByIdQuery } from '../queries/useSessionByIdQuery';
+import { useCompletedSessionCountQuery } from '../queries/useCompletedSessionCountQuery';
 import { getBonusPresets } from '@/features/activity-builder/repositories/bonus-preset.repository';
 import { useAddBonusMutation } from '../mutations/useAddBonusMutation';
 
@@ -45,18 +45,10 @@ export function SessionSummaryScreen() {
   const addBonus = useAddBonusMutation();
 
   // Drills logged
-  const { data: drillResults } = useQuery({
-    queryKey: ['drill-results-with-names', sessionId],
-    queryFn: () => getDrillResultsWithDrillNames(sessionId!),
-    enabled: !!sessionId,
-  });
+  const { data: drillResults } = useDrillResultsWithNamesQuery(sessionId ?? null);
 
   // Session -> activityId for bonus presets
-  const { data: session } = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => getSessionById(sessionId!),
-    enabled: !!sessionId,
-  });
+  const { data: session } = useSessionByIdQuery(sessionId ?? null);
 
   const { data: bonusPresets } = useQuery({
     queryKey: ['bonus-presets', 'activity', session?.activity_id],
@@ -65,11 +57,7 @@ export function SessionSummaryScreen() {
   });
 
   // Level progress
-  const { data: sessionCount } = useQuery({
-    queryKey: ['session-count', childId],
-    queryFn: () => getCompletedSessionCount(childId!),
-    enabled: !!childId,
-  });
+  const { data: sessionCount } = useCompletedSessionCountQuery(childId);
 
   const levelInfo = sessionCount != null ? getLevelProgress(sessionCount) : null;
 
