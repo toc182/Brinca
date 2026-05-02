@@ -18,7 +18,7 @@
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
 - ✅ MEDIUM phase — closed (18 done, migration deployed 2026-05-01).
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
-- ⏳ BLOCKER phase — not started, 10 items.
+- ⏳ BLOCKER phase — 3 closed (storage RLS + currency_ledger fraud), 7 remaining.
 
 ---
 
@@ -116,12 +116,12 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [ ] External activity writes never queued — code-correctness #5
 - [ ] Sync queue head-of-line blocking — code-correctness #6
 
-### Storage RLS leaks *(single migration)*
-- [ ] `avatars` bucket — no path scoping (any auth'd user reads any other user's avatar) — db-drift BLOCKER #1
-- [ ] `session-media` bucket — no path scoping (child photos!) — db-drift BLOCKER #2
+### Storage RLS leaks — closed in commit `7d42966` (migration `20260501000001`, deployed 2026-05-01)
+- [x] `avatars` bucket — no path scoping (any auth'd user reads any other user's avatar) — db-drift BLOCKER #1 (writes/updates/deletes scoped to owner; reads stay open auth'd-user, profile-pic pattern; DELETE policy added)
+- [x] `session-media` bucket — no path scoping (child photos!) — db-drift BLOCKER #2 (path scheme `<family_id>/<session_id>/<file>`; reads scoped to family, writes to write-access roles; DELETE policy added; no upload code yet — this is the canonical scheme future code must follow)
 
-### Self-credit fraud
-- [ ] `currency_ledger.INSERT` policy too permissive (any 'member' role can credit arbitrary currency) — db-drift BLOCKER #3
+### Self-credit fraud — closed in commit `7d42966` (same migration as above)
+- [x] `currency_ledger.INSERT` policy too permissive (any 'member' role can credit arbitrary currency) — db-drift BLOCKER #3 (source-conditional rules: drill_tier/session_tier/manual_bonus must be positive with real FK ref; reward_redemption must be negative with real reward FK; manual_bonus additionally requires admin/co_admin; all gated on `has_write_access`)
 
 ### Timer correctness
 - [ ] IntervalTimer stale phase closure (rest phase counts down work duration) — code-correctness #7
