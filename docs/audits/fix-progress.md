@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 11 done, ~7 remaining.
+- 🟡 MEDIUM phase — 13 done, ~5 remaining.
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -65,7 +65,7 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 ### Architecture (intra-feature)
 - [x] `BonusPresetSection` and `TierRewardSection` bypass TanStack Query — architecture intra-feature #1, #2 — commit `7a0f8e1`
 - [x] 12 element-config components call `updateElement` outside any mutation — architecture intra-feature #3 — commit `fe41d96` (actually 13 components; introduced `useUpdateElementMutation` shared by all)
-- [ ] 5 session-logging screens call write-path repo functions directly — architecture intra-feature #4, #5
+- [x] 2 session-logging screens (SessionScreen + SessionSummaryScreen) call repo functions directly — architecture intra-feature #4, #5 — commit `aaa7f4c`
 
 ### DB hardening
 - [ ] Tighten `families.INSERT` — db-drift MEDIUM #6
