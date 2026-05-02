@@ -5,17 +5,18 @@ import { Input } from '@/shared/components/Input';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, radii } from '@/shared/theme';
 import type { ElementType } from '@/shared/tracking-elements/types/element-types';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   type: ElementType;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
 /** Shared config for single_select and multi_select — both have an options list. */
-export function SelectConfig({ elementId, type, config, onConfigChange }: Props) {
+export function SelectConfig({ elementId, drillId, type, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [options, setOptions] = useState<{ id: string; name: string }[]>(
     Array.isArray(config.options) ? (config.options as { id: string; name: string }[]) : [{ id: '1', name: 'Option 1' }, { id: '2', name: 'Option 2' }]
   );
@@ -24,15 +25,18 @@ export function SelectConfig({ elementId, type, config, onConfigChange }: Props)
 
   const save = async (updated: { id: string; name: string }[]) => {
     const parsedCount = parseInt(targetCount, 10);
-    await updateElement(elementId, {
-      config: {
-        ...config,
-        options: updated,
-        targetOption: type === 'single_select' ? (targetOption.trim() || undefined) : undefined,
-        targetCount: type === 'multi_select' && targetCount.trim() && !isNaN(parsedCount) ? parsedCount : undefined,
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: {
+        config: {
+          ...config,
+          options: updated,
+          targetOption: type === 'single_select' ? (targetOption.trim() || undefined) : undefined,
+          targetCount: type === 'multi_select' && targetCount.trim() && !isNaN(parsedCount) ? parsedCount : undefined,
+        },
       },
     });
-    onConfigChange();
   };
 
   const addOption = () => {

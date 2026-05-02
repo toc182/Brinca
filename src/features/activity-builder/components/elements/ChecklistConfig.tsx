@@ -4,15 +4,16 @@ import { randomUUID } from 'expo-crypto';
 import { Input } from '@/shared/components/Input';
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, radii } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function ChecklistConfig({ elementId, config, onConfigChange }: Props) {
+export function ChecklistConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [items, setItems] = useState<{ id: string; name: string }[]>(
     Array.isArray(config.items) ? (config.items as { id: string; name: string }[]) : [{ id: '1', name: 'Item 1' }]
   );
@@ -20,14 +21,17 @@ export function ChecklistConfig({ elementId, config, onConfigChange }: Props) {
 
   const save = async (updated: { id: string; name: string }[], currentTargetItems = targetItems) => {
     const parsed = parseInt(currentTargetItems, 10);
-    await updateElement(elementId, {
-      config: {
-        ...config,
-        items: updated,
-        targetItems: currentTargetItems.trim() && !isNaN(parsed) ? parsed : undefined,
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: {
+        config: {
+          ...config,
+          items: updated,
+          targetItems: currentTargetItems.trim() && !isNaN(parsed) ? parsed : undefined,
+        },
       },
     });
-    onConfigChange();
   };
 
   const addItem = () => {

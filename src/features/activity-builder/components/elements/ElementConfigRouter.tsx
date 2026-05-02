@@ -17,16 +17,16 @@ import { NoConfig } from './NoConfig';
 
 interface ElementConfigRouterProps {
   elementId: string;
+  drillId: string;
   type: ElementType;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
 /**
  * Renders the correct config editor for the given element type.
  */
-export function ElementConfigRouter({ elementId, type, config, onConfigChange }: ElementConfigRouterProps) {
-  const props = { elementId, config, onConfigChange };
+export function ElementConfigRouter({ elementId, drillId, type, config }: ElementConfigRouterProps) {
+  const props = { elementId, drillId, config };
 
   switch (type) {
     case 'counter':

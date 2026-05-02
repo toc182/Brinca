@@ -421,9 +421,9 @@ export function DrillEditScreen() {
             </Text>
             <ElementConfigRouter
               elementId={editingElement.id}
+              drillId={drillId!}
               type={editingElement.type as ElementType}
               config={JSON.parse(editingElement.config)}
-              onConfigChange={() => refetchElements()}
             />
           </ScrollView>
         </BottomSheet>

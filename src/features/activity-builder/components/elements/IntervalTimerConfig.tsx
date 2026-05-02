@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function IntervalTimerConfig({ elementId, config, onConfigChange }: Props) {
+export function IntervalTimerConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [work, setWork] = useState(String(config.workDurationSeconds ?? 30));
   const [rest, setRest] = useState(String(config.restDurationSeconds ?? 15));
   const [cycles, setCycles] = useState(String(config.cycles ?? 5));
@@ -20,10 +21,11 @@ export function IntervalTimerConfig({ elementId, config, onConfigChange }: Props
     const r = parseInt(rest, 10);
     const c = parseInt(cycles, 10);
     if ([w, r, c].some((v) => isNaN(v) || v <= 0)) return;
-    await updateElement(elementId, {
-      config: { ...config, workDurationSeconds: w, restDurationSeconds: r, cycles: c },
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: { config: { ...config, workDurationSeconds: w, restDurationSeconds: r, cycles: c } },
     });
-    onConfigChange();
   };
 
   return (

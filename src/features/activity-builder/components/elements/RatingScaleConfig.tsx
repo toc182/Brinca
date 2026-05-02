@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function RatingScaleConfig({ elementId, config, onConfigChange }: Props) {
+export function RatingScaleConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [minValue, setMinValue] = useState(String(config.minValue ?? 1));
   const [maxValue, setMaxValue] = useState(String(config.maxValue ?? 5));
   const [lowLabel, setLowLabel] = useState(String(config.lowLabel ?? ''));
@@ -22,17 +23,20 @@ export function RatingScaleConfig({ elementId, config, onConfigChange }: Props) 
     const max = parseInt(maxValue, 10);
     if (isNaN(min) || isNaN(max) || min >= max || max < 3 || max > 10) return;
     const parsedTarget = parseInt(targetValue, 10);
-    await updateElement(elementId, {
-      config: {
-        ...config,
-        minValue: min,
-        maxValue: max,
-        lowLabel: lowLabel.trim() || undefined,
-        highLabel: highLabel.trim() || undefined,
-        targetValue: targetValue.trim() && !isNaN(parsedTarget) ? parsedTarget : undefined,
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: {
+        config: {
+          ...config,
+          minValue: min,
+          maxValue: max,
+          lowLabel: lowLabel.trim() || undefined,
+          highLabel: highLabel.trim() || undefined,
+          targetValue: targetValue.trim() && !isNaN(parsedTarget) ? parsedTarget : undefined,
+        },
       },
     });
-    onConfigChange();
   };
 
   return (

@@ -1,26 +1,28 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, typography, spacing, radii } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
 type TargetAnswer = 'yes' | 'no' | null;
 
-export function YesNoConfig({ elementId, config, onConfigChange }: Props) {
+export function YesNoConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const rawTarget = config.targetAnswer;
   const targetAnswer: TargetAnswer =
     rawTarget === 'yes' ? 'yes' : rawTarget === 'no' ? 'no' : null;
 
   const handleSelect = async (value: 'yes' | 'no') => {
     const newTarget: TargetAnswer = targetAnswer === value ? null : value;
-    await updateElement(elementId, {
-      config: { ...config, targetAnswer: newTarget ?? undefined },
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: { config: { ...config, targetAnswer: newTarget ?? undefined } },
     });
-    onConfigChange();
   };
 
   return (

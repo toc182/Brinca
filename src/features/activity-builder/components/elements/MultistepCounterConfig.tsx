@@ -4,15 +4,16 @@ import { randomUUID } from 'expo-crypto';
 import { Input } from '@/shared/components/Input';
 import { Button } from '@/shared/components/Button';
 import { colors, typography, spacing, radii } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function MultistepCounterConfig({ elementId, config, onConfigChange }: Props) {
+export function MultistepCounterConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [substeps, setSubsteps] = useState<string[]>(
     Array.isArray(config.substeps) ? (config.substeps as string[]) : ['Step 1']
   );
@@ -20,10 +21,11 @@ export function MultistepCounterConfig({ elementId, config, onConfigChange }: Pr
 
   const save = async (updated: string[]) => {
     const parsed = parseInt(targetReps, 10);
-    await updateElement(elementId, {
-      config: { ...config, substeps: updated, targetReps: targetReps.trim() && !isNaN(parsed) ? parsed : undefined },
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: { config: { ...config, substeps: updated, targetReps: targetReps.trim() && !isNaN(parsed) ? parsed : undefined } },
     });
-    onConfigChange();
   };
 
   const addSubstep = () => {

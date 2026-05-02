@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function SplitCounterConfig({ elementId, config, onConfigChange }: Props) {
+export function SplitCounterConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [leftLabel, setLeftLabel] = useState(String(config.leftLabel ?? 'Left'));
   const [rightLabel, setRightLabel] = useState(String(config.rightLabel ?? 'Right'));
   const [leftTarget, setLeftTarget] = useState(String(config.leftTarget ?? ''));
@@ -19,16 +20,19 @@ export function SplitCounterConfig({ elementId, config, onConfigChange }: Props)
   const handleSave = async () => {
     const parsedLeft = parseInt(leftTarget, 10);
     const parsedRight = parseInt(rightTarget, 10);
-    await updateElement(elementId, {
-      config: {
-        ...config,
-        leftLabel: leftLabel.trim() || 'Left',
-        rightLabel: rightLabel.trim() || 'Right',
-        leftTarget: leftTarget.trim() && !isNaN(parsedLeft) ? parsedLeft : undefined,
-        rightTarget: rightTarget.trim() && !isNaN(parsedRight) ? parsedRight : undefined,
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: {
+        config: {
+          ...config,
+          leftLabel: leftLabel.trim() || 'Left',
+          rightLabel: rightLabel.trim() || 'Right',
+          leftTarget: leftTarget.trim() && !isNaN(parsedLeft) ? parsedLeft : undefined,
+          rightTarget: rightTarget.trim() && !isNaN(parsedRight) ? parsedRight : undefined,
+        },
       },
     });
-    onConfigChange();
   };
 
   return (

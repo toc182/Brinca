@@ -2,22 +2,26 @@ import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function CountdownTimerConfig({ elementId, config, onConfigChange }: Props) {
+export function CountdownTimerConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [seconds, setSeconds] = useState(String(config.durationSeconds ?? 60));
 
   const handleSave = async () => {
     const parsed = parseInt(seconds, 10);
     if (isNaN(parsed) || parsed <= 0) return;
-    await updateElement(elementId, { config: { ...config, durationSeconds: parsed } });
-    onConfigChange();
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: { config: { ...config, durationSeconds: parsed } },
+    });
   };
 
   return (

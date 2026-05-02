@@ -2,23 +2,25 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function LapTimerConfig({ elementId, config, onConfigChange }: Props) {
+export function LapTimerConfig({ elementId, drillId, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [targetLaps, setTargetLaps] = useState(String(config.targetLaps ?? ''));
 
   const handleSave = async () => {
     const parsed = parseInt(targetLaps, 10);
-    await updateElement(elementId, {
-      config: { ...config, targetLaps: targetLaps.trim() && !isNaN(parsed) ? parsed : undefined },
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: { config: { ...config, targetLaps: targetLaps.trim() && !isNaN(parsed) ? parsed : undefined } },
     });
-    onConfigChange();
   };
 
   return (

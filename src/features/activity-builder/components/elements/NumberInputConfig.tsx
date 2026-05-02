@@ -3,16 +3,17 @@ import { StyleSheet, View } from 'react-native';
 import { Input } from '@/shared/components/Input';
 import { spacing } from '@/shared/theme';
 import type { ElementType } from '@/shared/tracking-elements/types/element-types';
-import { updateElement } from '../../repositories/tracking-element.repository';
+import { useUpdateElementMutation } from '../../mutations/useUpdateElementMutation';
 
 interface Props {
   elementId: string;
+  drillId: string;
   type: ElementType;
   config: Record<string, unknown>;
-  onConfigChange: () => void;
 }
 
-export function NumberInputConfig({ elementId, type, config, onConfigChange }: Props) {
+export function NumberInputConfig({ elementId, drillId, type, config }: Props) {
+  const updateMutation = useUpdateElementMutation();
   const [unit, setUnit] = useState(String(config.unit ?? ''));
   const [target, setTarget] = useState(String(config.targetValue ?? ''));
   const [targetEntries, setTargetEntries] = useState(String(config.targetEntries ?? ''));
@@ -20,15 +21,18 @@ export function NumberInputConfig({ elementId, type, config, onConfigChange }: P
   const handleSave = async () => {
     const targetValue = target.trim() ? parseFloat(target) : undefined;
     const parsedEntries = parseInt(targetEntries, 10);
-    await updateElement(elementId, {
-      config: {
-        ...config,
-        unit: unit.trim() || undefined,
-        targetValue: isNaN(targetValue as number) ? undefined : targetValue,
-        targetEntries: type === 'multi_number_input' && targetEntries.trim() && !isNaN(parsedEntries) ? parsedEntries : undefined,
+    await updateMutation.mutateAsync({
+      elementId,
+      drillId,
+      fields: {
+        config: {
+          ...config,
+          unit: unit.trim() || undefined,
+          targetValue: isNaN(targetValue as number) ? undefined : targetValue,
+          targetEntries: type === 'multi_number_input' && targetEntries.trim() && !isNaN(parsedEntries) ? parsedEntries : undefined,
+        },
       },
     });
-    onConfigChange();
   };
 
   return (
