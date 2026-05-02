@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- 🟡 MEDIUM phase — 13 done, ~5 remaining.
+- ✅ MEDIUM phase — closed (18 done, migration not yet deployed).
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -67,12 +67,12 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [x] 12 element-config components call `updateElement` outside any mutation — architecture intra-feature #3 — commit `fe41d96` (actually 13 components; introduced `useUpdateElementMutation` shared by all)
 - [x] 2 session-logging screens (SessionScreen + SessionSummaryScreen) call repo functions directly — architecture intra-feature #4, #5 — commit `aaa7f4c`
 
-### DB hardening
-- [ ] Tighten `families.INSERT` — db-drift MEDIUM #6
-- [ ] Tighten `accolade_unlocks.INSERT` — db-drift MEDIUM #7
-- [ ] Add UPDATE policy for `invites` (mark accepted) — db-drift MEDIUM #8
-- [ ] Fix `invites.invited_by` cascade — db-drift MEDIUM #9
-- [ ] Document or fix no-cascade on `sessions.activity_id` / `drill_results.drill_id` / `element_values.tracking_element_id` — db-drift MEDIUM #10
+### DB hardening — closed in commit `d5c5910` as one Supabase migration. ⚠️ NOT YET DEPLOYED — apply with `npx supabase db push`.
+- [x] Tighten `families.INSERT` — db-drift MEDIUM #6
+- [x] Tighten `accolade_unlocks.INSERT` — db-drift MEDIUM #7
+- [x] Add UPDATE policy for `invites` (mark accepted) — db-drift MEDIUM #8
+- [x] Fix `invites.invited_by` cascade (chose ON DELETE CASCADE; keeps NOT NULL so local schema + types unchanged) — db-drift MEDIUM #9
+- [x] Document/fix no-cascade on `sessions.activity_id` / `drill_results.drill_id` / `element_values.tracking_element_id` (now explicit ON DELETE RESTRICT) — db-drift MEDIUM #10
 
 ---
 
