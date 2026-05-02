@@ -167,6 +167,7 @@ export function DrillEditScreen() {
       const config = getDefaultConfig(type);
       await insertElement(id, drillId, type, ELEMENT_LABELS[type], config);
       refetchElements();
+      setEditingElementId(id);
     } catch {
       showToast('error', 'Could not add element.');
     }
