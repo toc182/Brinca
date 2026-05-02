@@ -16,7 +16,7 @@
 ## Status
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
-- ✅ MEDIUM phase — closed (18 done, migration not yet deployed).
+- ✅ MEDIUM phase — closed (18 done, migration deployed 2026-05-01).
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
 - ⏳ BLOCKER phase — not started, 10 items.
 
@@ -67,7 +67,7 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [x] 12 element-config components call `updateElement` outside any mutation — architecture intra-feature #3 — commit `fe41d96` (actually 13 components; introduced `useUpdateElementMutation` shared by all)
 - [x] 2 session-logging screens (SessionScreen + SessionSummaryScreen) call repo functions directly — architecture intra-feature #4, #5 — commit `aaa7f4c`
 
-### DB hardening — closed in commit `d5c5910` as one Supabase migration. ⚠️ NOT YET DEPLOYED — apply with `npx supabase db push`.
+### DB hardening — closed in commit `d5c5910` as one Supabase migration. Deployed to remote on 2026-05-01 (verified: 5 policies/FKs landed).
 - [x] Tighten `families.INSERT` — db-drift MEDIUM #6
 - [x] Tighten `accolade_unlocks.INSERT` — db-drift MEDIUM #7
 - [x] Add UPDATE policy for `invites` (mark accepted) — db-drift MEDIUM #8
