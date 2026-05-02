@@ -18,7 +18,7 @@
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
 - ✅ MEDIUM phase — closed (18 done, migration deployed 2026-05-01).
 - ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
-- ⏳ BLOCKER phase — 3 closed (storage RLS + currency_ledger fraud), 7 remaining.
+- ⏳ BLOCKER phase — 4 closed (storage RLS + currency_ledger fraud + IntervalTimer), 6 remaining.
 
 ---
 
@@ -123,5 +123,5 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 ### Self-credit fraud — closed in commit `7d42966` (same migration as above)
 - [x] `currency_ledger.INSERT` policy too permissive (any 'member' role can credit arbitrary currency) — db-drift BLOCKER #3 (source-conditional rules: drill_tier/session_tier/manual_bonus must be positive with real FK ref; reward_redemption must be negative with real reward FK; manual_bonus additionally requires admin/co_admin; all gated on `has_write_access`)
 
-### Timer correctness
-- [ ] IntervalTimer stale phase closure (rest phase counts down work duration) — code-correctness #7
+### Timer correctness — closed in commit `5c0344a`
+- [x] IntervalTimer stale phase closure (rest phase counts down work duration) — code-correctness #7 (mirrored `phase` into a ref so the `setInterval`-captured `tick` and `advancePhase` read the current phase; state still backs the rendered badge)
