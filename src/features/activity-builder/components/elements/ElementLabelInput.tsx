@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Input } from '@/shared/components/Input';
@@ -17,12 +17,19 @@ interface Props {
 export function ElementLabelInput({ elementId, drillId, initialLabel, type }: Props) {
   const [label, setLabel] = useState(initialLabel);
   const updateMutation = useUpdateElementMutation();
+  const labelRef = useRef(label);
+  labelRef.current = label;
 
-  const handleSave = () => {
-    const trimmed = label.trim();
+  const flushSave = () => {
+    const trimmed = labelRef.current.trim();
     if (!trimmed || trimmed === initialLabel) return;
     updateMutation.mutate({ elementId, drillId, fields: { label: trimmed } });
   };
+
+  useEffect(() => {
+    return flushSave;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -30,7 +37,7 @@ export function ElementLabelInput({ elementId, drillId, initialLabel, type }: Pr
         label="Name"
         value={label}
         onChangeText={setLabel}
-        onBlur={handleSave}
+        onBlur={flushSave}
         inBottomSheet
         maxLength={60}
         required

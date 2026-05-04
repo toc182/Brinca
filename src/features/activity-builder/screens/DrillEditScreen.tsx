@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
@@ -429,6 +429,13 @@ export function DrillEditScreen() {
               drillId={drillId!}
               type={editingElement.type as ElementType}
               config={JSON.parse(editingElement.config)}
+            />
+            <Button
+              title="Done"
+              onPress={() => {
+                Keyboard.dismiss();
+                setEditingElementId(null);
+              }}
             />
           </ScrollView>
         </BottomSheet>
