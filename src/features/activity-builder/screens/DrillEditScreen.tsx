@@ -31,6 +31,7 @@ import {
 } from '../repositories/tracking-element.repository';
 import { activityBuilderKeys } from '../queries/keys';
 import { ElementConfigRouter } from '../components/elements/ElementConfigRouter';
+import { ElementLabelInput } from '../components/elements/ElementLabelInput';
 import { TierRewardSection } from '../components/TierRewardSection';
 import { BonusPresetSection } from '../components/BonusPresetSection';
 import type { ConditionItem } from '../components/TierRewardBottomSheet';
@@ -416,10 +417,13 @@ export function DrillEditScreen() {
             contentContainerStyle={styles.configContent}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.configTitle}>{editingElement.label}</Text>
-            <Text style={styles.configSubtitle}>
-              {ELEMENT_LABELS[editingElement.type as ElementType]}
-            </Text>
+            <ElementLabelInput
+              key={editingElement.id}
+              elementId={editingElement.id}
+              drillId={drillId!}
+              initialLabel={editingElement.label}
+              type={editingElement.type as ElementType}
+            />
             <ElementConfigRouter
               elementId={editingElement.id}
               drillId={drillId!}
