@@ -173,4 +173,127 @@ Suggest the new session re-create them after reading this doc.
 
 ---
 
+## Memory file contents (recreate these on the PC)
+
+The four memory files below are *not* in git. On the PC, the next Claude session should re-create each as `/Users/<user>/.claude/projects/<encoded-cwd>/memory/<filename>` (or wherever the per-machine memory dir resolves to). The path looks like the one used on this Mac, but the prefix differs by user — let the harness print it once the first memory write happens, or just write to `~/.claude/projects/.../memory/` once you know the dir.
+
+Also create `MEMORY.md` as the index. Order matters; lines are pointers, not content.
+
+### `MEMORY.md`
+
+```markdown
+- [Choice-presentation format](feedback_choice_format.md) — status snapshot → framing → A/B options → my lean → one question.
+- [Pre-launch — no real users](project_prelaunch_state.md) — only the user's own test data on remote; hard cutovers are safe; skip data-migration ceremony.
+- [Plain language, no jargon](feedback_plain_language.md) — drop technical words; describe what a person using the app sees; short beats long.
+- [Diagnose first, fix second](feedback_diagnose_first.md) — never speculate-and-ship; confirm the root cause before writing any code.
+```
+
+### `feedback_choice_format.md`
+
+```markdown
+---
+name: choice-presentation format
+description: How the user wants choice points presented when proposing next-step work
+type: feedback
+---
+
+When presenting a choice the user needs to make about which work to tackle next, use this exact shape:
+
+1. **Status snapshot** at the top — phase counters (LOW / MEDIUM / CRITICAL / BLOCKER), one line each, with check/⏳/⚠️ glyphs. Just the state, no narrative.
+2. **Brief framing** — one short paragraph naming the scope and any sequencing constraint (e.g. "X must land before Y").
+3. **Choice block** — labeled `A.` / `B.` (and `C.` only if a real third option exists). Each option is one paragraph: what it does, the tradeoff in one phrase. No bullet lists inside options.
+4. **My lean** — one line. State the recommendation explicitly and why. Don't hedge.
+5. **Single closing question** — usually "Which?" or "Want to do A?".
+
+**Why:** The user told me directly: pasted an example from a previous session and said "I like it that way." It maps to their stated communication preferences (plain language, short answers, honest tradeoffs, risk + effort up front).
+
+**How to apply:** Use whenever I'm offering a non-trivial choice about scope/sequencing of the next chunk of work. Skip the format for trivial yes/no asks ("ready to commit?") — those stay as a single sentence.
+```
+
+### `project_prelaunch_state.md`
+
+```markdown
+---
+name: prelaunch — no real users, test data freely erasable
+description: Brinca has no production users yet; remote DB and storage hold only the user's own test data, which can be wiped without notice
+type: project
+---
+
+Brinca is pre-launch. The only account on the remote Supabase project (`jybiqufdvzdnsqarcddk`) is the user's own. Any session-media, avatars, ledger rows, or other data on remote is test data and can be erased without consequence.
+
+**Why:** User confirmed directly on 2026-05-01 when asked whether real users have uploaded session media: "right now its only me, and there are no real photos just test photos. i dont care if they are erased."
+
+**How to apply:**
+- Don't propose data migrations, transition policies, or dual-path RLS rules to preserve existing data. Hard cutovers are safe.
+- For schema changes: skip backfill steps unless the schema needs them for correctness.
+- When estimating risk on remote-touching work, weight "existing-data" failure modes as zero. Real risks are still real (logic bugs, sequencing, RLS holes), but "but what about user X's data" is not one of them.
+- This memory expires the moment the app launches. Re-verify if the user mentions TestFlight users, beta testers, or production traffic.
+```
+
+### `feedback_plain_language.md`
+
+```markdown
+---
+name: plain language — no jargon, ever
+description: User gets frustrated when explanations use technical terms; force plain language even when describing technical decisions
+type: feedback
+---
+
+When explaining anything to this user — bugs, decisions, options, risks — drop technical vocabulary entirely. Talk about what the user sees, what happens, who can do what, in everyday words.
+
+**Banned-by-default words** (rephrase before sending):
+- RLS / RLS policy → "the rule on the server that decides who can read this"
+- multi-tenancy / family-scoped / user-scoped → "shared by the family" / "only the person who uploaded it"
+- schema / FK / cascade → "the shape of the data" / "delete also removes the linked rows"
+- migration → "database update"
+- upload path / path scheme → "where in the storage folder it gets saved"
+- mutation / invalidation / repository → describe what the user sees go right or wrong
+- transaction / atomic → "all-or-nothing"
+- bucket → "storage folder"
+
+**Why:** User has stated multiple times in a single session: "explain in plain language", "this is too long for my taste", "explain shortly". The handoff doc itself opens with this preference. Slipping into jargon makes the user repeat themselves and erodes trust in my explanations.
+
+**How to apply:**
+- Before sending any explanation, scan for jargon and replace it.
+- If a technical word is genuinely unavoidable (e.g. a command name like `npx supabase db push`), use it but immediately translate in parentheses: `npx supabase db push (deploy the database update)`.
+- For choice points: describe each option in terms of *what changes for a person using the app*, not what changes in the code.
+- Length follows the same rule — 3 short sentences beats 8 long ones. The user said "short answers by default."
+```
+
+### `feedback_diagnose_first.md`
+
+```markdown
+---
+name: diagnose first, fix second — never speculate-and-ship
+description: User explicitly asked: don't take action until we are sure of what the problem is. Investigate and confirm the root cause before writing any code.
+type: feedback
+---
+
+When the user reports a bug or unexpected behavior, the rule is:
+
+1. **Read the relevant code paths end to end.** Trace the data flow from the user action to the persisted state. Don't assume — verify.
+2. **State the root cause in plain language and check it against what the user described.** If the symptoms don't match my hypothesis, my hypothesis is wrong.
+3. **Only after the user has confirmed the diagnosis (or I've shown evidence I'm confident in)** do I propose or write a fix.
+
+**Why:** Said directly: "next time, dont take action until we are sure of whats the problem." This came after I shipped a Done button + unmount-save based on a guess about what was happening. The actual problem turned out to be different — my fix didn't address it, and now I have one more change layered on top of the wrong assumption, which makes the real bug harder to disentangle.
+
+**How to apply:**
+- For any user-reported bug, the FIRST move is reading code, not editing it.
+- If I'm tempted to write code, ask myself: "Have I confirmed the cause, or am I guessing?"
+- It's fine — preferred — to send a diagnosis message and wait for the user to confirm before writing the fix.
+- Don't bundle multiple "while I'm at it" fixes into a diagnosis turn. One bug at a time.
+- When the user pushes back on a fix ("that's not what I meant"), the failure was usually upstream: I didn't confirm the problem before committing to a solution.
+
+This is rigid; don't try to adapt around it. It's a workflow rule, not a heuristic.
+```
+
+---
+
+## What's NOT in this pull (and why)
+
+- **70+ uncommitted modifications to tracked files** (the user's WIP feature work — Screen wrappers, etc.). Stays on the home Mac. The audit work the next session is most likely to do does not depend on it. If the user later wants the WIP on PC, ask them to push it from the Mac to a wip branch.
+- **`.claude/settings.json`, `.claude/scheduled_tasks.lock`, `.DS_Store` files** — local/junk, intentionally not tracked.
+
+---
+
 *Generated 2026-05-05 by Claude Opus 4.7 (1M context).*
