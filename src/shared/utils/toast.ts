@@ -17,7 +17,12 @@ interface ToastState {
 
 type ToastListener = (state: ToastState) => void;
 
-const listeners = new Set<ToastListener>();
+// Ordered stack of mounted listeners. Multiple GlobalToast instances exist
+// (one per modal navigator — see app/(settings)/_layout.tsx); only the
+// topmost (last-subscribed) gets the live `visible: true` state. Earlier
+// listeners receive `visible: false` so they collapse out of the way and
+// the user only sees one toast — the one in the frontmost layer.
+const listeners: ToastListener[] = [];
 
 let currentState: ToastState = {
   message: '',
@@ -26,7 +31,13 @@ let currentState: ToastState = {
 };
 
 function notify() {
-  listeners.forEach((listener) => listener({ ...currentState }));
+  const topIdx = listeners.length - 1;
+  for (let i = 0; i < listeners.length; i++) {
+    listeners[i]({
+      ...currentState,
+      visible: i === topIdx ? currentState.visible : false,
+    });
+  }
 }
 
 export function showToast(variant: ToastVariant, message: string): void {
@@ -40,8 +51,13 @@ export function dismissToast(): void {
 }
 
 export function subscribeToast(listener: ToastListener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  listeners.push(listener);
+  notify();
+  return () => {
+    const idx = listeners.indexOf(listener);
+    if (idx >= 0) listeners.splice(idx, 1);
+    notify();
+  };
 }
 
 export function getToastState(): ToastState {
