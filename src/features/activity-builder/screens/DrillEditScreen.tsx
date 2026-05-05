@@ -119,6 +119,10 @@ export function DrillEditScreen() {
     if (!drillId || !name.trim() || name.trim().length > 50) return;
     try {
       await updateDrill(drillId, { name: name.trim() });
+      queryClient.invalidateQueries({ queryKey: activityBuilderKeys.drill(drillId) });
+      queryClient.invalidateQueries({
+        queryKey: activityBuilderKeys.drills(activityId ?? ''),
+      });
       showToast('success', 'Drill saved.');
     } catch {
       showToast('error', 'Could not save drill.');
