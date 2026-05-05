@@ -1,11 +1,13 @@
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, Text } from 'react-native';
 import { colors } from '@/shared/theme';
+import { GlobalToast } from '@/shared/components/GlobalToast';
 
 export default function SettingsLayout() {
   const router = useRouter();
 
   return (
+    <>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
@@ -35,5 +37,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="accounts-center/index" options={{ title: 'Accounts Center' }} />
       <Stack.Screen name="accounts-center/[memberId]" options={{ title: 'Member' }} />
     </Stack>
+    <GlobalToast />
+    </>
   );
 }
