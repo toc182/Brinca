@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID, MeasurementType } from '@/types/domain.types';
 
 export interface MeasurementRow {
@@ -39,6 +40,13 @@ export async function insertMeasurement(
     value,
     date
   );
+  await appendToQueue('INSERT', 'measurements', {
+    id,
+    child_id: childId,
+    type,
+    value,
+    date,
+  });
 }
 
 export async function updateMeasurement(
@@ -53,9 +61,11 @@ export async function updateMeasurement(
     date,
     id
   );
+  await appendToQueue('UPDATE', 'measurements', { id, value, date });
 }
 
 export async function deleteMeasurement(id: UUID): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM measurements WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'measurements', { id });
 }
