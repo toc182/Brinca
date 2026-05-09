@@ -124,6 +124,7 @@ export function DrillEditScreen() {
         queryKey: activityBuilderKeys.drills(activityId ?? ''),
       });
       showToast('success', 'Drill saved.');
+      router.back();
     } catch {
       showToast('error', 'Could not save drill.');
     }
