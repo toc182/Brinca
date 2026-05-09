@@ -1,12 +1,22 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 export async function insertAccoladeUnlock(childId: UUID, accoladeId: string) {
   const db = await getDatabase();
-  await db.runAsync(
+  const result = await db.runAsync(
     `INSERT OR IGNORE INTO accolade_unlocks (child_id, accolade_id) VALUES (?, ?)`,
     childId, accoladeId
   );
+  // INSERT OR IGNORE is a no-op when the row already exists locally; only
+  // queue the change when a row was actually inserted, so we don't push
+  // duplicate INSERTs that the server will reject on its own unique-key.
+  if (result.changes > 0) {
+    await appendToQueue('INSERT', 'accolade_unlocks', {
+      child_id: childId,
+      accolade_id: accoladeId,
+    });
+  }
 }
 
 export async function isAccoladeUnlocked(childId: UUID, accoladeId: string): Promise<boolean> {
