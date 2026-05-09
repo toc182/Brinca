@@ -40,6 +40,7 @@ export async function finishSession(id: UUID, endedAt: string, durationSeconds: 
 export async function updateSessionNote(id: UUID, note: string) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE sessions SET note = ? WHERE id = ?`, note, id);
+  await appendToQueue('UPDATE', 'sessions', { id, note });
 }
 
 export async function updateSessionPhoto(id: UUID, photoUrl: string | null) {

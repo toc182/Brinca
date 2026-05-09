@@ -100,6 +100,7 @@ export async function markDrillComplete(id: UUID) {
 export async function updateDrillResultNote(id: UUID, note: string) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE drill_results SET note = ? WHERE id = ?`, note, id);
+  await appendToQueue('UPDATE', 'drill_results', { id, note });
 }
 
 export async function getDrillResultsBySession(sessionId: UUID) {
