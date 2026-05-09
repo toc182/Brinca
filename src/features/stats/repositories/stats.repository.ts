@@ -1,6 +1,7 @@
 import type { SQLiteBindValue } from 'expo-sqlite';
 
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 // ---------------------------------------------------------------------------
@@ -327,4 +328,5 @@ export async function getSessionDetail(sessionId: UUID) {
 export async function deleteSession(sessionId: UUID) {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM sessions WHERE id = ?`, sessionId);
+  await appendToQueue('DELETE', 'sessions', { id: sessionId });
 }
