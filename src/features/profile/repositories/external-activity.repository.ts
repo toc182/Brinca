@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
 export interface ExternalActivityRow {
@@ -41,6 +42,14 @@ export async function insertExternalActivity(
     location,
     notes
   );
+  await appendToQueue('INSERT', 'external_activities', {
+    id,
+    child_id: childId,
+    name,
+    schedule,
+    location,
+    notes,
+  });
 }
 
 export async function updateExternalActivity(
@@ -64,9 +73,14 @@ export async function updateExternalActivity(
     ...values,
     id
   );
+  await appendToQueue('UPDATE', 'external_activities', {
+    id,
+    ...Object.fromEntries(entries),
+  });
 }
 
 export async function deleteExternalActivity(id: UUID): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM external_activities WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'external_activities', { id });
 }
