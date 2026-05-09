@@ -55,7 +55,15 @@ export function subscribeToast(listener: ToastListener): () => void {
   notify();
   return () => {
     const idx = listeners.indexOf(listener);
-    if (idx >= 0) listeners.splice(idx, 1);
+    if (idx < 0) return;
+    const wasTop = idx === listeners.length - 1;
+    listeners.splice(idx, 1);
+    // If the topmost layer (the one that owned a visible toast) is going
+    // away, dismiss the toast globally instead of handing it off to the
+    // next layer down. Toasts belong to the context they were fired in.
+    if (wasTop && currentState.visible) {
+      currentState = { ...currentState, visible: false };
+    }
     notify();
   };
 }
