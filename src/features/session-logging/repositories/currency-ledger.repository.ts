@@ -1,4 +1,5 @@
 import { getDatabase } from '@/lib/sqlite/db';
+import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID, CurrencySource } from '@/types/domain.types';
 
 export async function appendLedgerEntry(
@@ -14,6 +15,14 @@ export async function appendLedgerEntry(
     `INSERT INTO currency_ledger (id, child_id, amount, source, reference_id, reason) VALUES (?, ?, ?, ?, ?, ?)`,
     id, childId, amount, source, referenceId, reason
   );
+  await appendToQueue('INSERT', 'currency_ledger', {
+    id,
+    child_id: childId,
+    amount,
+    source,
+    reference_id: referenceId,
+    reason,
+  });
 }
 
 export async function getBalance(childId: UUID): Promise<number> {
