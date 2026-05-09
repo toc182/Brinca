@@ -64,9 +64,7 @@ export async function reorderDrills(drillIds: UUID[]) {
   await db.withTransactionAsync(async () => {
     for (let i = 0; i < drillIds.length; i++) {
       await db.runAsync(`UPDATE drills SET display_order = ? WHERE id = ?`, i, drillIds[i]);
+      await appendToQueue('UPDATE', 'drills', { id: drillIds[i], display_order: i });
     }
   });
-  for (let i = 0; i < drillIds.length; i++) {
-    await appendToQueue('UPDATE', 'drills', { id: drillIds[i], display_order: i });
-  }
 }
