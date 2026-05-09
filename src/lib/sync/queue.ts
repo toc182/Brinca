@@ -3,6 +3,13 @@ import { getDatabase } from '../sqlite/db';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
 type SyncStatus = 'pending' | 'in_flight' | 'failed';
 
+// After this many consecutive failures on a single queue item, the drainer
+// stops retrying it and moves on to the next pending row. The bad row stays
+// in sync_queue (with last_error populated) so it can be inspected and
+// either re-tried manually or dropped, but it no longer blocks every later
+// item from syncing — fixes the head-of-line problem from the audit.
+const MAX_RETRIES = 10;
+
 interface QueueEntry {
   id: number;
   operation: SyncOperation;
@@ -25,7 +32,8 @@ export async function appendToQueue(operation: SyncOperation, tableName: string,
 export async function getNextPending(): Promise<QueueEntry | null> {
   const db = await getDatabase();
   return db.getFirstAsync<QueueEntry>(
-    `SELECT * FROM sync_queue WHERE status IN ('pending', 'failed') ORDER BY id ASC LIMIT 1`
+    `SELECT * FROM sync_queue WHERE status IN ('pending', 'failed') AND retry_count < ? ORDER BY id ASC LIMIT 1`,
+    MAX_RETRIES
   );
 }
 
