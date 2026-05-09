@@ -17,8 +17,8 @@
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
 - ✅ MEDIUM phase — closed (18 done, migration deployed 2026-05-01).
-- ⏳ CRITICAL phase — 3 closed via coupling during MEDIUM auth bundle, ~14 remaining.
-- ⏳ BLOCKER phase — 4 closed (storage RLS + currency_ledger fraud + IntervalTimer), 6 remaining.
+- ⏳ CRITICAL phase — 6 closed (3 via auth bundle + 3 via sync-queue bundle), ~11 remaining.
+- ✅ BLOCKER phase — closed (10 done, sync-queue cluster shipped 2026-05-09).
 
 ---
 
@@ -83,10 +83,10 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [x] `_layout.tsx` reads `data` without `error` → routes onboarded user to onboarding on transient errors — code-correctness #12
 - [x] `onAuthStateChange` no try/catch → blank-screen lock — code-correctness #13
 
-### Pending — sync writes (will fold into BLOCKER sync-queue bundle)
-- [ ] Session/drill notes never queued — code-correctness #8
-- [ ] `reorderDrills` queue append outside transaction — code-correctness #9
-- [ ] `reorderElements` queue append outside transaction — code-correctness #10
+### Closed via sync-queue bundle (2026-05-09)
+- [x] Session/drill notes never queued — code-correctness #8 — commit `70ad498`
+- [x] `reorderDrills` queue append outside transaction — code-correctness #9 — commit `67a573e`
+- [x] `reorderElements` queue append outside transaction — code-correctness #10 — commit `67a573e`
 
 ### Pending — cache invalidation
 - [ ] `useAddBonusMutation` no invalidation — code-correctness #14
@@ -106,15 +106,19 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 
 ---
 
-## BLOCKER — pending
+## BLOCKER — closed
 
-### Sync queue cluster *(close all 6 with `withQueuedWrite` helper + head-of-line fix; also closes CRITICAL #8, #9, #10)*
-- [ ] Currency ledger never queued — code-correctness #1
-- [ ] Accolade unlocks never queued — code-correctness #2
-- [ ] Session deletes never queued — code-correctness #3
-- [ ] Measurement writes never queued — code-correctness #4
-- [ ] External activity writes never queued — code-correctness #5
-- [ ] Sync queue head-of-line blocking — code-correctness #6
+### Sync queue cluster — shipped 2026-05-09 (also closes CRITICAL #8, #9, #10 — see above)
+- [x] Currency ledger never queued — code-correctness #1 — commit `908c359` (both duplicate repos)
+- [x] Accolade unlocks never queued — code-correctness #2 — commit `7baea88` (both duplicate repos; INSERT OR IGNORE → only queue on result.changes > 0)
+- [x] Session deletes never queued — code-correctness #3 — commit `1e9cd33`
+- [x] Measurement writes never queued — code-correctness #4 — commit `c642fbd` (insert + update + delete)
+- [x] External activity writes never queued — code-correctness #5 — commit `5ccadf4` (insert + update + delete; UPDATE payload mirrors the dynamic fields object)
+- [x] Sync queue head-of-line blocking — code-correctness #6 — commit `2b94a7b` (`getNextPending` filters `retry_count < 10`; failed items stay in `sync_queue` with `last_error` for inspection; no schema change)
+
+Decision: did NOT introduce a `withQueuedWrite` helper. Mirrored the existing convention in `tracking-element.repository.ts` (sequential `db.runAsync` then `appendToQueue`) for consistency. The audit's recommendation of a transactional helper is a future architectural improvement, not required for closing the BLOCKERs.
+
+## BLOCKER — earlier closures
 
 ### Storage RLS leaks — closed in commit `7d42966` (migration `20260501000001`, deployed 2026-05-01)
 - [x] `avatars` bucket — no path scoping (any auth'd user reads any other user's avatar) — db-drift BLOCKER #1 (writes/updates/deletes scoped to owner; reads stay open auth'd-user, profile-pic pattern; DELETE policy added)
