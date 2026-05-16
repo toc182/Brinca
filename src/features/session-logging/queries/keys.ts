@@ -4,4 +4,5 @@ export const sessionKeys = {
   elementValues: (drillResultId: string) => ['element-values', drillResultId] as const,
   forChild: (childId: string) => ['sessions', childId] as const,
   recentSessions: (childId: string) => ['recent-sessions', childId] as const,
+  sessionBonuses: (sessionId: string) => ['session-bonuses', sessionId] as const,
 };

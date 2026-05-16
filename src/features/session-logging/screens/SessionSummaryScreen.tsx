@@ -18,6 +18,7 @@ import { AccoladeUnlockDisplay } from '../components/summary/AccoladeUnlock';
 import { useDrillResultsWithNamesQuery } from '../queries/useDrillResultsWithNamesQuery';
 import { useSessionByIdQuery } from '../queries/useSessionByIdQuery';
 import { useCompletedSessionCountQuery } from '../queries/useCompletedSessionCountQuery';
+import { useSessionBonusesQuery } from '../queries/useSessionBonusesQuery';
 import { getBonusPresets } from '@/features/activity-builder/repositories/bonus-preset.repository';
 import { useAddBonusMutation } from '../mutations/useAddBonusMutation';
 
@@ -47,6 +48,9 @@ export function SessionSummaryScreen() {
 
   // Drills logged
   const { data: drillResults } = useDrillResultsWithNamesQuery(sessionId ?? null);
+
+  // Bonuses added during this session
+  const { data: sessionBonuses } = useSessionBonusesQuery(sessionId ?? null);
 
   // Session -> activityId for bonus presets
   const { data: session } = useSessionByIdQuery(sessionId ?? null);
@@ -112,6 +116,21 @@ export function SessionSummaryScreen() {
             <Text style={styles.earningsLabel}>Earned</Text>
             <Text style={styles.earningsAmount}>+{totalEarned}</Text>
             <RewardBreakdown tiers={tiers} />
+          </Card>
+        )}
+
+        {/* Bonuses added during this session */}
+        {sessionBonuses && sessionBonuses.length > 0 && (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>Bonuses</Text>
+            {sessionBonuses.map((b) => (
+              <View key={b.id} style={styles.bonusRow}>
+                <Text style={styles.bonusRowAmount}>+{b.amount}</Text>
+                <Text style={styles.bonusRowReason} numberOfLines={1}>
+                  {b.reason ?? 'Bonus'}
+                </Text>
+              </View>
+            ))}
           </Card>
         )}
 
@@ -234,6 +253,14 @@ const styles = StyleSheet.create({
   earningsLabel: { ...typography.caption, color: colors.textSecondary },
   earningsAmount: { ...typography.counter, color: colors.primary500, marginVertical: spacing.xs },
   bonusButton: { marginBottom: spacing.md },
+  bonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+  },
+  bonusRowAmount: { ...typography.bodySmall, color: colors.primary500, minWidth: 40 },
+  bonusRowReason: { ...typography.bodySmall, color: colors.textPrimary, flex: 1 },
   progressBar: { marginVertical: spacing.sm },
   levelHint: { ...typography.caption, color: colors.textSecondary },
   accoladesSection: { width: '100%', marginBottom: spacing.lg },

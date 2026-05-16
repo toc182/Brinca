@@ -40,3 +40,19 @@ export async function getPositiveTotal(childId: UUID): Promise<number> {
   );
   return result?.total ?? 0;
 }
+
+export type SessionBonus = {
+  id: string;
+  amount: number;
+  reason: string | null;
+};
+
+export async function getBonusesBySession(sessionId: UUID): Promise<SessionBonus[]> {
+  const db = await getDatabase();
+  return db.getAllAsync<SessionBonus>(
+    `SELECT id, amount, reason FROM currency_ledger
+     WHERE source = 'manual_bonus' AND reference_id = ?
+     ORDER BY created_at ASC`,
+    sessionId
+  );
+}

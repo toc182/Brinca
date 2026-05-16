@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 
 import { homeKeys } from '@/features/home-dashboard/queries/keys';
 import { appendLedgerEntry } from '../repositories/currency-ledger.repository';
+import { sessionKeys } from '../queries/keys';
 
 export function useAddBonusMutation() {
   const queryClient = useQueryClient();
@@ -17,8 +18,9 @@ export function useAddBonusMutation() {
       await appendLedgerEntry(id, childId, amount, 'manual_bonus', sessionId, reason);
       return { id };
     },
-    onSuccess: (_, { childId }) => {
+    onSuccess: (_, { childId, sessionId }) => {
       queryClient.invalidateQueries({ queryKey: homeKeys.dashboard(childId) });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.sessionBonuses(sessionId) });
     },
   });
 }
