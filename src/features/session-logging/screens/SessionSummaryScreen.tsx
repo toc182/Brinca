@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
@@ -153,8 +154,13 @@ export function SessionSummaryScreen() {
 
       {/* Bonus bottom sheet */}
       {showBonusSheet && (
-        <BottomSheet snapPoints={['50%']} onDismiss={() => setShowBonusSheet(false)}>
-          <View style={styles.bonusSheet}>
+        <BottomSheet
+          snapPoints={['50%']}
+          onDismiss={() => setShowBonusSheet(false)}
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
+        >
+          <BottomSheetView style={styles.bonusSheet}>
             <Text style={styles.bonusSheetTitle}>Add bonus</Text>
 
             {/* Preset amounts */}
@@ -171,7 +177,7 @@ export function SessionSummaryScreen() {
               </View>
             )}
 
-            <TextInput
+            <BottomSheetTextInput
               style={styles.bonusInput}
               value={bonusAmount}
               onChangeText={setBonusAmount}
@@ -179,7 +185,7 @@ export function SessionSummaryScreen() {
               placeholderTextColor={colors.textPlaceholder}
               keyboardType="number-pad"
             />
-            <TextInput
+            <BottomSheetTextInput
               style={styles.bonusInput}
               value={bonusReason}
               onChangeText={setBonusReason}
@@ -191,7 +197,7 @@ export function SessionSummaryScreen() {
               onPress={handleAddBonus}
               disabled={addBonus.isPending}
             />
-          </View>
+          </BottomSheetView>
         </BottomSheet>
       )}
     </Screen>
