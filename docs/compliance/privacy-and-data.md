@@ -359,7 +359,7 @@ These numbers are stated in the privacy policy draft (section 4) and must match 
 
 ### 6.3 Supabase (not a third party in the usual sense — it's your backend)
 Supabase stores everything. What matters for privacy:
-- RLS policies must prevent any user from reading another family's data. Per [`ux-conventions.md`](../ux-conventions.md), the policy chain is `auth.uid() → family_members → family_id`.
+- RLS policies must prevent any user from reading another family's data. Per [`research/01-stack-decision.md`](../research/01-stack-decision.md), the policy chain is `auth.uid() → family_members → family_id`.
 - Supabase Storage for photos must use signed URLs, not public URLs.
 - Supabase Auth sessions are stored in `expo-secure-store`, not `AsyncStorage`, per [`research/01-stack-decision.md`](../research/01-stack-decision.md).
 

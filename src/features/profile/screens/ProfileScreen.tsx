@@ -1,3 +1,4 @@
+// No <Screen> wrapper: CollapsibleHeader handles top inset, NativeTabs handles bottom.
 import { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -159,7 +160,11 @@ export function ProfileScreen() {
     return (
       <View style={styles.wrapper}>
         <CollapsibleHeader title={childName ?? 'Profile'} scrollY={scrollY} rightContent={<ParentAvatar />} />
-        <Animated.ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}>
+        <Animated.ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+          contentInsetAdjustmentBehavior="automatic"
+        >
           <ErrorState onRetry={() => refetch()} />
         </Animated.ScrollView>
       </View>
@@ -170,7 +175,11 @@ export function ProfileScreen() {
     return (
       <View style={styles.wrapper}>
         <CollapsibleHeader title={childName ?? 'Profile'} scrollY={scrollY} rightContent={<ParentAvatar />} />
-        <Animated.ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}>
+        <Animated.ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+          contentInsetAdjustmentBehavior="automatic"
+        >
           <ProfileSkeleton />
         </Animated.ScrollView>
       </View>
@@ -187,6 +196,7 @@ export function ProfileScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       >
         <OfflineBanner />
         <ChildHeader

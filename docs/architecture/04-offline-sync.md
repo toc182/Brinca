@@ -43,7 +43,7 @@ The queue is a SQLite table on the same database as the app's data. Suggested co
 - `last_error` — last error message (nullable)
 
 ### 3.2 What goes in the queue
-Every write that must eventually reach Supabase: session records, drill results, element values, currency ledger entries, accolade unlocks, activity/drill configuration changes, child profile edits, measurement entries, reward changes. Account-level operations (email change, password change, account deletion, invite send) are **not** queued — they require a live connection and show a toast if offline per [`ux-conventions.md`](../ux-conventions.md).
+Every write that must eventually reach Supabase: session records, drill results, element values, currency ledger entries, accolade unlocks, activity/drill configuration changes, child profile edits, measurement entries, reward changes. Account-level operations (email change, password change, account deletion, invite send) are **not** queued — they require a live connection and show a toast if offline per [`docs/design-system/components/toast.md`](../design-system/components/toast.md) and [`docs/brand/microcopy.md`](../brand/microcopy.md).
 
 ### 3.3 Ordering
 Operations are replayed in insertion order (`id` ascending). This preserves foreign-key dependencies — a session row is inserted before its drill-result rows because the mutation appended them in that order.

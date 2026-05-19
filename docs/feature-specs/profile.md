@@ -4,7 +4,7 @@
 **File:** `docs/feature-specs/profile.md`
 **Last updated:** April 14, 2026
 **Status:** Draft
-**Related docs:** `docs/product-vision.md`, `docs/ux-conventions.md`
+**Related docs:** `docs/product-vision.md`, `docs/ux/`, `docs/design-system/`, `docs/brand/`
 
 ---
 

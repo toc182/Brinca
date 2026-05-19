@@ -2,7 +2,7 @@
 
 **Generated:** 2026-04-21
 **Source:** 8 compliance audits (`docs/audits/`)
-**Context:** `docs/ux-conventions.md`, `docs/architecture/02-project-structure.md`
+**Context:** `docs/ux/`, `docs/design-system/`, `docs/brand/`, `docs/architecture/02-project-structure.md`
 
 ---
 

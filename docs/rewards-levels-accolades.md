@@ -138,7 +138,7 @@ Accelerating curve, global for all children (not per-child customizable in V1):
 From Level 6 onward, each level requires 20 more sessions than the previous. There is no ceiling.
 
 ### 5.3 Badge
-The badge upgrades visually at every level. For V1 this must be a **programmatic** visual (color progression, shape variation, additive small elements) — custom art per level is out of scope for the design pass. The specific visual language is TBD during the Figma work referenced in [`docs/design/`](design/).
+The badge upgrades visually at every level. For V1 this must be a **programmatic** visual (color progression, shape variation, additive small elements) — custom art per level is out of scope for the design pass. The specific visual language is TBD during the Figma work referenced in [`docs/research/design-playbook/`](research/design-playbook/).
 
 ### 5.4 Level progress
 Progress toward the next level is computed as `sessions_completed - threshold(current_level)` divided by `threshold(next_level) - threshold(current_level)`, rendered as a progress bar on Home.

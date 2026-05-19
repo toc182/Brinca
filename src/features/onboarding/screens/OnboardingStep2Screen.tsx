@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
+import GorhomBottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { Avatar } from '@/shared/components/Avatar';
 import { Screen } from '@/shared/components/Screen';
-import { colors, spacing, typography } from '@/shared/theme';
+import { colors, radii, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { useCreateChildMutation } from '../mutations/useCreateChildMutation';
 import { useAuthContext } from '@/shared/contexts/AuthContext';
@@ -41,6 +46,8 @@ export function OnboardingStep2Screen() {
   const createChild = useCreateChildMutation();
   const { setAuthState } = useAuthContext();
   const store = useOnboardingStore();
+  const insets = useSafeAreaInsets();
+  const dateSheetRef = useRef<GorhomBottomSheet>(null);
 
   // familyId comes from route params (first visit) or store (resume / reinstall recovery).
   // The root layout sets pendingFamilyId in the store before routing here.
@@ -128,9 +135,22 @@ export function OnboardingStep2Screen() {
       day: 'numeric',
     });
 
+  const renderDateBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.4}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
+
   return (
     <Screen>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -181,19 +201,40 @@ export function OnboardingStep2Screen() {
           </Text>
         </Pressable>
         {showDatePicker && (
-          <DateTimePicker
-            value={dateOfBirth ?? new Date(2016, 0, 1)}
-            mode="date"
-            maximumDate={new Date()}
-            minimumDate={new Date(2010, 0, 1)}
-            onChange={(_event: DateTimePickerEvent, selected?: Date) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (selected) {
-                setDateOfBirth(selected);
-                store.setStep2Data({ dob: selected.toISOString().split('T')[0] });
-              }
-            }}
-          />
+          <GorhomBottomSheet
+            ref={dateSheetRef}
+            index={0}
+            snapPoints={['45%']}
+            topInset={insets.top}
+            onClose={() => setShowDatePicker(false)}
+            backdropComponent={renderDateBackdrop}
+            enablePanDownToClose
+            handleStyle={styles.sheetHandle}
+            handleIndicatorStyle={styles.sheetHandleIndicator}
+            backgroundStyle={styles.sheetBackground}
+          >
+            <BottomSheetView style={styles.sheetContent}>
+              <Text style={styles.sheetTitle}>Date of birth</Text>
+              <DateTimePicker
+                value={dateOfBirth ?? new Date(2016, 0, 1)}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                minimumDate={new Date(2010, 0, 1)}
+                onChange={(_event: DateTimePickerEvent, selected?: Date) => {
+                  if (selected) {
+                    setDateOfBirth(selected);
+                    store.setStep2Data({ dob: selected.toISOString().split('T')[0] });
+                  }
+                }}
+              />
+              <Button
+                title="Done"
+                onPress={() => dateSheetRef.current?.close()}
+                style={styles.sheetDone}
+              />
+            </BottomSheetView>
+          </GorhomBottomSheet>
         )}
 
         <Text style={styles.fieldLabel}>Gender *</Text>
@@ -232,7 +273,7 @@ export function OnboardingStep2Screen() {
           disabled={!isValid || createChild.isPending}
           style={styles.continueButton}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </Screen>
   );
 }
@@ -339,5 +380,34 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     marginTop: spacing.xs,
+  },
+  sheetHandle: {
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sheetHandleIndicator: {
+    width: 36,
+    height: 4,
+    borderRadius: radii.full,
+    backgroundColor: colors.borderDefault,
+  },
+  sheetBackground: {
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  sheetContent: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  sheetTitle: {
+    ...typography.titleSmall,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  sheetDone: {
+    marginTop: spacing.sm,
   },
 });

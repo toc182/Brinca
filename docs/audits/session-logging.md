@@ -1,7 +1,7 @@
 # Audit — Session Logging
 
 **Feature spec:** `docs/feature-specs/session-logging.md`
-**UX conventions:** `docs/ux-conventions.md`
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Audit date:** 2026-04-21
 **Auditor:** Claude (QA compliance audit)
 **Status:** Draft
@@ -109,10 +109,10 @@ The session logging feature has a solid structural foundation — all 18 element
 
 - **Navigation model:** PARTIAL — Session opens as fullScreenModal (correct), drill pushes as card (correct), but session-summary inherits fullScreenModal instead of card push. Destructive confirmations (counter/timer resets) are supposed to use native iOS alerts but none are implemented.
 
-- **Error states:** PARTIAL — DrillScreen shows an error toast on save failure ("Could not save drill. Please try again."). No other error handling visible. No inline validation, no network error handling per ux-conventions section 3.
+- **Error states:** PARTIAL — DrillScreen shows an error toast on save failure ("Could not save drill. Please try again."). No other error handling visible. No inline validation, no network error handling per `docs/design-system/components/toast.md` and `docs/design-system/components/inline-form-error.md`.
 
-- **Loading states:** FAIL — Spec and ux-conventions section 5 require skeleton with shimmer for list screens. No skeleton/shimmer loader exists. Drill list shows nothing while queries load.
+- **Loading states:** FAIL — Spec and `docs/design-system/components/skeleton.md` require skeleton with shimmer for list screens. No skeleton/shimmer loader exists. Drill list shows nothing while queries load.
 
-- **Empty states:** FAIL — No empty state for the drill list (if an activity has no drills). No empty state text or icon per ux-conventions section 4.
+- **Empty states:** FAIL — No empty state for the drill list (if an activity has no drills). No empty state text or icon per `docs/design-system/components/empty-state.md` and `docs/brand/empty-state-copy.md`.
 
-- **Destructive confirmations:** FAIL — ux-conventions says "native iOS alerts for destructive confirmations." The spec defines alerts for every counter Reset, Lap timer Reset, Interval timer Reset, Voice Note Re-record, and Voice Note Delete. None of these use `Alert.alert()`.
+- **Destructive confirmations:** FAIL — `docs/ux/navigation.md` and `docs/design-system/components/destructive-alert.md` say "native iOS alerts for destructive confirmations." The spec defines alerts for every counter Reset, Lap timer Reset, Interval timer Reset, Voice Note Re-record, and Voice Note Delete. None of these use `Alert.alert()`.

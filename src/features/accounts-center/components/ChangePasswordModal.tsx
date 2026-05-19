@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Check, X } from 'phosphor-react-native';
 
 import { Button } from '@/shared/components/Button';
@@ -82,7 +83,10 @@ export function ChangePasswordModal({ visible, onDismiss }: ChangePasswordModalP
       onRequestClose={onDismiss}
       onShow={handleShow}
     >
-      <View style={styles.container}>
+      <KeyboardAwareScrollView
+        style={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <Pressable onPress={onDismiss} hitSlop={8}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -168,7 +172,7 @@ export function ChangePasswordModal({ visible, onDismiss }: ChangePasswordModalP
             style={styles.saveButton}
           />
         </View>
-      </View>
+      </KeyboardAwareScrollView>
     </Modal>
   );
 }

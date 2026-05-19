@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { Button } from '@/shared/components/Button';
 import { colors, spacing, typography, radii } from '@/shared/theme';
@@ -41,7 +42,7 @@ export function DeleteConfirmationModal({
       onRequestClose={onDismiss}
       onShow={handleShow}
     >
-      <View style={styles.container}>
+      <KeyboardAvoidingView style={styles.container} behavior="padding">
         <View style={styles.header}>
           <Pressable onPress={onDismiss} hitSlop={8}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -79,7 +80,7 @@ export function DeleteConfirmationModal({
             style={styles.deleteButton}
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

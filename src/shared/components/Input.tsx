@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 import { colors, typography, radii, spacing } from '../theme';
+import { InBottomSheetContext } from './BottomSheet';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -17,9 +18,9 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
   required?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
-  // Set true when this Input is rendered inside a BottomSheet so the sheet
-  // can react to keyboard show/hide. Without it the sheet stays put and the
-  // keyboard can cover the input.
+  // Override the auto-detected context. Inputs rendered anywhere inside a
+  // shared BottomSheet pick this up automatically — only pass explicitly to
+  // force a value.
   inBottomSheet?: boolean;
 }
 
@@ -29,10 +30,12 @@ export function Input({
   required = false,
   disabled = false,
   style,
-  inBottomSheet = false,
+  inBottomSheet,
   ...textInputProps
 }: InputProps) {
   const [focused, setFocused] = useState(false);
+  const contextInSheet = useContext(InBottomSheetContext);
+  const effectiveInSheet = inBottomSheet ?? contextInSheet;
 
   const inputStyle = [
     styles.input,
@@ -47,7 +50,7 @@ export function Input({
     disabled ? styles.labelDisabled : undefined,
   ];
 
-  const TextInputComponent = inBottomSheet ? BottomSheetTextInput : TextInput;
+  const TextInputComponent = effectiveInSheet ? BottomSheetTextInput : TextInput;
 
   return (
     <View style={[styles.container, style]}>

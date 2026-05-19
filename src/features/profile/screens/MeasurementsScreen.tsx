@@ -1,17 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useUIPreferencesStore } from '@/stores/ui-preferences.store';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { Input } from '@/shared/components/Input';
-import { BottomSheet } from '@/shared/components/BottomSheet';
 import { Screen } from '@/shared/components/Screen';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
-import { Toast } from '@/shared/components/Toast';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import type { MeasurementType } from '@/types/domain.types';
 
@@ -21,8 +18,6 @@ import {
   deleteMeasurement,
   type MeasurementRow,
 } from '../repositories/measurement.repository';
-import { useAddMeasurementMutation } from '../mutations/useAddMeasurementMutation';
-import { useUpdateMeasurementMutation } from '../mutations/useUpdateMeasurementMutation';
 
 function formatValue(value: number, type: MeasurementType, unit: 'metric' | 'imperial'): string {
   if (type === 'weight') {
@@ -36,18 +31,6 @@ function formatValue(value: number, type: MeasurementType, unit: 'metric' | 'imp
     return `${feet}'${inches}"`;
   }
   return `${value.toFixed(1)} cm`;
-}
-
-function getUnitLabel(type: MeasurementType, unit: 'metric' | 'imperial'): string {
-  if (type === 'weight') return unit === 'imperial' ? 'lbs' : 'kg';
-  return unit === 'imperial' ? 'inches' : 'cm';
-}
-
-interface MeasurementFormState {
-  editId: string | null;
-  type: MeasurementType;
-  value: string;
-  date: Date;
 }
 
 function MeasurementSection({
@@ -118,88 +101,31 @@ function MeasurementSection({
 }
 
 export function MeasurementsScreen() {
+  const router = useRouter();
   const childId = useActiveChildStore((s) => s.childId);
   const measurementUnit = useUIPreferencesStore((s) => s.measurementUnit);
-  const addMeasurement = useAddMeasurementMutation();
-  const updateMeasurement = useUpdateMeasurementMutation();
-
-  const [formState, setFormState] = useState<MeasurementFormState | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [valueError, setValueError] = useState<string | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
 
   const handleOpenForm = useCallback(
     (type: MeasurementType, entry?: MeasurementRow) => {
-      setValueError(null);
-      if (entry) {
-        setFormState({
-          editId: entry.id,
-          type,
-          value: String(entry.value),
-          date: new Date(entry.date),
-        });
-      } else {
-        setFormState({
-          editId: null,
-          type,
-          value: '',
-          date: new Date(),
-        });
-      }
-    },
-    []
-  );
-
-  const handleSave = useCallback(async () => {
-    if (!formState || !childId) return;
-
-    const numericValue = parseFloat(formState.value);
-    if (isNaN(numericValue) || !formState.value.trim()) {
-      setValueError('This field is required.');
-      return;
-    }
-    if (numericValue < 0) {
-      setValueError('Value must be a positive number.');
-      return;
-    }
-
-    const dateStr = formState.date.toISOString().slice(0, 10);
-
-    if (formState.editId) {
-      await updateMeasurement.mutateAsync({
-        id: formState.editId,
-        childId,
-        value: numericValue,
-        date: dateStr,
+      router.push({
+        pathname: '/(settings)/child/measurement-edit' as never,
+        params: entry
+          ? {
+              type,
+              id: entry.id,
+              value: String(entry.value),
+              date: entry.date,
+            }
+          : { type },
       });
-    } else {
-      await addMeasurement.mutateAsync({
-        childId,
-        type: formState.type,
-        value: numericValue,
-        date: dateStr,
-      });
-    }
-
-    setFormState(null);
-    setToastVisible(true);
-  }, [formState, childId, addMeasurement, updateMeasurement]);
-
-  const handleDateChange = useCallback(
-    (_event: unknown, selectedDate?: Date) => {
-      setShowDatePicker(false);
-      if (selectedDate && formState) {
-        setFormState({ ...formState, date: selectedDate });
-      }
     },
-    [formState]
+    [router]
   );
 
   if (!childId) return null;
 
   return (
     <Screen edges={['bottom']}>
-    <View style={styles.container}>
       <FlatList
         data={[]}
         renderItem={() => null}
@@ -220,82 +146,11 @@ export function MeasurementsScreen() {
           </View>
         }
       />
-
-      {formState ? (
-        <BottomSheet
-          snapPoints={['45%']}
-          onDismiss={() => setFormState(null)}
-        >
-          <View style={styles.form}>
-            <Text style={styles.formTitle}>
-              {formState.editId ? 'Edit entry' : 'Add entry'}
-            </Text>
-
-            <Input
-              label={`Value`}
-              value={formState.value}
-              onChangeText={(v) => {
-                setFormState({ ...formState, value: v });
-                setValueError(null);
-              }}
-              keyboardType="decimal-pad"
-              placeholder={`Enter value`}
-              error={valueError ?? undefined}
-              required
-              inBottomSheet
-            />
-
-            <View style={styles.unitRow}>
-              <Text style={styles.unitLabel}>Unit</Text>
-              <Text style={styles.unitValue}>
-                {getUnitLabel(formState.type, measurementUnit)}
-              </Text>
-            </View>
-
-            <View style={styles.dateRow}>
-              <Text style={styles.dateLabel}>Date</Text>
-              <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateButton}>
-                <Text style={styles.dateText}>
-                  {formState.date.toLocaleDateString()}
-                </Text>
-              </Pressable>
-            </View>
-
-            {showDatePicker ? (
-              <DateTimePicker
-                value={formState.date}
-                mode="date"
-                display="spinner"
-                maximumDate={new Date()}
-                onChange={handleDateChange}
-              />
-            ) : null}
-
-            <Button
-              title="Save"
-              onPress={handleSave}
-              disabled={!formState.value.trim() || addMeasurement.isPending || updateMeasurement.isPending}
-            />
-          </View>
-        </BottomSheet>
-      ) : null}
-
-      <Toast
-        message="Entry saved."
-        variant="success"
-        visible={toastVisible}
-        onDismiss={() => setToastVisible(false)}
-      />
-    </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   sectionsContainer: {
     padding: spacing.md,
     gap: spacing.xl,
@@ -334,53 +189,5 @@ const styles = StyleSheet.create({
   entryDate: {
     ...typography.caption,
     color: colors.textSecondary,
-  },
-  // Bottom sheet form
-  form: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  formTitle: {
-    ...typography.titleSmall,
-    color: colors.textPrimary,
-  },
-  unitRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  unitLabel: {
-    ...typography.caption,
-    fontFamily: 'Lexend_600SemiBold',
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  unitValue: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dateLabel: {
-    ...typography.caption,
-    fontFamily: 'Lexend_600SemiBold',
-    color: colors.textPrimary,
-    fontSize: 14,
-  },
-  dateButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: colors.surface,
-  },
-  dateText: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
   },
 });

@@ -4,7 +4,7 @@
 **File:** `docs/feature-specs/session-logging.md`
 **Last updated:** April 10, 2026
 **Status:** Draft
-**Related docs:** `docs/product-vision.md`, `docs/ux-conventions.md`, `docs/rewards-levels-accolades.md`
+**Related docs:** `docs/product-vision.md`, `docs/ux/`, `docs/design-system/`, `docs/brand/`, `docs/rewards-levels-accolades.md`
 
 ---
 
@@ -90,7 +90,7 @@ Tap "Done" → saves session notes and photo, lands on Home
 
 ### Element behaviors
 
-All 18 element types behave as described below. Every element auto-saves state after each interaction (per `ux-conventions.md` §6). State survives app close, minimize, and background; timers and recorders continue running in the background where applicable. Every element's target indicator (a green check in the corner) lights up when the recorded value meets the element's configured target; reaching the target does **not** auto-complete the drill — only tapping Finish drill does.
+All 18 element types behave as described below. Every element auto-saves state after each interaction (per `docs/ux/data-persistence.md`). State survives app close, minimize, and background; timers and recorders continue running in the background where applicable. Every element's target indicator (a green check in the corner) lights up when the recorded value meets the element's configured target; reaching the target does **not** auto-complete the drill — only tapping Finish drill does.
 
 #### Counters
 

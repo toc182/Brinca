@@ -33,7 +33,9 @@ export default function SettingsLayout() {
       <Stack.Screen name="activities/[activityId]/[drillId]" options={{ title: 'Edit Drill' }} />
       <Stack.Screen name="child/edit-profile" options={{ title: 'Edit Profile', presentation: 'modal' }} />
       <Stack.Screen name="child/measurements" options={{ title: 'Measurements' }} />
+      <Stack.Screen name="child/measurement-edit" options={{ title: 'Edit Measurement', presentation: 'modal' }} />
       <Stack.Screen name="child/external-activities" options={{ title: 'External Activities' }} />
+      <Stack.Screen name="child/external-activity-edit" options={{ title: 'Edit Activity', presentation: 'modal' }} />
       <Stack.Screen name="accounts-center/index" options={{ title: 'Accounts Center' }} />
       <Stack.Screen name="accounts-center/[memberId]" options={{ title: 'Member' }} />
     </Stack>

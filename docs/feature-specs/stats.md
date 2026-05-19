@@ -4,7 +4,7 @@
 **File:** `docs/feature-specs/stats.md`
 **Last updated:** April 11, 2026
 **Status:** Draft
-**Related docs:** `docs/product-vision.md`, `docs/ux-conventions.md`, `docs/rewards-levels-accolades.md`
+**Related docs:** `docs/product-vision.md`, `docs/ux/`, `docs/design-system/`, `docs/brand/`, `docs/rewards-levels-accolades.md`
 
 ---
 

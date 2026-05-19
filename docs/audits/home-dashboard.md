@@ -2,7 +2,7 @@
 
 **Audited:** 2026-04-21
 **Spec:** `docs/feature-specs/home-dashboard.md`
-**UX conventions:** `docs/ux-conventions.md`
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Source:** `src/features/home-dashboard/` + `app/(tabs)/home.tsx`
 
 ---

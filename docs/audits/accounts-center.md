@@ -2,7 +2,7 @@
 
 **Audited:** 2026-04-21
 **Spec:** `docs/feature-specs/accounts-center.md` (last updated April 13, 2026)
-**UX conventions:** `docs/ux-conventions.md` (last updated April 17, 2026)
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Audited files:**
 - `src/features/accounts-center/screens/AccountsCenterScreen.tsx`
 - `src/features/accounts-center/mutations/useDeleteAccountMutation.ts`

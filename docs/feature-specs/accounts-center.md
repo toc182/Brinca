@@ -4,7 +4,7 @@
 **File:** `docs/feature-specs/accounts-center.md`
 **Last updated:** April 13, 2026
 **Status:** Draft
-**Related docs:** `docs/product-vision.md`, `docs/ux-conventions.md`
+**Related docs:** `docs/product-vision.md`, `docs/ux/`, `docs/design-system/`, `docs/brand/`
 
 ---
 

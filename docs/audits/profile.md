@@ -2,7 +2,7 @@
 
 **Audited:** 2026-04-21
 **Spec:** `docs/feature-specs/profile.md`
-**UX conventions:** `docs/ux-conventions.md`
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Auditor:** Claude (QA)
 
 ---

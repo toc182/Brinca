@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+
+import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
 import { BottomSheet } from '@/shared/components/BottomSheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { Input } from '@/shared/components/Input';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
@@ -230,19 +235,23 @@ export function DrillEditScreen() {
 
   if (isLoading) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.container}>
         <OfflineBanner />
         <LoadingSkeleton />
       </View>
+      </Screen>
     );
   }
 
   if (isError) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.container}>
         <OfflineBanner />
         <ErrorState onRetry={handleRetry} />
       </View>
+      </Screen>
     );
   }
 
@@ -251,12 +260,16 @@ export function DrillEditScreen() {
   // -------------------------------------------------------------------------
 
   return (
+    <>
+    <Screen edges={['bottom']}>
     <View style={styles.container}>
       <OfflineBanner />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        bottomOffset={88}
       >
         {/* ---------------------------------------------------------------- */}
         {/* Drill name                                                        */}
@@ -378,14 +391,14 @@ export function DrillEditScreen() {
           onPress={handleSave}
           disabled={saveDisabled}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* ------------------------------------------------------------------ */}
       {/* Element picker bottom sheet                                         */}
       {/* ------------------------------------------------------------------ */}
       {showElementPicker && (
         <BottomSheet snapPoints={['70%']} onDismiss={() => setShowElementPicker(false)}>
-          <ScrollView
+          <BottomSheetScrollView
             contentContainerStyle={styles.pickerContent}
             keyboardShouldPersistTaps="handled"
           >
@@ -409,7 +422,7 @@ export function DrillEditScreen() {
                 </View>
               ),
             )}
-          </ScrollView>
+          </BottomSheetScrollView>
         </BottomSheet>
       )}
 
@@ -418,7 +431,7 @@ export function DrillEditScreen() {
       {/* ------------------------------------------------------------------ */}
       {editingElementId && editingElement && (
         <BottomSheet snapPoints={['60%']} onDismiss={() => setEditingElementId(null)}>
-          <ScrollView
+          <BottomSheetScrollView
             contentContainerStyle={styles.configContent}
             keyboardShouldPersistTaps="handled"
           >
@@ -442,10 +455,13 @@ export function DrillEditScreen() {
                 setEditingElementId(null);
               }}
             />
-          </ScrollView>
+          </BottomSheetScrollView>
         </BottomSheet>
       )}
     </View>
+    </Screen>
+    <AppKeyboardToolbar />
+    </>
   );
 }
 

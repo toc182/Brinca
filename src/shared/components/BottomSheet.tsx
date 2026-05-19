@@ -1,12 +1,13 @@
-import { useCallback, useRef } from 'react';
+import { createContext, useCallback, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import GorhomBottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 
 import { colors, radii } from '../theme';
+
+export const InBottomSheetContext = createContext(false);
 
 interface BottomSheetProps {
   children: React.ReactNode;
@@ -14,6 +15,10 @@ interface BottomSheetProps {
   onDismiss?: () => void;
   keyboardBehavior?: 'extend' | 'fillParent' | 'interactive';
   keyboardBlurBehavior?: 'none' | 'restore';
+  // Disable when nesting a non-BottomSheetScrollView scroll container
+  // (e.g. KeyboardAwareScrollView) so the content drag gesture doesn't
+  // fight the inner scroll. Drag-down-to-close still works on the handle.
+  enableContentPanningGesture?: boolean;
 }
 
 /**
@@ -31,6 +36,7 @@ export function BottomSheet({
   onDismiss,
   keyboardBehavior = 'interactive',
   keyboardBlurBehavior = 'restore',
+  enableContentPanningGesture = true,
 }: BottomSheetProps) {
   const sheetRef = useRef<GorhomBottomSheet>(null);
 
@@ -61,10 +67,11 @@ export function BottomSheet({
       backgroundStyle={styles.background}
       keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior={keyboardBlurBehavior}
+      enableContentPanningGesture={enableContentPanningGesture}
     >
-      <BottomSheetView style={styles.content}>
+      <InBottomSheetContext.Provider value={true}>
         {children}
-      </BottomSheetView>
+      </InBottomSheetContext.Provider>
     </GorhomBottomSheet>
   );
 }
@@ -87,8 +94,5 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     backgroundColor: colors.surface,
-  },
-  content: {
-    flex: 1,
   },
 });

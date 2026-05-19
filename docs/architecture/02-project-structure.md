@@ -177,7 +177,7 @@ Per 01-stack-decision.md, writes go to SQLite first and sync to Supabase in the 
 
 **Decision 4 — Shared code split between `src/shared/` and `src/lib/` [HIGH]**
 
-Two bins, not one. `src/shared/` is for code that depends on React (UI components, React hooks). `src/lib/` is for infrastructure adapters that do not depend on React (Supabase client, SQLite schema, sync engine, type mappers). Per ux-conventions.md, every screen implements the same shimmer skeleton, the same toast error pattern, and the same destructive alert. Centralizing these in `src/shared/components/` and `src/shared/hooks/` means a UX convention change touches one file, not eight. The sync engine lives in `src/lib/sync/` because it must be testable without mounting components — a pure TypeScript queue and drain loop.
+Two bins, not one. `src/shared/` is for code that depends on React (UI components, React hooks). `src/lib/` is for infrastructure adapters that do not depend on React (Supabase client, SQLite schema, sync engine, type mappers). Per `docs/design-system/components/` (skeleton, toast, destructive-alert), every screen implements the same shimmer skeleton, the same toast error pattern, and the same destructive alert. Centralizing these in `src/shared/components/` and `src/shared/hooks/` means a UX convention change touches one file, not eight. The sync engine lives in `src/lib/sync/` because it must be testable without mounting components — a pure TypeScript queue and drain loop.
 
 **Decision 5 — TanStack Query: per-feature, keys in `queries/keys.ts` [HIGH]**
 
@@ -237,11 +237,11 @@ Supabase-generated types live exclusively in `src/lib/supabase/types.ts`, regene
 
 9. Session timer state (`startTime`, `pausedAt`, `totalPausedMs`) is stored in MMKV, not in Zustand in-memory state, because it must survive app process termination. The calculation is always `Date.now() - startTime` — never accumulated. (Per 01-stack-decision.md, accumulating elapsed time causes drift and breaks after a force-close.)
 
-10. Components that implement the skeleton loading state import `SkeletonPlaceholder` from `@/shared/components/SkeletonPlaceholder.tsx`. (Per ux-conventions.md, shimmer animation is the loading standard for all list and dashboard screens; a shared component ensures one implementation across eight features.)
+10. Components that implement the skeleton loading state import `SkeletonPlaceholder` from `@/shared/components/SkeletonPlaceholder.tsx`. (Per `docs/design-system/components/skeleton.md`, shimmer animation is the loading standard for all list and dashboard screens; a shared component ensures one implementation across eight features.)
 
-11. Toast messages call the utility at `@/shared/utils/toast.ts` with strings from the standard error strings defined in ux-conventions.md. (Centralizing toast calls means swapping the underlying library touches one file, and ensures error copy stays consistent with the spec.)
+11. Toast messages call the utility at `@/shared/utils/toast.ts` with strings from the standard error strings defined in `docs/brand/microcopy.md`. (Centralizing toast calls means swapping the underlying library touches one file, and ensures error copy stays consistent with the spec.)
 
-12. Native iOS alert confirmations for destructive actions use `@/shared/hooks/useDestructiveAlert.ts`, which wraps `Alert.alert` with the correct red destructive button style. (Per ux-conventions.md, all destructive confirmations use native iOS alerts — a shared hook prevents each feature from reimplementing the pattern differently.)
+12. Native iOS alert confirmations for destructive actions use `@/shared/hooks/useDestructiveAlert.ts`, which wraps `Alert.alert` with the correct red destructive button style. (Per `docs/design-system/components/destructive-alert.md`, all destructive confirmations use native iOS alerts — a shared hook prevents each feature from reimplementing the pattern differently.)
 
 13. When adding a new tracking element type: create one config component in `activity-builder/components/elements/`, one interactive component in `session-logging/components/elements/`, one display component in `stats/components/elements/`, and add the type definition to `src/shared/tracking-elements/types/`. (The four files always travel together; the shared definition is the contract the three renderers implement.)
 
@@ -328,7 +328,7 @@ Supabase-generated types live exclusively in `src/lib/supabase/types.ts`, regene
 - `src/features/profile/` — child switcher bottom sheet, measurement history, external activities, photo gallery
 - `src/features/accounts-center/` — invite flow, role management, edit profile, delete account (two-step confirmation)
 - `app/(settings)/accounts-center/`, `app/(settings)/child/` routes
-- Supabase Storage buckets configured — child photos and session photos upload to Storage; local URI used while upload is pending, replaced on sync (per ux-conventions.md backend notes)
+- Supabase Storage buckets configured — child photos and session photos upload to Storage; local URI used while upload is pending, replaced on sync (per `docs/architecture/04-offline-sync.md`)
 
 **Wired up:** All four tabs are fully functional with real data. Multi-user access (Admin + Co-admin sharing a family) works end to end with RLS. Stats charts display with current/previous period comparison. Profile tab is fully read-only. Settings screens cover all edit operations.
 

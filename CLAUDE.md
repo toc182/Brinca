@@ -5,13 +5,13 @@
 When I say "start Phase N," follow this process before writing any code:
 
 1. Read `docs/architecture/02-project-structure.md` Section 5, Phase N — this lists every file to create and what "done" looks like.
-2. Read the docs referenced by that phase (feature specs, schema doc, ux-conventions) to understand what you're building.
+2. Read the docs referenced by that phase (feature specs, schema doc, `docs/ux/`, `docs/design-system/`, `docs/brand/`) to understand what you're building.
 3. Present a step-by-step task list with checkboxes for my approval. Group tasks by PR or logical chunk.
 4. Wait for my approval before writing any code.
 5. As you complete each task, check it off so I can track progress.
 
 Key docs per phase:
-- **Phase 1:** `02-project-structure.md` §5 Phase 1 + `05-database-schema.md` + `ux-conventions.md` §2 (tokens)
+- **Phase 1:** `02-project-structure.md` §5 Phase 1 + `05-database-schema.md` + `docs/design-system/tokens/` (color, typography, spacing, radius, shadows, touch-targets, icons, animation)
 - **Phase 2:** `02-project-structure.md` §5 Phase 2 + `feature-specs/onboarding.md` + `compliance/privacy-and-data.md` §3 (consent)
 - **Phase 3:** `02-project-structure.md` §5 Phase 3 + `feature-specs/activity-builder.md` + `feature-specs/session-logging.md` + `feature-specs/activity.md` + `rewards-levels-accolades.md` + `04-offline-sync.md`
 - **Phase 4:** `02-project-structure.md` §5 Phase 4 + `feature-specs/home-dashboard.md` + `feature-specs/stats.md` + `feature-specs/profile.md` + `feature-specs/accounts-center.md`
@@ -24,7 +24,7 @@ After completing any task, check whether the work changes anything documented in
 - If implementation diverged from a spec (different behavior, different data shape, different flow), update the spec to match what was actually built.
 - If a `[TBD]` field anywhere in docs/ now has a real answer, fill it in.
 - If a new table, column, or relationship was added, update `docs/architecture/05-database-schema.md`.
-- If a new shared component was created, check if `docs/ux-conventions.md` should reference it.
+- If a new shared component was created, check if `docs/design-system/components/` should have a spec for it (and update `docs/design-system/CLAUDE.md` if so).
 
 Do not silently diverge from specs. Either follow the spec or update it — never leave them out of sync. Flag doc updates to me so I can see what changed.
 
@@ -99,6 +99,8 @@ docs/architecture/04-offline-sync.md       — offline-first sync strategy
 docs/architecture/05-database-schema.md    — all tables, columns, RLS, cascades
 docs/feature-specs/                        — one spec per screen/feature
 docs/rewards-levels-accolades.md           — currency, levels, streaks, accolades rules
-docs/ux-conventions.md                     — navigation, design tokens, error/loading/empty patterns
+docs/ux/                                   — navigation, data persistence, interaction patterns
+docs/design-system/                        — visual tokens, component specs, mascot
+docs/brand/                                — name, voice, microcopy, pre-launch
 docs/compliance/privacy-and-data.md        — data inventory, privacy policy, SDK audit
 docs/team-workflow.md                      — branching, definition of done, cadence (template)

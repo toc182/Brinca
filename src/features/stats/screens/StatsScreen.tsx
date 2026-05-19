@@ -1,3 +1,4 @@
+// No <Screen> wrapper: CollapsibleHeader handles top inset, NativeTabs handles bottom.
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -154,7 +155,11 @@ export function StatsScreen() {
     return (
       <View style={styles.container}>
         <CollapsibleHeader title={childName ?? 'Stats'} scrollY={scrollY} rightContent={filterButton} />
-        <Animated.ScrollView style={styles.container} contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}>
+        <Animated.ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
+          contentInsetAdjustmentBehavior="automatic"
+        >
           <OfflineBanner />
           <StatsLoadingSkeleton />
         </Animated.ScrollView>
@@ -167,7 +172,11 @@ export function StatsScreen() {
     return (
       <View style={styles.container}>
         <CollapsibleHeader title={childName ?? 'Stats'} scrollY={scrollY} rightContent={filterButton} />
-        <Animated.ScrollView style={styles.container} contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}>
+        <Animated.ScrollView
+          style={styles.container}
+          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
+          contentInsetAdjustmentBehavior="automatic"
+        >
           <OfflineBanner />
           <ErrorState onRetry={handleRetry} />
         </Animated.ScrollView>
@@ -193,6 +202,7 @@ export function StatsScreen() {
         contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={
           <>
             <OfflineBanner />

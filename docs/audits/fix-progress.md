@@ -17,7 +17,7 @@
 
 - ✅ LOW phase — closed (4 items done, 2 explicitly skipped).
 - ✅ MEDIUM phase — closed (18 done, migration deployed 2026-05-01).
-- ⏳ CRITICAL phase — 6 closed (3 via auth bundle + 3 via sync-queue bundle), ~11 remaining.
+- ⏳ CRITICAL phase — 7 closed (3 via auth bundle + 3 via sync-queue bundle + 1 cache invalidation), ~10 remaining.
 - ✅ BLOCKER phase — closed (10 done, sync-queue cluster shipped 2026-05-09).
 
 ---
@@ -89,9 +89,13 @@ Commit `d596816` ("Add 2026-05-01 audits and resolve LOW findings"):
 - [x] `reorderElements` queue append outside transaction — code-correctness #10 — commit `67a573e`
 
 ### Pending — cache invalidation
-- [ ] `useAddBonusMutation` no invalidation — code-correctness #14
+- [x] `useAddBonusMutation` no invalidation — code-correctness #14 — commit `6294ab7`
 - [ ] Empty-string activity invalidation key (`activities('')` never matches) — code-correctness #15
 - [ ] `markDrillComplete` skips drill-results invalidation — code-correctness #16
+
+### Side commits alongside #14 (not audit findings; surfaced during on-device testing)
+- commit `9cc75fd` — `SessionSummaryScreen` was missed in today's bottom-sheet keyboard refactor; the bonus popup mounted but rendered no visible content because it lacked a `BottomSheetView` wrapper
+- commit `44704a2` — added a "Bonuses" list on the session summary so each added bonus appears immediately with its reason; closes a UX gap where the only confirmation a bonus had landed was the home-screen balance after leaving the screen
 
 ### Pending — domain logic
 - [ ] Streak calculator uses UTC + fixed 86400s — code-correctness #17

@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+
+import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
@@ -8,6 +11,7 @@ import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import { insertDrill } from '../repositories/drill.repository';
@@ -85,10 +89,14 @@ export function CreateDrillScreen() {
   };
 
   return (
-    <ScrollView
+    <>
+    <Screen edges={['bottom']}>
+    <KeyboardAwareScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      bottomOffset={88}
     >
       <Input
         label="Drill name"
@@ -145,7 +153,10 @@ export function CreateDrillScreen() {
         disabled={!isValid || isSubmitting}
         style={styles.saveButton}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
+    </Screen>
+    <AppKeyboardToolbar />
+    </>
   );
 }
 

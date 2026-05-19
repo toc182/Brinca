@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { colors, typography, spacing, shadows, radii } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
@@ -28,6 +29,7 @@ export function ActivityListScreen() {
 
   if (isLoading) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.container}>
         <OfflineBanner />
         <View style={styles.list}>
@@ -38,15 +40,21 @@ export function ActivityListScreen() {
           </SkeletonPlaceholder>
         </View>
       </View>
+      </Screen>
     );
   }
 
   if (isError) {
-    return <ErrorState onRetry={refetch} />;
+    return (
+      <Screen edges={['bottom']}>
+        <ErrorState onRetry={refetch} />
+      </Screen>
+    );
   }
 
   if (!activities?.length) {
     return (
+      <Screen edges={['bottom']}>
       <EmptyState
         title="No activities yet"
         body={t('empty.noActivities')}
@@ -54,10 +62,12 @@ export function ActivityListScreen() {
         onCtaPress={() => router.push('/(settings)/activities/create' as never)}
         style={styles.empty}
       />
+      </Screen>
     );
   }
 
   return (
+    <Screen edges={['bottom']}>
     <View style={styles.container}>
       <OfflineBanner />
       <FlatList
@@ -103,6 +113,7 @@ export function ActivityListScreen() {
         />
       </View>
     </View>
+    </Screen>
   );
 }
 

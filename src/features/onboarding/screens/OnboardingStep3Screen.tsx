@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { Button } from '@/shared/components/Button';
@@ -61,7 +62,7 @@ export function OnboardingStep3Screen() {
 
   return (
     <Screen>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -99,7 +100,7 @@ export function OnboardingStep3Screen() {
           disabled={!isValid || createActivity.isPending}
           style={styles.getStartedButton}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </Screen>
   );
 }

@@ -1,7 +1,7 @@
 # Audit — Activity Builder
 
 **Spec file:** `docs/feature-specs/activity-builder.md`
-**UX conventions:** `docs/ux-conventions.md`
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Audit date:** 2026-04-21
 **Auditor:** Claude (QA compliance audit)
 

@@ -1,3 +1,4 @@
+// No <Screen> wrapper: CollapsibleHeader handles top inset, NativeTabs handles bottom.
 import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -50,6 +51,7 @@ export function HomeScreen() {
         <Animated.ScrollView
           style={styles.container}
           contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+          contentInsetAdjustmentBehavior="automatic"
         >
           <ErrorState onRetry={() => { void refetch(); }} />
         </Animated.ScrollView>
@@ -69,6 +71,7 @@ export function HomeScreen() {
         contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
       >
         <OfflineBanner />
 
@@ -136,7 +139,11 @@ export function HomeScreen() {
 
 function HomeSkeleton({ headerHeight }: { headerHeight: number }) {
   return (
-    <Animated.ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}>
+    <Animated.ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+      contentInsetAdjustmentBehavior="automatic"
+    >
       <SkeletonPlaceholder>
         <View style={{ height: 72, borderRadius: radii.md, marginBottom: spacing.md }} />
         <View style={{ height: 72, borderRadius: radii.md, marginBottom: spacing.md }} />

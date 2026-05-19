@@ -1,42 +1,26 @@
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback } from 'react';
+import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { Input } from '@/shared/components/Input';
-import { BottomSheet } from '@/shared/components/BottomSheet';
+import { Screen } from '@/shared/components/Screen';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
-import { Toast } from '@/shared/components/Toast';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 
 import { profileKeys } from '../queries/keys';
 import {
   getExternalActivitiesByChild,
   deleteExternalActivity,
-  updateExternalActivity,
   type ExternalActivityRow,
 } from '../repositories/external-activity.repository';
-import { useAddExternalActivityMutation } from '../mutations/useAddExternalActivityMutation';
-
-interface FormState {
-  editId: string | null;
-  name: string;
-  schedule: string;
-  location: string;
-  notes: string;
-}
 
 export function ExternalActivitiesScreen() {
+  const router = useRouter();
   const childId = useActiveChildStore((s) => s.childId);
   const queryClient = useQueryClient();
-  const addMutation = useAddExternalActivityMutation();
-
-  const [formState, setFormState] = useState<FormState | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
   const { data: activities = [], refetch } = useQuery({
     queryKey: profileKeys.externalActivities(childId ?? ''),
@@ -46,62 +30,21 @@ export function ExternalActivitiesScreen() {
 
   const handleOpenForm = useCallback(
     (entry?: ExternalActivityRow) => {
-      setNameError(null);
-      if (entry) {
-        setFormState({
-          editId: entry.id,
-          name: entry.name,
-          schedule: entry.schedule ?? '',
-          location: entry.location ?? '',
-          notes: entry.notes ?? '',
-        });
-      } else {
-        setFormState({
-          editId: null,
-          name: '',
-          schedule: '',
-          location: '',
-          notes: '',
-        });
-      }
+      router.push({
+        pathname: '/(settings)/child/external-activity-edit' as never,
+        params: entry
+          ? {
+              id: entry.id,
+              name: entry.name,
+              schedule: entry.schedule ?? '',
+              location: entry.location ?? '',
+              notes: entry.notes ?? '',
+            }
+          : undefined,
+      });
     },
-    []
+    [router]
   );
-
-  const handleSave = useCallback(async () => {
-    if (!formState || !childId) return;
-
-    if (!formState.name.trim()) {
-      setNameError('This field is required.');
-      return;
-    }
-
-    if (formState.editId) {
-      await updateExternalActivity(formState.editId, {
-        name: formState.name.trim(),
-        schedule: formState.schedule.trim() || null,
-        location: formState.location.trim() || null,
-        notes: formState.notes.trim() || null,
-      });
-      setToastMessage('Changes saved.');
-    } else {
-      await addMutation.mutateAsync({
-        childId,
-        name: formState.name.trim(),
-        schedule: formState.schedule.trim() || null,
-        location: formState.location.trim() || null,
-        notes: formState.notes.trim() || null,
-      });
-      setToastMessage('Changes saved.');
-    }
-
-    setFormState(null);
-    queryClient.invalidateQueries({
-      queryKey: profileKeys.externalActivities(childId),
-    });
-    refetch();
-    setToastVisible(true);
-  }, [formState, childId, addMutation, queryClient, refetch]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -142,7 +85,7 @@ export function ExternalActivitiesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <Screen edges={['bottom']}>
       <FlatList
         data={activities}
         renderItem={renderItem}
@@ -164,72 +107,11 @@ export function ExternalActivitiesScreen() {
           />
         }
       />
-
-      {formState ? (
-        <BottomSheet
-          snapPoints={['60%']}
-          onDismiss={() => setFormState(null)}
-        >
-          <View style={styles.form}>
-            <Text style={styles.formTitle}>
-              {formState.editId ? 'Edit activity' : 'Add activity'}
-            </Text>
-
-            <Input
-              label="Activity name"
-              value={formState.name}
-              onChangeText={(v) => {
-                setFormState({ ...formState, name: v });
-                setNameError(null);
-              }}
-              placeholder="e.g. Swimming"
-              required
-              error={nameError ?? undefined}
-              maxLength={50}
-            />
-            <Input
-              label="Schedule"
-              value={formState.schedule}
-              onChangeText={(v) => setFormState({ ...formState, schedule: v })}
-              placeholder="e.g. Mon & Wed 4-5pm"
-            />
-            <Input
-              label="Location"
-              value={formState.location}
-              onChangeText={(v) => setFormState({ ...formState, location: v })}
-              placeholder="e.g. City Pool"
-            />
-            <Input
-              label="Notes"
-              value={formState.notes}
-              onChangeText={(v) => setFormState({ ...formState, notes: v })}
-              placeholder="Additional notes"
-            />
-
-            <Button
-              title="Save"
-              onPress={handleSave}
-              disabled={!formState.name.trim() || addMutation.isPending}
-            />
-          </View>
-        </BottomSheet>
-      ) : null}
-
-      <Toast
-        message={toastMessage}
-        variant="success"
-        visible={toastVisible}
-        onDismiss={() => setToastVisible(false)}
-      />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   list: {
     padding: spacing.md,
     gap: spacing.xs,
@@ -244,7 +126,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
     gap: spacing.xxs,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.borderSubtle,
   },
   activityName: {
@@ -254,14 +136,5 @@ const styles = StyleSheet.create({
   detail: {
     ...typography.caption,
     color: colors.textSecondary,
-  },
-  // Bottom sheet form
-  form: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  formTitle: {
-    ...typography.titleSmall,
-    color: colors.textPrimary,
   },
 });

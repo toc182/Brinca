@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { signOut } from '@/lib/supabase/auth';
+import { Screen } from '@/shared/components/Screen';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 
 function SectionHeader({ title }: { title: string }) {
@@ -51,6 +52,7 @@ export function SettingsScreen() {
   }, [showDestructiveAlert, router]);
 
   return (
+    <Screen edges={['bottom']}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -101,6 +103,7 @@ export function SettingsScreen() {
         <SettingsRow label="Log out" onPress={handleLogout} variant="destructive" />
       </View>
     </ScrollView>
+    </Screen>
   );
 }
 

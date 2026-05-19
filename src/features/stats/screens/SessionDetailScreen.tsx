@@ -1,3 +1,4 @@
+// No <Screen> wrapper: Stack header handles top inset, NativeTabs handles bottom.
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -63,7 +64,11 @@ export function SessionDetailScreen() {
   const minutes = Math.floor((session.duration_seconds ?? 0) / 60);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
       <OfflineBanner />
 
       <Text style={styles.activity}>{activityName}</Text>

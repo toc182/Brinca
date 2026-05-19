@@ -1,7 +1,7 @@
 # Compliance audit — Activity Selector
 
 **Feature spec:** `docs/feature-specs/activity.md`
-**UX conventions:** `docs/ux-conventions.md`
+**UX conventions:** `docs/ux/`, `docs/design-system/`, `docs/brand/`
 **Audit date:** 2026-04-21
 **Auditor:** Claude (QA compliance audit)
 **Verdict:** Not spec-complete

@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+
+import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
@@ -51,11 +54,14 @@ export function CreateActivityScreen() {
   };
 
   return (
+    <>
     <Screen edges={['bottom']}>
-    <ScrollView
+    <KeyboardAwareScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      bottomOffset={88}
     >
       <Text style={styles.title}>New activity</Text>
 
@@ -106,8 +112,10 @@ export function CreateActivityScreen() {
         disabled={!childId || !isValid || isSubmitting}
         style={styles.button}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
     </Screen>
+    <AppKeyboardToolbar />
+    </>
   );
 }
 

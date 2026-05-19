@@ -5,6 +5,9 @@ dist/
 # Native projects are generated per-machine by `expo prebuild` / `expo run:ios`
 /ios
 /android
+
+# Personal local dev notes (per-machine)
+LOCAL-DEV.md
 *.jks
 *.p8
 *.p12

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+
+import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,6 +12,7 @@ import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { Avatar } from '@/shared/components/Avatar';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
+import { Screen } from '@/shared/components/Screen';
 import { Toast } from '@/shared/components/Toast';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import type { Gender, SchoolCalendar } from '@/types/domain.types';
@@ -172,12 +176,16 @@ export function EditProfileScreen() {
   ]);
 
   return (
+    <>
+    <Screen edges={['bottom']}>
     <View style={styles.wrapper}>
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        bottomOffset={88}
       >
         {/* Avatar */}
         <Pressable onPress={handlePickPhoto} style={styles.avatarContainer}>
@@ -354,7 +362,7 @@ export function EditProfileScreen() {
             disabled={!hasChanges || updateChild.isPending || !name.trim()}
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <Toast
         message={toastMessage}
@@ -363,6 +371,9 @@ export function EditProfileScreen() {
         onDismiss={() => setToastVisible(false)}
       />
     </View>
+    </Screen>
+    <AppKeyboardToolbar />
+    </>
   );
 }
 

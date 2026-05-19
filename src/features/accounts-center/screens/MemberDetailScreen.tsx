@@ -6,6 +6,7 @@ import { Avatar } from '@/shared/components/Avatar';
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { BottomSheet } from '@/shared/components/BottomSheet';
+import { Screen } from '@/shared/components/Screen';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { showToast } from '@/shared/utils/toast';
@@ -115,6 +116,7 @@ export function MemberDetailScreen() {
   ]);
 
   return (
+    <Screen edges={['bottom']}>
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <Avatar
@@ -178,6 +180,7 @@ export function MemberDetailScreen() {
         </BottomSheet>
       ) : null}
     </View>
+    </Screen>
   );
 }
 

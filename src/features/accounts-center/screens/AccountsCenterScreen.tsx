@@ -19,6 +19,7 @@ import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { showToast } from '@/shared/utils/toast';
 import { colors, iconSizes, spacing, typography, radii } from '@/shared/theme';
@@ -273,22 +274,27 @@ export function AccountsCenterScreen() {
 
   if (isError) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.fullScreen}>
         <ErrorState onRetry={handleRetry} />
       </View>
+      </Screen>
     );
   }
 
   if (isLoading) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.fullScreen}>
         <OfflineBanner />
         <AccountsCenterSkeleton />
       </View>
+      </Screen>
     );
   }
 
   return (
+    <Screen edges={['bottom']}>
     <View style={styles.fullScreen}>
       <OfflineBanner />
       <ScrollView
@@ -438,6 +444,7 @@ export function AccountsCenterScreen() {
         isPending={deleteAccountMutation.isPending}
       />
     </View>
+    </Screen>
   );
 }
 

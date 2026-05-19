@@ -8,7 +8,7 @@
 
 ### Gap 1 — No canonical database schema or migration list
 
-**Resolved.** Nothing in the backend exists yet — no Supabase project, no tables, no RLS, no auth. [`ux-conventions.md`](../ux-conventions.md) Section 7 correctly reflects this. The schema is now documented in [`docs/architecture/05-database-schema.md`](05-database-schema.md) — 20 tables covering every data structure referenced by the feature specs, with column definitions, ownership tree, RLS policy intent, cascade rules, JSONB value shapes for all 18 element types, and SQLite-vs-Supabase mapping. This is a starting reference that will evolve during implementation.
+**Resolved.** At the time of this review, no backend existed yet — no Supabase project, no tables, no RLS, no auth. The schema is now documented in [`docs/architecture/05-database-schema.md`](05-database-schema.md) — 20 tables covering every data structure referenced by the feature specs, with column definitions, ownership tree, RLS policy intent, cascade rules, JSONB value shapes for all 18 element types, and SQLite-vs-Supabase mapping. This is a starting reference that will evolve during implementation.
 
 **Why it matters.** The architecture doc says Phase 1 creates `src/lib/sqlite/schema.ts` with "complete table definitions … to avoid migration debt." Luis Eduardo cannot write that file from the specs alone. Every feature spec assumes tables he will have to invent. He will invent them differently than you would have.
 
@@ -44,7 +44,7 @@
 
 ### Gap 5 — Design system tokens (`theme.ts`) not yet decided
 
-**Resolved.** [`ux-conventions.md`](../ux-conventions.md) section 2 now contains a v0 token set: 12 color tokens (accent is a placeholder — iOS system blue — to be replaced with Brinca's brand color before ship), 11 typography styles on SF Pro, a 7-step spacing scale on a 4/8pt grid, 4 border-radius tokens, 3 shadow levels, and the 44pt touch-target minimum. Light mode only for V1. All values are marked as "v0 — will be refined during the Figma pass."
+**Resolved.** Tokens now live atomically in [`docs/design-system/tokens/`](../design-system/tokens/) — color, typography, spacing, radius, shadows, touch-targets, icons, animation. Originally landed as a v0 set under `ux-conventions.md` §2 at the time of this review (12 color tokens with a placeholder accent, 11 typography styles, 7-step spacing scale, 4 radius tokens, 3 shadow levels, 44pt touch-target minimum) and has since been refined and expanded.
 
 ### Gap 6 — A small team working agreement
 
@@ -56,7 +56,7 @@
 
 **Week 1 (this week — April 15–22).** Write [`docs/compliance/privacy-and-data.md`](../compliance/privacy-and-data.md) and lock the consent language in onboarding. Note: April 22 is not a hard deadline since V1 launches in Panama, not the US — treat this as normal Week-1 work, not emergency work. In parallel, write [`rewards-levels-accolades.md`](../rewards-levels-accolades.md). Do not start writing code yet.
 
-**Week 2 (April 23–29).** With Luis Eduardo, hold two or three working sessions to produce `docs/architecture/03-database-schema.md`. This is the single most important document still missing. At the end of the week, rewrite the stale `agent_docs/` files (Section 5). Extend [`session-logging.md`](../feature-specs/session-logging.md) with the 15 missing element behaviors. Commit a v0 `theme.ts` inside [`ux-conventions.md`](../ux-conventions.md). Write the team workflow doc.
+**Week 2 (April 23–29).** With Luis Eduardo, hold two or three working sessions to produce `docs/architecture/03-database-schema.md`. This is the single most important document still missing. At the end of the week, rewrite the stale `agent_docs/` files (Section 5). Extend [`session-logging.md`](../feature-specs/session-logging.md) with the 15 missing element behaviors. Commit a v0 `theme.ts` reflecting the tokens documented in `docs/design-system/tokens/`. Write the team workflow doc.
 
 **Week 3 (April 30 – May 6) — the handoff moment.** Luis Eduardo opens his editor. Phase 1 of the architecture doc (project boots, four tabs render, SQLite opens). You are available same-day for questions. Clear signal it is safe to start: the schema document exists, rewards math is written, `theme.ts` v0 is committed, and COPPA compliance is filed.
 

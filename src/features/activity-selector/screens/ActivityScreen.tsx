@@ -1,9 +1,11 @@
+// No <Screen> wrapper: CollapsibleHeader handles top inset, NativeTabs handles bottom.
 import { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { useSharedValue } from 'react-native-reanimated';
 import { BottomSheet } from '@/shared/components/BottomSheet';
+import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { ParentAvatar } from '@/shared/components/ParentAvatar';
@@ -67,27 +69,29 @@ export function ActivityScreen() {
       <CollapsibleHeader title={childName ?? 'Activity'} scrollY={scrollY} rightContent={<ParentAvatar />} />
       {showSheet && !isActive && (
         <BottomSheet snapPoints={['50%']} onDismiss={handleDismiss}>
-          {isPending ? (
-            <ActivityListSkeleton />
-          ) : !activities?.length ? (
-            <EmptyState
-              title="No activities yet"
-              body="Add your first activity in Settings."
-              ctaLabel="Go to Settings"
-              onCtaPress={() => {
-                setShowSheet(false);
-                router.push('/(settings)' as never);
-              }}
-            />
-          ) : (
-            <View style={styles.sheetContent}>
-              <Text style={styles.sheetTitle}>Select an activity</Text>
-              <ActivityPickerSheet
-                activities={activities}
-                onSelect={handleSelectActivity}
+          <BottomSheetView style={styles.sheetContent}>
+            {isPending ? (
+              <ActivityListSkeleton />
+            ) : !activities?.length ? (
+              <EmptyState
+                title="No activities yet"
+                body="Add your first activity in Settings."
+                ctaLabel="Go to Settings"
+                onCtaPress={() => {
+                  setShowSheet(false);
+                  router.push('/(settings)' as never);
+                }}
               />
-            </View>
-          )}
+            ) : (
+              <>
+                <Text style={styles.sheetTitle}>Select an activity</Text>
+                <ActivityPickerSheet
+                  activities={activities}
+                  onSelect={handleSelectActivity}
+                />
+              </>
+            )}
+          </BottomSheetView>
         </BottomSheet>
       )}
     </View>
