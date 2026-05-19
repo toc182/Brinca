@@ -2,12 +2,12 @@ import { useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -15,11 +15,13 @@ import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
+import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
+import { useActiveChildStore } from '@/stores/active-child.store';
 import { TierRewardSection } from '../components/TierRewardSection';
 import { BonusPresetSection } from '../components/BonusPresetSection';
 import { activityBuilderKeys } from '../queries/keys';
@@ -197,6 +199,7 @@ export function ActivityDetailScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const queryClient = useQueryClient();
   const { showDestructiveAlert } = useDestructiveAlert();
+  const childId = useActiveChildStore((s) => s.childId);
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
@@ -268,7 +271,10 @@ export function ActivityDetailScreen() {
     try {
       await updateActivity(activityId!, { is_active: next });
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activity(activityId!) });
-      queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities('') });
+      if (childId) {
+        queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
+        queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
+      }
     } catch {
       showToast('error', 'Could not update activity.');
     }
@@ -281,7 +287,10 @@ export function ActivityDetailScreen() {
       onConfirm: async () => {
         try {
           await deleteActivity(activityId!);
-          queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities('') });
+          if (childId) {
+            queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
+            queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
+          }
           router.back();
         } catch {
           showToast('error', 'Could not delete activity.');
@@ -333,19 +342,23 @@ export function ActivityDetailScreen() {
 
   if (isLoading) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.container}>
         <OfflineBanner />
         <LoadingSkeleton />
       </View>
+      </Screen>
     );
   }
 
   if (isError) {
     return (
+      <Screen edges={['bottom']}>
       <View style={styles.container}>
         <OfflineBanner />
         <ErrorState onRetry={handleRetry} />
       </View>
+      </Screen>
     );
   }
 
@@ -358,10 +371,11 @@ export function ActivityDetailScreen() {
   // -------------------------------------------------------------------------
 
   return (
+    <Screen edges={['bottom']}>
     <View style={styles.container}>
       <OfflineBanner />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -499,7 +513,7 @@ export function ActivityDetailScreen() {
             variant="destructive"
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <IconPickerModal
         visible={iconPickerVisible}
@@ -507,6 +521,7 @@ export function ActivityDetailScreen() {
         onDismiss={() => setIconPickerVisible(false)}
       />
     </View>
+    </Screen>
   );
 }
 
