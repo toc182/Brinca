@@ -1,5 +1,6 @@
+import * as Sentry from '@sentry/react-native';
 import { supabase } from '../supabase/client';
-import { getNextPending, markInFlight, markComplete, markFailed, resetStaleInFlight } from './queue';
+import { getNextPending, markInFlight, markComplete, markFailed, resetStaleInFlight, MAX_RETRIES } from './queue';
 import { showToast } from '@/shared/utils/toast';
 
 let isRunning = false;
@@ -32,9 +33,43 @@ async function drainQueue() {
       await markComplete(entry.id);
       consecutiveFailures = 0;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = extractErrorMessage(error);
       await markFailed(entry.id, message);
       consecutiveFailures++;
+
+      if (__DEV__) {
+        console.warn(
+          `[sync] FAILED id=${entry.id} ${entry.operation} ${entry.table_name} retry=${entry.retry_count}\n  error: ${message}\n  payload: ${entry.payload}`
+        );
+      }
+      Sentry.captureException(error, {
+        tags: { source: 'sync-engine' },
+        extra: {
+          queueId: entry.id,
+          operation: entry.operation,
+          table: entry.table_name,
+          retryCount: entry.retry_count,
+        },
+      });
+
+      // Distinct Sentry event the first time an entry crosses MAX_RETRIES so
+      // truly-stuck rows are filterable in dashboards (vs the regular
+      // per-attempt failure noise above).
+      if (entry.retry_count + 1 >= MAX_RETRIES) {
+        Sentry.captureMessage('sync-queue entry exhausted retries', {
+          level: 'error',
+          tags: {
+            source: 'sync-engine-permanent-failure',
+            table: entry.table_name,
+            operation: entry.operation,
+          },
+          extra: {
+            queueId: entry.id,
+            lastError: message,
+            payloadPreview: entry.payload.slice(0, 240),
+          },
+        });
+      }
 
       if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         showToast('warning', "Some changes couldn't sync. We'll keep trying.");
@@ -64,6 +99,17 @@ async function replayOperation(operation: string, tableName: string, payload: Re
       break;
     }
   }
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object') {
+    const e = error as { message?: string; code?: string; details?: string; hint?: string };
+    const parts = [e.message, e.code && `code=${e.code}`, e.details && `details=${e.details}`, e.hint && `hint=${e.hint}`].filter(Boolean);
+    if (parts.length) return parts.join(' | ');
+    try { return JSON.stringify(error); } catch { return 'Unknown error'; }
+  }
+  return String(error ?? 'Unknown error');
 }
 
 function sleep(ms: number): Promise<void> {

@@ -8,7 +8,7 @@ type SyncStatus = 'pending' | 'in_flight' | 'failed';
 // in sync_queue (with last_error populated) so it can be inspected and
 // either re-tried manually or dropped, but it no longer blocks every later
 // item from syncing — fixes the head-of-line problem from the audit.
-const MAX_RETRIES = 10;
+export const MAX_RETRIES = 10;
 
 interface QueueEntry {
   id: number;
@@ -45,6 +45,13 @@ export async function markInFlight(id: number) {
 export async function markComplete(id: number) {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM sync_queue WHERE id = ?`, id);
+  // Self-heal: a successful sync proves the dependency landscape changed
+  // (e.g. a previously-missing parent just landed in Supabase). Give every
+  // failed row another epoch's worth of retries. MAX_RETRIES still caps any
+  // genuinely-broken row.
+  await db.runAsync(
+    `UPDATE sync_queue SET status = 'pending', retry_count = 0, last_error = NULL WHERE status = 'failed'`
+  );
 }
 
 export async function markFailed(id: number, error: string) {
@@ -57,7 +64,17 @@ export async function markFailed(id: number, error: string) {
 
 export async function resetStaleInFlight() {
   const db = await getDatabase();
-  await db.runAsync(`UPDATE sync_queue SET status = 'pending' WHERE status = 'in_flight'`);
+  // Reset both in-flight (interrupted mid-sync) AND failed (stuck at the
+  // retry cap from a previous app session) so they get one fresh epoch on
+  // startup. Without this, dependency-chain casualties stay buried forever
+  // even after the underlying issue resolves.
+  await db.runAsync(
+    `UPDATE sync_queue
+       SET status = 'pending',
+           retry_count = CASE WHEN status = 'failed' THEN 0 ELSE retry_count END,
+           last_error = CASE WHEN status = 'failed' THEN NULL ELSE last_error END
+       WHERE status IN ('in_flight', 'failed')`
+  );
 }
 
 export async function getPendingCount(): Promise<number> {
