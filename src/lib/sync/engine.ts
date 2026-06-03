@@ -84,7 +84,13 @@ async function replayOperation(operation: string, tableName: string, payload: Re
   switch (operation) {
     case 'INSERT': {
       const { error } = await supabase.from(tableName).insert(payload);
-      if (error) throw error;
+      // 23505 = unique_violation. The row already exists on the server (most
+      // commonly: local DB was wiped after a prior sync, the row was re-created
+      // locally, and the queue tried to re-insert what's already there). Our
+      // intent — "this row exists remotely" — is already satisfied, so treat
+      // as success. Without this, the entry retries forever and trips the
+      // consecutive-failure toast on every reload.
+      if (error && error.code !== '23505') throw error;
       break;
     }
     case 'UPDATE': {
@@ -95,6 +101,9 @@ async function replayOperation(operation: string, tableName: string, payload: Re
     }
     case 'DELETE': {
       const { error } = await supabase.from(tableName).delete().eq('id', payload.id as string);
+      // 204 from PostgREST when the row is already gone is not an error, but
+      // if somehow we get one we treat a not-found as already-applied. The
+      // common case (idempotent DELETE) already returns success without error.
       if (error) throw error;
       break;
     }
