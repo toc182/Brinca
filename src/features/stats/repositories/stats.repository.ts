@@ -1,8 +1,16 @@
 import type { SQLiteBindValue } from 'expo-sqlite';
 
 import { getDatabase } from '@/lib/sqlite/db';
+import { supabase } from '@/lib/supabase/client';
 import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
+
+const PHOTO_SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour
+
+export interface DrillPhotoSummary {
+  id: string;
+  uri: string; // signed URL (private bucket)
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -223,7 +231,9 @@ export interface DrillResultDetail {
   drillName: string;
   is_complete: number;
   note: string | null;
+  /** @deprecated Single-photo legacy column; multi-photo lives in `photos`. */
   photo_url: string | null;
+  photos: DrillPhotoSummary[];
   elementValues: ElementValueRow[];
 }
 
@@ -295,6 +305,37 @@ export async function getSessionDetail(sessionId: UUID) {
     );
   }
 
+  // Drill photos — batch query the child table, then generate signed URLs
+  // (session-media bucket is private, so getPublicUrl would 403 in <Image>).
+  const photosByDrillResult = new Map<string, DrillPhotoSummary[]>();
+  if (drillResultIds.length > 0) {
+    const placeholders = drillResultIds.map(() => '?').join(', ');
+    const photoRows = await db.getAllAsync<{
+      id: string;
+      drill_result_id: string;
+      storage_path: string | null;
+    }>(
+      `SELECT id, drill_result_id, storage_path
+         FROM drill_result_photos
+        WHERE drill_result_id IN (${placeholders})
+          AND upload_status = 'uploaded'
+          AND storage_path IS NOT NULL
+       ORDER BY display_order ASC, created_at ASC`,
+      drillResultIds,
+    );
+
+    for (const p of photoRows) {
+      if (!p.storage_path) continue;
+      const { data, error } = await supabase.storage
+        .from('session-media')
+        .createSignedUrl(p.storage_path, PHOTO_SIGNED_URL_TTL_SECONDS);
+      if (error || !data) continue;
+      const list = photosByDrillResult.get(p.drill_result_id) ?? [];
+      list.push({ id: p.id, uri: data.signedUrl });
+      photosByDrillResult.set(p.drill_result_id, list);
+    }
+  }
+
   // Group element values by drill_result_id
   const valuesByDrillResult = new Map<string, ElementValueRow[]>();
   for (const ev of elementValues) {
@@ -312,12 +353,40 @@ export async function getSessionDetail(sessionId: UUID) {
   const drillResults: DrillResultDetail[] = drillRows.map((dr) => ({
     ...dr,
     elementValues: valuesByDrillResult.get(dr.id) ?? [],
+    photos: photosByDrillResult.get(dr.id) ?? [],
   }));
+
+  // Session-level photos — same signed-URL flow as drill photos.
+  const sessionPhotos: DrillPhotoSummary[] = [];
+  if (session) {
+    const sessionPhotoRows = await db.getAllAsync<{
+      id: string;
+      storage_path: string | null;
+    }>(
+      `SELECT id, storage_path
+         FROM session_photos
+        WHERE session_id = ?
+          AND upload_status = 'uploaded'
+          AND storage_path IS NOT NULL
+       ORDER BY display_order ASC, created_at ASC`,
+      session.id,
+    );
+
+    for (const p of sessionPhotoRows) {
+      if (!p.storage_path) continue;
+      const { data, error } = await supabase.storage
+        .from('session-media')
+        .createSignedUrl(p.storage_path, PHOTO_SIGNED_URL_TTL_SECONDS);
+      if (error || !data) continue;
+      sessionPhotos.push({ id: p.id, uri: data.signedUrl });
+    }
+  }
 
   return {
     session,
     activityName,
     drillResults,
+    sessionPhotos,
   };
 }
 

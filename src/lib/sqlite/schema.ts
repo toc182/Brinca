@@ -87,6 +87,7 @@ export const TABLE_DEFINITIONS = {
       id TEXT PRIMARY KEY,
       activity_id TEXT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
+      description TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -182,6 +183,51 @@ export const TABLE_DEFINITIONS = {
       value TEXT NOT NULL DEFAULT '{}',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+  `,
+
+  drill_result_photos: `
+    CREATE TABLE IF NOT EXISTS drill_result_photos (
+      id TEXT PRIMARY KEY,
+      drill_result_id TEXT NOT NULL REFERENCES drill_results(id) ON DELETE CASCADE,
+      storage_url TEXT,
+      storage_path TEXT,
+      local_uri TEXT,
+      upload_status TEXT NOT NULL DEFAULT 'pending',
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS drill_result_photos_drill_result_id_idx
+      ON drill_result_photos(drill_result_id);
+  `,
+
+  session_photos: `
+    CREATE TABLE IF NOT EXISTS session_photos (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      storage_url TEXT,
+      storage_path TEXT,
+      local_uri TEXT,
+      upload_status TEXT NOT NULL DEFAULT 'pending',
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS session_photos_session_id_idx
+      ON session_photos(session_id);
+  `,
+
+  drill_photos: `
+    CREATE TABLE IF NOT EXISTS drill_photos (
+      id TEXT PRIMARY KEY,
+      drill_id TEXT NOT NULL REFERENCES drills(id) ON DELETE CASCADE,
+      storage_url TEXT,
+      storage_path TEXT,
+      local_uri TEXT,
+      upload_status TEXT NOT NULL DEFAULT 'pending',
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS drill_photos_drill_id_idx
+      ON drill_photos(drill_id);
   `,
 
   currency_ledger: `

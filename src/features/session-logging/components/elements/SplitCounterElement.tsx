@@ -1,4 +1,5 @@
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Minus, Plus } from 'phosphor-react-native';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { SplitCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { SplitCounterValue } from '@/shared/tracking-elements/types/element-values';
@@ -42,14 +43,14 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
             ]}
             disabled={value.left === 0}
           >
-            <Text style={[styles.buttonText, value.left === 0 && styles.buttonTextDisabled]}>-</Text>
+            <Minus size={22} weight="bold" color={value.left === 0 ? colors.textDisabled : colors.primary700} />
           </Pressable>
           <Text style={[styles.count, leftAtTarget && styles.countAtTarget]}>{value.left}</Text>
           <Pressable
             onPress={() => onValueChange({ ...value, left: value.left + 1 })}
             style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.buttonTextLight}>+</Text>
+            <Plus size={22} weight="bold" color={colors.textOnPrimary} />
           </Pressable>
         </View>
         {config.targetLeft != null && (
@@ -77,14 +78,14 @@ export function SplitCounterElement({ value, onValueChange, config }: SplitCount
             ]}
             disabled={value.right === 0}
           >
-            <Text style={[styles.buttonText, value.right === 0 && styles.buttonTextDisabled]}>-</Text>
+            <Minus size={22} weight="bold" color={value.right === 0 ? colors.textDisabled : colors.primary700} />
           </Pressable>
           <Text style={[styles.count, rightAtTarget && styles.countAtTarget]}>{value.right}</Text>
           <Pressable
             onPress={() => onValueChange({ ...value, right: value.right + 1 })}
             style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.buttonTextLight}>+</Text>
+            <Plus size={22} weight="bold" color={colors.textOnPrimary} />
           </Pressable>
         </View>
         {config.targetRight != null && (
@@ -113,13 +114,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonMinus: { backgroundColor: colors.primary50 },
+  buttonMinus: { backgroundColor: colors.primary100 },
   buttonPlus: { backgroundColor: colors.primary500 },
   buttonPressed: { opacity: 0.7 },
   buttonDisabled: { backgroundColor: colors.surfaceDisabled },
-  buttonText: { ...typography.buttonSmall, color: colors.primary700 },
-  buttonTextLight: { ...typography.buttonSmall, color: colors.textOnPrimary },
-  buttonTextDisabled: { color: colors.textDisabled },
   count: { ...typography.titleLarge, color: colors.textPrimary, minWidth: 40, textAlign: 'center' },
   countAtTarget: { color: colors.success500 },
   target: { ...typography.caption, color: colors.textSecondary },

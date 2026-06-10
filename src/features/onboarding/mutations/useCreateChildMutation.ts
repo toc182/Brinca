@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
 
 import { supabase } from '@/lib/supabase/client';
+import { isLocalAvatarUri, uploadChildAvatar } from '@/lib/supabase/avatar';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { insertChild } from '../repositories/child.repository';
 import type { CreateChildData } from '../types/onboarding.types';
@@ -17,6 +18,14 @@ export function useCreateChildMutation() {
     }) => {
       const childId = randomUUID();
 
+      // Upload a picked photo (local file:// URI) to storage and store the
+      // resulting path — NOT the device-local URI, which vanishes on reinstall
+      // and never reaches the cloud. Non-local values (already a path) pass through.
+      let avatarPath: string | null = data.avatarUri ?? null;
+      if (isLocalAvatarUri(avatarPath)) {
+        avatarPath = await uploadChildAvatar(avatarPath as string, childId);
+      }
+
       // 1. Insert into Supabase
       const { error } = await supabase.from('children').insert({
         id: childId,
@@ -24,7 +33,7 @@ export function useCreateChildMutation() {
         name: data.name,
         date_of_birth: data.dateOfBirth,
         gender: data.gender,
-        avatar_url: data.avatarUri ?? null,
+        avatar_url: avatarPath,
       });
       if (error) throw error;
 
@@ -35,7 +44,7 @@ export function useCreateChildMutation() {
         data.name,
         data.dateOfBirth,
         data.gender,
-        data.avatarUri
+        avatarPath
       );
 
       // 3. Set as active child

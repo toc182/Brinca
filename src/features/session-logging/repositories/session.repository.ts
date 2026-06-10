@@ -43,6 +43,12 @@ export async function updateSessionNote(id: UUID, note: string) {
   await appendToQueue('UPDATE', 'sessions', { id, note });
 }
 
+/**
+ * @deprecated Single-photo legacy column; session-level multi-photo lives in
+ * the `session_photos` child table — use `insertLocalPhoto` from
+ * `session-photo.repository.ts` plus the upload pipeline. This setter remains
+ * only so historical callers compile; new code MUST NOT use it.
+ */
 export async function updateSessionPhoto(id: UUID, photoUrl: string | null) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE sessions SET photo_url = ? WHERE id = ?`, photoUrl, id);

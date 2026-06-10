@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, type ViewStyle, type TextStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type ViewStyle, type TextStyle } from 'react-native';
 
 import { colors, typography, radii, spacing, touchTargets } from '../theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'text' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'destructive' | 'text' | 'ghost';
 type ButtonSize = 'large' | 'small';
 
 interface ButtonProps {
@@ -12,6 +12,7 @@ interface ButtonProps {
   size?: ButtonSize;
   disabled?: boolean;
   pill?: boolean;
+  iconLeft?: React.ReactNode;
   style?: ViewStyle;
 }
 
@@ -22,6 +23,7 @@ export function Button({
   size = 'large',
   disabled = false,
   pill = false,
+  iconLeft,
   style,
 }: ButtonProps) {
   const containerStyle = getContainerStyle(variant, size, disabled, pill);
@@ -37,6 +39,7 @@ export function Button({
         style,
       ]}
     >
+      {iconLeft ? <View style={styles.iconLeft}>{iconLeft}</View> : null}
       <Text style={textStyle}>{title}</Text>
     </Pressable>
   );
@@ -49,6 +52,7 @@ function getContainerStyle(
   pill: boolean,
 ): ViewStyle {
   const base: ViewStyle = {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: pill ? radii.full : radii.md,
@@ -68,6 +72,8 @@ function getContainerStyle(
       return { ...base, backgroundColor: colors.primary500 };
     case 'secondary':
       return { ...base, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderDefault };
+    case 'outline':
+      return { ...base, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary500 };
     case 'destructive':
       return { ...base, backgroundColor: colors.error600 };
     case 'text':
@@ -89,6 +95,8 @@ function getTextStyle(variant: ButtonVariant, size: ButtonSize, disabled: boolea
       return { ...base, color: colors.textOnPrimary };
     case 'secondary':
       return { ...base, color: colors.primary500 };
+    case 'outline':
+      return { ...base, color: colors.primary500 };
     case 'destructive':
       return { ...base, color: colors.textOnPrimary };
     case 'text':
@@ -101,5 +109,8 @@ function getTextStyle(variant: ButtonVariant, size: ButtonSize, disabled: boolea
 const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
+  },
+  iconLeft: {
+    marginRight: spacing.xs,
   },
 });

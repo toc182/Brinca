@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { BottomSheet } from '@/shared/components/BottomSheet';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { showToast } from '@/shared/utils/toast';
@@ -116,8 +117,13 @@ export function MemberDetailScreen() {
   ]);
 
   return (
+    <>
+    <ModalHeader
+      title={params.memberName ?? 'Member'}
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
     <Screen edges={['bottom']}>
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
       <View style={styles.profileHeader}>
         <Avatar
           imageUrl={params.memberAvatarUrl || null}
@@ -181,6 +187,7 @@ export function MemberDetailScreen() {
       ) : null}
     </View>
     </Screen>
+    </>
   );
 }
 

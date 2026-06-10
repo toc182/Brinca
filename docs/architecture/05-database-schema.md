@@ -175,13 +175,36 @@ A named drill within an activity (e.g. "Consecutive catches", "Tongue placement 
 | `id` | UUID | |
 | `activity_id` | UUID, FK → activities | |
 | `name` | text, required | Max 50 characters |
+| `description` | text, nullable | Free text reference notes for the drill (max 2000 chars). Shown in the live DrillScreen via the header info icon → bottom sheet. Multi-photo companion lives in `drill_photos`. |
 | `is_active` | boolean | Default: true. Deactivated drills hidden from sessions. |
 | `display_order` | integer | Reorderable via long-press drag in builder |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
 **Written by:** activity-builder.
-**Read by:** session-logging (drill list), activity-builder (edit), stats (session detail).
+**Read by:** session-logging (drill list, header info icon), activity-builder (edit), stats (session detail).
+
+---
+
+### 2.7.1 drill_photos
+
+One row per drill-description photo. 1-to-N child of `drills`; same shape as `session_photos` / `drill_result_photos` but parented on the drill template (not a per-session row). Used purely as reference/instructional imagery for the drill — shown in the DrillScreen description sheet.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Generated client-side |
+| `drill_id` | UUID, FK → drills ON DELETE CASCADE | |
+| `storage_url` | text, NOT NULL | Public-ish URL form; clients regenerate signed URLs from `storage_path` for display |
+| `storage_path` | text, NOT NULL | Bucket-relative path: `<family_id>/drill-desc/<drill_id>/<photo_id>.jpg` |
+| `display_order` | integer | Ordering within a drill |
+| `created_at` | timestamp | |
+
+**RLS:** SELECT / INSERT / DELETE all require `is_family_member(c.family_id)` traversed through `drills → activities → children`. No UPDATE policy — rows are immutable; reorder/remove via DELETE + INSERT.
+
+**Local-only columns** (SQLite mirror): `local_uri` (the picker URI before upload), `upload_status` ('pending' | 'uploaded' | 'failed'). Storage columns are nullable in SQLite until the upload pipeline returns a public URL.
+
+**Written by:** activity-builder (`useDrillDescriptionPhotos` hook + upload pipeline).
+**Read by:** session-logging (DrillScreen description sheet), activity-builder (drill editor preview).
 
 ---
 
@@ -282,13 +305,35 @@ One row per logged session.
 | `ended_at` | timestamp, nullable | Set when Finish Session is tapped |
 | `duration_seconds` | integer, nullable | Calculated from started_at and ended_at minus paused time |
 | `note` | text, nullable | Session-level free text note |
-| `photo_url` | text, nullable | Session-level photo; local URI until uploaded |
+| `photo_url` | text, nullable | **Deprecated** — legacy single-photo column. New code writes session-level photos to `session_photos` instead; values matching `file://`, `content://`, `ph://` were nulled out by migration `20260528000000_drill_result_photos`. |
 | `is_complete` | boolean | True when Finish Session is tapped; false for interrupted/abandoned sessions |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
 **Written by:** session-logging.
 **Read by:** home-dashboard (recent sessions, session count, streaks — derived), stats (session list, charts), profile (photo gallery).
+
+---
+
+### 2.12.1 session_photos
+
+One row per session-level photo. 1-to-N child of `sessions`; replaces the legacy single `sessions.photo_url`. Each row references one uploaded object in the `session-media` Storage bucket; the bytes are private, served to clients via short-lived signed URLs.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Generated client-side |
+| `session_id` | UUID, FK → sessions ON DELETE CASCADE | |
+| `storage_url` | text, NOT NULL | Public-ish URL form; clients regenerate signed URLs from `storage_path` for display |
+| `storage_path` | text, NOT NULL | Bucket-relative path: `<family_id>/<session_id>/session/<photo_id>.jpg` |
+| `display_order` | integer | Ordering within a session |
+| `created_at` | timestamp | |
+
+**RLS:** SELECT / INSERT / DELETE all require `is_family_member(c.family_id)` traversed through `sessions → children`. No UPDATE policy — rows are immutable; reorder/remove via DELETE + INSERT.
+
+**Local-only columns** (SQLite mirror, not in Supabase): `local_uri` (the picker URI before upload), `upload_status` ('pending' | 'uploaded' | 'failed'), and the storage columns are nullable until the upload pipeline returns a public URL.
+
+**Written by:** session-logging (`useSessionPhotos` hook + upload pipeline).
+**Read by:** session-logging (live thumbnail strip), stats (session detail recap).
 
 ---
 
@@ -322,12 +367,34 @@ Let me correct this.
 | `drill_id` | UUID, FK → drills | |
 | `is_complete` | boolean | True when Finish drill or Mark complete is tapped |
 | `note` | text, nullable | Drill-level free text note |
-| `photo_url` | text, nullable | Drill-level photo attachment; local URI until uploaded |
+| `photo_url` | text, nullable | **Deprecated** — legacy single-photo column. New code writes drill-level photos to `drill_result_photos` instead; values matching `file://`, `content://`, `ph://` were nulled out by migration `20260528000000_drill_result_photos`. |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
 **Written by:** session-logging (auto-saved after each action).
 **Read by:** stats (session detail), session summary (drills logged list).
+
+---
+
+### 2.13.1 drill_result_photos
+
+One row per drill-level photo. 1-to-N child of `drill_results`; replaces the legacy single `drill_results.photo_url`. Same shape as `session_photos` but parented on a drill result.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | Generated client-side |
+| `drill_result_id` | UUID, FK → drill_results ON DELETE CASCADE | |
+| `storage_url` | text, NOT NULL | Public-ish URL form; clients regenerate signed URLs from `storage_path` for display |
+| `storage_path` | text, NOT NULL | Bucket-relative path: `<family_id>/<session_id>/<drill_result_id>/<photo_id>.jpg` |
+| `display_order` | integer | Ordering within a drill result |
+| `created_at` | timestamp | |
+
+**RLS:** SELECT / INSERT / DELETE all require `is_family_member(c.family_id)` traversed through `drill_results → sessions → children`. No UPDATE policy.
+
+**Local-only columns** (SQLite mirror): `local_uri`, `upload_status` ('pending' | 'uploaded' | 'failed'). Storage columns are nullable in SQLite until the upload pipeline returns a public URL.
+
+**Written by:** session-logging (`useDrillPhotos` hook + upload pipeline).
+**Read by:** session-logging (live thumbnail strip), stats (session detail recap).
 
 ---
 

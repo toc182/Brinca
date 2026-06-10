@@ -15,6 +15,7 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { Input } from '@/shared/components/Input';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
@@ -35,8 +36,12 @@ import {
   reorderElements,
 } from '../repositories/tracking-element.repository';
 import { activityBuilderKeys } from '../queries/keys';
+import { DrillDescriptionEditor } from '../components/DrillDescriptionEditor';
 import { ElementConfigRouter } from '../components/elements/ElementConfigRouter';
 import { ElementLabelInput } from '../components/elements/ElementLabelInput';
+import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
+import { ElementPreview } from '../components/elements/previews/element-previews';
+import { MarkCompleteDefaultCard } from '../components/MarkCompleteDefaultCard';
 import { TierRewardSection } from '../components/TierRewardSection';
 import { BonusPresetSection } from '../components/BonusPresetSection';
 import type { ConditionItem } from '../components/TierRewardBottomSheet';
@@ -80,8 +85,10 @@ export function DrillEditScreen() {
   const { showDestructiveAlert } = useDestructiveAlert();
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [showElementPicker, setShowElementPicker] = useState(false);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
+  const [infoElement, setInfoElement] = useState<ElementType | null>(null);
 
   // -------------------------------------------------------------------------
   // Queries
@@ -113,7 +120,10 @@ export function DrillEditScreen() {
   const isError = drillError || elementsError;
 
   useEffect(() => {
-    if (drill) setName(drill.name);
+    if (drill) {
+      setName(drill.name);
+      setDescription(drill.description ?? '');
+    }
   }, [drill]);
 
   // -------------------------------------------------------------------------
@@ -123,11 +133,21 @@ export function DrillEditScreen() {
   const handleSave = async () => {
     if (!drillId || !name.trim() || name.trim().length > 50) return;
     try {
-      await updateDrill(drillId, { name: name.trim() });
+      const trimmedDescription = description.trim();
+      await updateDrill(drillId, {
+        name: name.trim(),
+        // Explicit null clears an existing description (distinct from
+        // "field omitted" which would leave the existing value alone).
+        description: trimmedDescription.length > 0 ? trimmedDescription : null,
+      });
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.drill(drillId) });
       queryClient.invalidateQueries({
         queryKey: activityBuilderKeys.drills(activityId ?? ''),
       });
+      // DrillScreen (live session) keys the drill query on ['drill', id] —
+      // separate cache from activityBuilderKeys.drill — so invalidate it
+      // too so the header info icon re-evaluates against the new value.
+      queryClient.invalidateQueries({ queryKey: ['drill', drillId] });
       showToast('success', 'Drill saved.');
       router.back();
     } catch {
@@ -233,25 +253,38 @@ export function DrillEditScreen() {
   // Render — screen states
   // -------------------------------------------------------------------------
 
+  const header = (
+    <ModalHeader
+      title="Edit Drill"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
+  );
+
   if (isLoading) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <OfflineBanner />
         <LoadingSkeleton />
       </View>
       </Screen>
+      </>
     );
   }
 
   if (isError) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <OfflineBanner />
         <ErrorState onRetry={handleRetry} />
       </View>
       </Screen>
+      </>
     );
   }
 
@@ -261,16 +294,18 @@ export function DrillEditScreen() {
 
   return (
     <>
+    {header}
     <Screen edges={['bottom']}>
     <View style={styles.container}>
-      <OfflineBanner />
-
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         bottomOffset={88}
       >
+        <View style={styles.bannerInScroll}>
+          <OfflineBanner />
+        </View>
         {/* ---------------------------------------------------------------- */}
         {/* Drill name                                                        */}
         {/* ---------------------------------------------------------------- */}
@@ -284,14 +319,23 @@ export function DrillEditScreen() {
           maxLength={60}
         />
 
+        <DrillDescriptionEditor
+          mode="edit"
+          drillId={drillId!}
+          description={description}
+          onChangeDescription={setDescription}
+        />
+
         {/* ---------------------------------------------------------------- */}
         {/* Tracking elements                                                 */}
         {/* ---------------------------------------------------------------- */}
         <Text style={styles.sectionHeader}>Tracking Elements</Text>
 
+        <MarkCompleteDefaultCard />
+
         {!elements?.length && (
           <Text style={styles.emptyElements}>
-            No elements yet. Add your first tracking element.
+            No tracking elements added. This drill will just be marked complete.
           </Text>
         )}
 
@@ -407,15 +451,16 @@ export function DrillEditScreen() {
               ([category, types]) => (
                 <View key={category} style={styles.pickerCategory}>
                   <Text style={styles.pickerCategoryLabel}>{CATEGORY_LABELS[category]}</Text>
-                  <View style={styles.chipRow}>
+                  <View style={styles.previewGrid}>
                     {types.map((type) => (
                       <Pressable
                         key={type}
-                        onPress={() => handleAddElement(type)}
-                        style={({ pressed }) => [styles.typeChip, pressed && styles.typeChipPressed]}
-                        accessibilityLabel={`Add ${ELEMENT_LABELS[type]}`}
+                        onPress={() => setInfoElement(type)}
+                        style={({ pressed }) => [styles.previewCard, pressed && styles.previewCardPressed]}
+                        accessibilityLabel={`Learn more about ${ELEMENT_LABELS[type]}`}
                       >
-                        <Text style={styles.typeChipText}>+ {ELEMENT_LABELS[type]}</Text>
+                        <View style={styles.previewBox}><ElementPreview type={type} /></View>
+                        <Text style={styles.previewLabel}>{ELEMENT_LABELS[type]}</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -458,6 +503,15 @@ export function DrillEditScreen() {
           </BottomSheetScrollView>
         </BottomSheet>
       )}
+
+      <ElementInfoModal
+        type={infoElement}
+        onDismiss={() => setInfoElement(null)}
+        onAdd={(type) => {
+          setInfoElement(null);
+          void handleAddElement(type);
+        }}
+      />
     </View>
     </Screen>
     <AppKeyboardToolbar />
@@ -480,6 +534,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.xxxl,
   },
+  bannerInScroll: { marginHorizontal: -spacing.md },
 
   sectionHeader: {
     ...typography.titleSmall,
@@ -548,20 +603,37 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  typeChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: colors.surface,
+  previewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  typeChipPressed: {
+  previewCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  previewCardPressed: {
     backgroundColor: colors.primary50,
     borderColor: colors.primary500,
   },
-  typeChipText: { ...typography.caption, color: colors.textPrimary },
+  previewBox: {
+    width: '100%',
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewLabel: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
 
   // Config sheet content
   configContent: {

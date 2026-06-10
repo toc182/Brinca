@@ -29,7 +29,7 @@ export function ChildHeader({ name, avatarUrl, onPress }: ChildHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    paddingBottom: spacing.lg,
     gap: spacing.sm,
   },
   pressed: {

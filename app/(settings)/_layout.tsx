@@ -1,13 +1,11 @@
-import { Stack, useRouter } from 'expo-router';
-import { Pressable, Text } from 'react-native';
+import { Stack } from 'expo-router';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { colors } from '@/shared/theme';
 import { GlobalToast } from '@/shared/components/GlobalToast';
 
 export default function SettingsLayout() {
-  const router = useRouter();
-
   return (
-    <>
+    <BottomSheetModalProvider>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
@@ -16,30 +14,27 @@ export default function SettingsLayout() {
       }}
     >
       <Stack.Screen
-        name="index"
-        options={{
-          title: 'Settings',
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()}>
-              <Text style={{ color: colors.primary500, fontSize: 16 }}>Close</Text>
-            </Pressable>
-          ),
-        }}
+        name="menu"
+        options={{ title: 'Settings', headerShown: false }}
       />
-      <Stack.Screen name="activities/index" options={{ title: 'Activities' }} />
+      <Stack.Screen name="activities/index" options={{ title: 'Activities', headerShown: false }} />
       <Stack.Screen name="activities/create" options={{ title: 'New Activity', presentation: 'modal' }} />
-      <Stack.Screen name="activities/[activityId]/index" options={{ title: 'Activity' }} />
-      <Stack.Screen name="activities/[activityId]/create-drill" options={{ title: 'New Drill', presentation: 'modal' }} />
-      <Stack.Screen name="activities/[activityId]/[drillId]" options={{ title: 'Edit Drill' }} />
-      <Stack.Screen name="child/edit-profile" options={{ title: 'Edit Profile', presentation: 'modal' }} />
-      <Stack.Screen name="child/measurements" options={{ title: 'Measurements' }} />
+      <Stack.Screen name="activities/[activityId]/index" options={{ title: 'Activity', headerShown: false }} />
+      <Stack.Screen
+        name="activities/[activityId]/create-drill"
+        options={{ title: 'New Drill', presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen name="activities/[activityId]/[drillId]" options={{ title: 'Edit Drill', headerShown: false }} />
+      <Stack.Screen name="child/edit-profile" options={{ title: 'Edit Profile', presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="child/measurements" options={{ title: 'Measurements', headerShown: false }} />
       <Stack.Screen name="child/measurement-edit" options={{ title: 'Edit Measurement', presentation: 'modal' }} />
-      <Stack.Screen name="child/external-activities" options={{ title: 'External Activities' }} />
+      <Stack.Screen name="child/external-activities" options={{ title: 'External Activities', headerShown: false }} />
       <Stack.Screen name="child/external-activity-edit" options={{ title: 'Edit Activity', presentation: 'modal' }} />
-      <Stack.Screen name="accounts-center/index" options={{ title: 'Accounts Center' }} />
-      <Stack.Screen name="accounts-center/[memberId]" options={{ title: 'Member' }} />
+      <Stack.Screen name="accounts-center/index" options={{ title: 'Accounts Center', headerShown: false }} />
+      <Stack.Screen name="accounts-center/[memberId]" options={{ title: 'Member', headerShown: false }} />
+      <Stack.Screen name="add-child" options={{ title: 'Add child', presentation: 'modal', headerShown: false }} />
     </Stack>
     <GlobalToast />
-    </>
+    </BottomSheetModalProvider>
   );
 }

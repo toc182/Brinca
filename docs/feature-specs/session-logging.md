@@ -2,7 +2,7 @@
 
 **Screen name:** Session logging
 **File:** `docs/feature-specs/session-logging.md`
-**Last updated:** April 10, 2026
+**Last updated:** May 30, 2026
 **Status:** Draft
 **Related docs:** `docs/product-vision.md`, `docs/ux/`, `docs/design-system/`, `docs/brand/`, `docs/rewards-levels-accolades.md`
 
@@ -43,7 +43,7 @@ Tap "Done" → saves session notes and photo, lands on Home
 ### What the screen shows (top to bottom)
 1. **Header** — activity name, child name, session timer (stopwatch, counts up from 0), minimize button (top right)
 2. **Drill list** — all configured drills for this activity, each showing name and completion status
-3. **Session notes field** — optional free text note + photo attachment (always visible by scrolling to bottom)
+3. **Session notes + photos** — two-card row ("Add Photo" / "Add Note") with a horizontal thumbnail strip below for any photos added; always visible by scrolling to the bottom
 4. **"Finish Session" button** — always visible at the bottom
 
 ### Drill list behavior
@@ -53,6 +53,7 @@ Tap "Done" → saves session notes and photo, lands on Home
 - Completed drills are visually distinguished from incomplete ones
 - Tapping a completed drill reopens the drill screen to add or correct data
 - A drill with no tracking elements configured shows a "Mark complete" button directly on the session screen — no drill screen needed
+- An **info icon** appears at the right end of a row when the drill template has description text or at least one description photo. Tapping the icon opens the same description sheet shown on the drill screen (see *Description sheet* below) without leaving the session screen. The icon replaces what was previously a navigation chevron — the chevron is gone; the row itself remains tappable to enter the drill.
 
 ### Session timer
 - Starts automatically when the session begins
@@ -66,27 +67,37 @@ Tap "Done" → saves session notes and photo, lands on Home
 - Mini player bar shows: "[Activity name] — in progress" + "Resume" button
 - Tapping mini player bar or Activity tab resumes the full session screen
 
-### Session notes
-- Free text field, no character limit
-- Optional photo attachment (opens device camera or library)
+### Session notes & photos
+- **Note:** free text field, no character limit. Tap "Add Note" → bottom sheet with a multi-line text area; tap Save to commit.
+- **Photos:** multi-photo (max 10 per session). Tap "Add Photo" → choose Camera or Photo Library → picked image lands in the strip immediately as a pending thumbnail. The thumbnail shows a spinner during upload, an X badge to remove, and a retry badge if the upload fails. After one photo is added the card label changes to "Add Another".
+- Photos are stored in the private `session-media` Storage bucket under `<family_id>/<session_id>/session/<photo_id>.jpg` and displayed via short-lived signed URLs. They sync to other family members' devices once uploaded.
 - No voice notes at the session level in V1. Drill-level Voice Note elements are supported separately — see `activity-builder.md`.
-- Saved when user taps "Done" on the session summary screen
+- The note text is saved when the user taps "Done" on the session summary screen; photos are saved as soon as they're picked (the row exists locally with `upload_status='pending'`, then flips to `'uploaded'` once the bytes land).
 
 ---
 
 ## Drill screen
 
 ### What the screen shows
-- Drill name (prominent header)
+- Drill name (prominent header). If the drill template has a description (text or photos), a small info icon appears next to the drill name; tapping the title opens the description sheet — see *Description sheet* below.
 - Active child name + activity name (context)
 - All configured tracking elements (visible simultaneously). There are 18 possible types grouped in 4 categories — see `activity-builder.md` for the full list and configuration. The categories are:
   - **Counters** — Regular, Combined, Split, Multistep
   - **Timers** — Stopwatch, Countdown, Lap, Interval
   - **Selection** — Checklist, Single select, Multi-select, Yes/No, Rating scale, Emoji face scale
   - **Input** — Number input, Multi-number input, Free text note, Voice note
-- Notes field — optional free text, no character limit
-- Photo attachment — optional, opens device camera or library (photos only, no video in V1)
+- Notes + photos section at the bottom — same two-card row pattern as the session screen: "Add Note" opens a bottom sheet; "Add Photo" picks from camera or library and appends to a horizontal thumbnail strip (multi-photo, max 10 per drill). Photos upload to the private `session-media` bucket under `<family_id>/<session_id>/<drill_result_id>/<photo_id>.jpg`.
 - "Finish drill" button — prominent at bottom
+
+### Description sheet
+- The info icon (drill screen header and session screen drill row) appears only when the drill template has either non-empty description text or at least one description photo (whitespace-only descriptions don't count).
+- Entry points:
+  - Drill screen header — info icon to the right of the title block (size 34, weight regular, `textPrimary` color). The title block stays centered as if the icon weren't there; the icon is absolute-positioned at the right edge of the title area.
+  - Session screen drill row — info icon at the right end of the row (size 22, `textPrimary` color). Single shared `DrillDescriptionSheet` instance per session screen; the selected row's `drillId` + description are stored in screen state and the sheet is presented via `useEffect` after that state lands (one tick after the tap, so the modal ref is attached when present is called).
+- Tapping either entry point presents a bottom sheet titled "About this drill" — `snapPoints={['70%']}`, `enableDynamicSizing={false}` so a short body doesn't collapse the sheet, `BottomSheetBackdrop` with `opacity={0.4}` and `pressBehavior="close"` so the dimmed background dismisses on tap. Rounded top corners and the standard grabber pill match the rest of the app's bottom sheets.
+- The sheet shows the description text on top followed by a horizontal photo strip (`PhotoGallery` in read-only mode — no remove/retry callbacks). Tapping a photo opens the existing lightbox (pinch zoom, swipe between siblings, swipe down to dismiss).
+- Description text + photos are properties of the drill **template**, not of the per-session drill_result; they're edited in the activity builder — see `activity-builder.md` for the editor.
+- The session screen's "drill has description" check combines `drill.description` text with a single `getDrillIdsWithPhotos()` repo call (DISTINCT scan of `drill_photos`) so we don't pay per-drill signed-URL costs to know whether the icon should render.
 
 ### Element behaviors
 
@@ -211,14 +222,14 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - End timestamp
 - Duration
 - Session-level note (optional)
-- Session-level photo URL (optional)
+- Session-level photo URLs (0..10, multi via `session_photos`)
 
 **Per drill logged:**
 - Drill ID
 - Tracking element values (counter values, timer durations, checklist states)
 - Completion status
 - Drill-level note (optional)
-- Drill-level photo URL (optional)
+- Drill-level photo URLs (0..10, multi via `drill_result_photos`)
 
 **Currency:**
 - Currency earned per drill (based on parent-configured earning rules)
@@ -240,7 +251,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] Completed drills are visually distinguished from incomplete drills
 - [ ] Tapping a completed drill reopens the drill screen
 - [ ] Drill with no tracking elements shows "Mark complete" button directly on session screen
-- [ ] Session notes field and photo attachment are visible by scrolling to bottom of drill list
+- [ ] Session notes + photos section (two-card row + thumbnail strip) is visible by scrolling to bottom of drill list
 - [ ] "Finish Session" button is always visible at the bottom
 
 **Drill screen — general**
@@ -248,7 +259,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] Every element auto-saves state after each interaction and survives app close/minimize/background
 - [ ] Every element's target indicator lights up when the recorded value meets its configured target; target-met never auto-completes the drill
 - [ ] Notes field accepts free text with no character limit
-- [ ] Photo attachment opens device camera or library (photos only)
+- [ ] "Add Photo" opens device camera or library (photos only); picked photos appear in the thumbnail strip immediately and upload in the background; up to 10 photos per drill and per session
 - [ ] Tapping "Finish drill" logs the drill and returns to session screen
 
 **Counters**
@@ -313,7 +324,6 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] What does level progress look like on the summary screen? Is there an animation if the child leveled up during this session?
 - [ ] If a new accolade is unlocked during the session, how is it shown on the summary screen?
 - [ ] Should voice notes be supported in a future version for drill-level or session-level notes?
-- [ ] Should there be a way to add multiple photos per drill, or just one?
 - [ ] Should the session summary screen be shareable (e.g. send to a therapist or co-parent)?
 
 ---

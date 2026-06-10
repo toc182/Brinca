@@ -98,6 +98,7 @@ export interface Drill {
   id: UUID;
   activityId: UUID;
   name: string;
+  description: string | null;
   isActive: boolean;
   displayOrder: number;
   createdAt: ISODateString;

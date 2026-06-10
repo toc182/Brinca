@@ -9,21 +9,26 @@ import { randomUUID } from 'expo-crypto';
 
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 
-import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
+import { processPendingPhotos } from '@/lib/sync/photo-upload-queue';
 import { insertDrill } from '../repositories/drill.repository';
+import { insertLocalPhoto } from '../repositories/drill-photo.repository';
 import { insertElement } from '../repositories/tracking-element.repository';
 import { activityBuilderKeys } from '../queries/keys';
+import { DrillDescriptionEditor } from '../components/DrillDescriptionEditor';
 import {
   ELEMENT_LABELS,
   ELEMENT_CATEGORIES,
   type ElementType,
   type ElementCategory,
 } from '@/shared/tracking-elements/types/element-types';
-import { getDefaultConfig } from '@/shared/tracking-elements/validation';
+import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
+import { ElementPreview } from '../components/elements/previews/element-previews';
+import { MarkCompleteDefaultCard } from '../components/MarkCompleteDefaultCard';
 
 const CATEGORY_LABELS: Record<ElementCategory, string> = {
   counters: 'Counters',
@@ -36,6 +41,7 @@ interface PendingElement {
   localId: string;
   type: ElementType;
   label: string;
+  config: Record<string, unknown>;
 }
 
 export function CreateDrillScreen() {
@@ -45,15 +51,18 @@ export function CreateDrillScreen() {
   const { showDestructiveAlert } = useDestructiveAlert();
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [descriptionPhotoUris, setDescriptionPhotoUris] = useState<string[]>([]);
   const [elements, setElements] = useState<PendingElement[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [infoElement, setInfoElement] = useState<ElementType | null>(null);
 
-  const isValid = name.trim().length >= 2 && name.trim().length <= 50;
+  const isValid = name.trim().length >= 1 && name.trim().length <= 50;
 
-  const handleAddElement = (type: ElementType) => {
+  const handleAddElement = (type: ElementType, label: string, config: Record<string, unknown>) => {
     setElements((prev) => [
       ...prev,
-      { localId: randomUUID(), type, label: ELEMENT_LABELS[type] },
+      { localId: randomUUID(), type, label, config },
     ]);
   };
 
@@ -71,12 +80,26 @@ export function CreateDrillScreen() {
     setIsSubmitting(true);
     try {
       const drillId = randomUUID();
-      await insertDrill(drillId, activityId, name.trim());
+      const trimmedDescription = description.trim();
+      await insertDrill(
+        drillId,
+        activityId,
+        name.trim(),
+        trimmedDescription.length > 0 ? trimmedDescription : null,
+      );
 
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i];
-        const config = getDefaultConfig(el.type);
-        await insertElement(randomUUID(), drillId, el.type, el.label, config);
+        await insertElement(randomUUID(), drillId, el.type, el.label, el.config);
+      }
+
+      // Materialize draft description photos: insert pending rows pointing
+      // at the now-existing drill, then kick the upload pipeline.
+      for (const uri of descriptionPhotoUris) {
+        await insertLocalPhoto(drillId, uri);
+      }
+      if (descriptionPhotoUris.length > 0) {
+        void processPendingPhotos();
       }
 
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.drills(activityId) });
@@ -88,12 +111,19 @@ export function CreateDrillScreen() {
     }
   };
 
+  const canSave = isValid && !isSubmitting;
+
   return (
     <>
+    <ModalHeader
+      title="New Drill"
+      leftAction={{ icon: 'close', onPress: () => router.back(), accessibilityLabel: 'Cancel' }}
+      rightAction={{ icon: 'check', onPress: handleSave, disabled: !canSave, accessibilityLabel: 'Save drill' }}
+    />
     <Screen edges={['bottom']}>
     <KeyboardAwareScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       bottomOffset={88}
@@ -106,6 +136,18 @@ export function CreateDrillScreen() {
         required
         error={name.length > 50 ? 'Name must be under 50 characters.' : undefined}
       />
+
+      <DrillDescriptionEditor
+        mode="create"
+        description={description}
+        onChangeDescription={setDescription}
+        draftPhotoUris={descriptionPhotoUris}
+        onChangeDraftPhotoUris={setDescriptionPhotoUris}
+      />
+
+      <View style={styles.section}>
+        <MarkCompleteDefaultCard />
+      </View>
 
       {elements.length > 0 && (
         <View style={styles.section}>
@@ -122,23 +164,25 @@ export function CreateDrillScreen() {
       )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Add tracking elements</Text>
+        <Text style={styles.sectionTitle}>Add tracking elements (optional)</Text>
         <Text style={styles.sectionSubtitle}>
-          Choose what to track during this drill. You can skip this and add them later.
+          Add these only if you want to measure reps, time, or notes during the drill. Otherwise the drill just gets marked complete.
         </Text>
 
         {(Object.entries(ELEMENT_CATEGORIES) as [ElementCategory, readonly ElementType[]][]).map(
           ([category, types]) => (
             <View key={category} style={styles.categorySection}>
               <Text style={styles.categoryLabel}>{CATEGORY_LABELS[category]}</Text>
-              <View style={styles.chipRow}>
+              <View style={styles.previewGrid}>
                 {types.map((type) => (
                   <Pressable
                     key={type}
-                    style={styles.chip}
-                    onPress={() => handleAddElement(type)}
+                    onPress={() => setInfoElement(type)}
+                    style={({ pressed }) => [styles.previewCard, pressed && styles.previewCardPressed]}
+                    accessibilityLabel={`Learn more about ${ELEMENT_LABELS[type]}`}
                   >
-                    <Text style={styles.chipText}>+ {ELEMENT_LABELS[type]}</Text>
+                    <View style={styles.previewBox}><ElementPreview type={type} /></View>
+                    <Text style={styles.previewLabel}>{ELEMENT_LABELS[type]}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -147,37 +191,60 @@ export function CreateDrillScreen() {
         )}
       </View>
 
-      <Button
-        title="Save drill"
-        onPress={handleSave}
-        disabled={!isValid || isSubmitting}
-        style={styles.saveButton}
-      />
     </KeyboardAwareScrollView>
     </Screen>
     <AppKeyboardToolbar />
+    <ElementInfoModal
+      type={infoElement}
+      onDismiss={() => setInfoElement(null)}
+      onAdd={(type, label, config) => {
+        handleAddElement(type, label, config);
+        setInfoElement(null);
+      }}
+    />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxxl },
+  content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
   section: { marginTop: spacing.lg },
   sectionTitle: { ...typography.titleSmall, color: colors.textPrimary, marginBottom: spacing.xs },
   sectionSubtitle: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.md },
   categorySection: { marginBottom: spacing.md },
   categoryLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xs, textTransform: 'uppercase', letterSpacing: 0.5 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: colors.surface,
+  previewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
-  chipText: { ...typography.caption, color: colors.textPrimary },
+  previewCard: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  previewCardPressed: {
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary500,
+  },
+  previewBox: {
+    width: '100%',
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewLabel: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
   addedElement: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,5 +256,4 @@ const styles = StyleSheet.create({
   },
   addedElementText: { ...typography.bodySmall, color: colors.textPrimary },
   removeText: { ...typography.caption, color: colors.error600 },
-  saveButton: { marginTop: spacing.xl },
 });

@@ -8,6 +8,7 @@ import { useUIPreferencesStore } from '@/stores/ui-preferences.store';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import type { MeasurementType } from '@/types/domain.types';
@@ -125,10 +126,16 @@ export function MeasurementsScreen() {
   if (!childId) return null;
 
   return (
+    <>
+    <ModalHeader
+      title="Measurements"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
     <Screen edges={['bottom']}>
       <FlatList
         data={[]}
         renderItem={() => null}
+        contentContainerStyle={{ paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }}
         ListHeaderComponent={
           <View style={styles.sectionsContainer}>
             <MeasurementSection
@@ -147,6 +154,7 @@ export function MeasurementsScreen() {
         }
       />
     </Screen>
+    </>
   );
 }
 

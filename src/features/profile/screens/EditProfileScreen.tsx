@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
@@ -8,9 +8,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 
 import { useActiveChildStore } from '@/stores/active-child.store';
+import { isLocalAvatarUri } from '@/lib/supabase/avatar';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { Avatar } from '@/shared/components/Avatar';
-import { Button } from '@/shared/components/Button';
+import { ModalHeader, MODAL_HEADER_CONTENT_BOTTOM } from '@/shared/components/ModalHeader';
 import { Input } from '@/shared/components/Input';
 import { Screen } from '@/shared/components/Screen';
 import { Toast } from '@/shared/components/Toast';
@@ -85,7 +86,7 @@ export function EditProfileScreen() {
     const c = profile.child;
     return (
       name !== c.name ||
-      avatarUri !== c.avatarUrl ||
+      isLocalAvatarUri(avatarUri) ||
       (dob ? dob.toISOString().slice(0, 10) : null) !== c.dateOfBirth ||
       (country || null) !== (c.country || null) ||
       gender !== ((c.gender as Gender) ?? null) ||
@@ -112,10 +113,20 @@ export function EditProfileScreen() {
     setAvatarUri(asset.uri);
   }, []);
 
+  // Per docs/ux/forms.md §4: do NOT close the picker inside onChange — iOS
+  // fires onChange for every wheel/calendar interaction, and auto-closing
+  // makes the picker dismiss after the first tap. The accordion chip below
+  // is the only thing that toggles the picker.
   const handleDateChange = useCallback((_event: unknown, selectedDate?: Date) => {
-    setShowDatePicker(false);
     if (selectedDate) setDob(selectedDate);
   }, []);
+
+  const formatDob = (date: Date) =>
+    date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
   const validateAndSave = useCallback(async () => {
     setNameError(null);
@@ -134,7 +145,12 @@ export function EditProfileScreen() {
       name: name.trim(),
     };
 
-    if (avatarUri !== profile?.child?.avatarUrl) {
+    // Only persist the photo when the user picked a NEW one (a local file:// URI).
+    // The form is seeded with a signed display URL whose token rotates on every
+    // refetch; diffing against it would otherwise leak that signed URL back into
+    // avatar_url. A freshly-picked photo is always a local file:// URI, which the
+    // update mutation uploads to storage before saving the path.
+    if (isLocalAvatarUri(avatarUri)) {
       fields.avatar_url = avatarUri;
     }
     if (dob) {
@@ -177,11 +193,21 @@ export function EditProfileScreen() {
 
   return (
     <>
+    <ModalHeader
+      title="Edit Profile"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+      rightAction={{
+        icon: 'check',
+        onPress: validateAndSave,
+        disabled: !hasChanges || updateChild.isPending || !name.trim(),
+        accessibilityLabel: 'Save',
+      }}
+    />
     <Screen edges={['bottom']}>
     <View style={styles.wrapper}>
       <KeyboardAwareScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -212,25 +238,36 @@ export function EditProfileScreen() {
           maxLength={50}
         />
 
-        {/* Date of birth */}
-        <View style={styles.field}>
+        {/* Date of birth — documented inline-accordion chip pattern (docs/ux/forms.md §4).
+            Matches AddChildScreen and MeasurementEditScreen. */}
+        <View style={styles.dateRow}>
           <Text style={styles.fieldLabel}>Date of birth</Text>
           <Pressable
-            onPress={() => setShowDatePicker(true)}
-            style={styles.dateButton}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowDatePicker((v) => !v);
+            }}
           >
-            <Text style={dob ? styles.dateText : styles.datePlaceholder}>
-              {dob ? dob.toLocaleDateString() : 'Select date'}
-            </Text>
+            <View style={[styles.dateChip, showDatePicker && styles.dateChipExpanded]}>
+              <Text
+                style={[
+                  styles.dateChipText,
+                  showDatePicker && styles.dateChipTextExpanded,
+                ]}
+              >
+                {dob ? formatDob(dob) : 'Select'}
+              </Text>
+            </View>
           </Pressable>
         </View>
         {showDatePicker ? (
           <DateTimePicker
             value={dob ?? new Date()}
             mode="date"
-            display="spinner"
+            display="inline"
             maximumDate={new Date()}
             onChange={handleDateChange}
+            style={styles.inlinePicker}
           />
         ) : null}
 
@@ -355,13 +392,6 @@ export function EditProfileScreen() {
           </View>
         ) : null}
 
-        <View style={styles.actions}>
-          <Button
-            title="Save"
-            onPress={validateAndSave}
-            disabled={!hasChanges || updateChild.isPending || !name.trim()}
-          />
-        </View>
       </KeyboardAwareScrollView>
 
       <Toast
@@ -369,6 +399,7 @@ export function EditProfileScreen() {
         variant="success"
         visible={toastVisible}
         onDismiss={() => setToastVisible(false)}
+        topOffset={MODAL_HEADER_CONTENT_BOTTOM + spacing.sm}
       />
     </View>
     </Screen>
@@ -418,23 +449,34 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
   },
-  dateButton: {
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  dateChip: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.borderDefault,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    minHeight: 48,
-    justifyContent: 'center',
   },
-  dateText: {
+  dateChipExpanded: {
+    backgroundColor: colors.primary50,
+    borderColor: colors.primary500,
+  },
+  dateChipText: {
     ...typography.bodySmall,
     color: colors.textPrimary,
   },
-  datePlaceholder: {
-    ...typography.bodySmall,
-    color: colors.textPlaceholder,
+  dateChipTextExpanded: {
+    color: colors.primary500,
+  },
+  inlinePicker: {
+    alignSelf: 'stretch',
+    marginBottom: spacing.lg,
   },
   optionRow: {
     flexDirection: 'row',
@@ -522,8 +564,5 @@ const styles = StyleSheet.create({
   },
   monthChipTextSelected: {
     color: colors.textOnPrimary,
-  },
-  actions: {
-    marginTop: spacing.md,
   },
 });

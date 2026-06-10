@@ -55,3 +55,24 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
   free_text_note: 'Free Text Note',
   voice_note: 'Voice Note',
 };
+
+export const ELEMENT_DESCRIPTIONS: Record<ElementType, string> = {
+  counter: 'Tap + or − to count up.',
+  combined_counter: 'Tap + or − to count up and down, or type the number directly.',
+  split_counter: 'Two counters side by side, like left/right.',
+  multistep_counter: 'Step through a sequence to log one rep.',
+  stopwatch: 'Start, pause, and reset a running timer.',
+  countdown_timer: 'Counts down from a set duration.',
+  lap_timer: 'Records lap times one tap at a time.',
+  interval_timer: 'Alternates between work and rest periods.',
+  checklist: 'Tick off items as they are completed.',
+  single_select: 'Pick one option from a list.',
+  multi_select: 'Pick any number of options from a list.',
+  yes_no: 'A two-way toggle: yes or no.',
+  rating_scale: 'Rate from 1 to N.',
+  emoji_face_scale: 'Pick an emoji to express how it went.',
+  number_input: 'Type a number directly.',
+  multi_number_input: 'Type multiple numbers in labeled fields.',
+  free_text_note: 'Write a free-form text note.',
+  voice_note: 'Record a short audio note.',
+};

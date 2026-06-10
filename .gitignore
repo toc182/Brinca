@@ -8,6 +8,10 @@ dist/
 
 # Personal local dev notes (per-machine)
 LOCAL-DEV.md
+
+# Metro bundler logs (transient)
+metro.log
+metro.utf8.log
 *.jks
 *.p8
 *.p12

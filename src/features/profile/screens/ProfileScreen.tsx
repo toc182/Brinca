@@ -2,7 +2,12 @@
 import { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import type { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { useQuery } from '@tanstack/react-query';
 import { GlobeSimple } from 'phosphor-react-native';
@@ -25,6 +30,7 @@ import { PhotosSection } from '../components/PhotosSection';
 import { useProfileQuery, type ActivityItem } from '../queries/useProfileQuery';
 import { profileKeys } from '../queries/keys';
 import { getChildrenByFamily } from '../repositories/profile.repository';
+import { signAvatarUrl } from '@/lib/supabase/avatar';
 
 function ProfileSkeleton() {
   return (
@@ -99,9 +105,15 @@ export function ProfileScreen() {
   const sheetRef = useRef<BottomSheetMethods>(null);
   const scrollY = useSharedValue(0);
   const headerHeight = useCollapsibleHeaderHeight();
+  const insets = useSafeAreaInsets();
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
   });
+
+  // NativeTabs (UITabBarController) inflates the bottom safe area to include
+  // the tab bar height, so this clears the bar even when minimizeBehavior
+  // collapses it on scroll down.
+  const scrollPaddingBottom = insets.bottom + spacing.md;
 
   const childId = useActiveChildStore((s) => s.childId);
   const childName = useActiveChildStore((s) => s.childName);
@@ -113,7 +125,12 @@ export function ProfileScreen() {
 
   const { data: childrenList = [] } = useQuery({
     queryKey: profileKeys.children(familyId ?? ''),
-    queryFn: () => getChildrenByFamily(familyId!),
+    queryFn: async () => {
+      const rows = await getChildrenByFamily(familyId!);
+      return Promise.all(
+        rows.map(async (r) => ({ ...r, avatar_url: await signAvatarUrl(r.avatar_url) })),
+      );
+    },
     enabled: !!familyId,
   });
 
@@ -136,7 +153,7 @@ export function ProfileScreen() {
   );
 
   const handleAddChild = useCallback(() => {
-    router.push('/(settings)');
+    router.push('/(settings)/add-child');
   }, [router]);
 
   const handleGoToAccountsCenter = useCallback(() => {
@@ -162,8 +179,7 @@ export function ProfileScreen() {
         <CollapsibleHeader title={childName ?? 'Profile'} scrollY={scrollY} rightContent={<ParentAvatar />} />
         <Animated.ScrollView
           style={styles.container}
-          contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         >
           <ErrorState onRetry={() => refetch()} />
         </Animated.ScrollView>
@@ -177,8 +193,7 @@ export function ProfileScreen() {
         <CollapsibleHeader title={childName ?? 'Profile'} scrollY={scrollY} rightContent={<ParentAvatar />} />
         <Animated.ScrollView
           style={styles.container}
-          contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         >
           <ProfileSkeleton />
         </Animated.ScrollView>
@@ -192,32 +207,37 @@ export function ProfileScreen() {
       <Animated.ScrollView
         ref={scrollRef}
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+        contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
       >
         <OfflineBanner />
-        <ChildHeader
-          name={profile.child?.name ?? childName}
-          avatarUrl={profile.child?.avatarUrl ?? null}
-          onPress={handleOpenSwitcher}
-        />
+        {/* Keyed by childId so a child switch remounts this block and the
+            reanimated entry plays — gives the user a clear visual cue that
+            the page now belongs to a different child. FadeInDown adds a
+            downward slide on top of the fade so the change is more obvious. */}
+        <Animated.View key={childId} entering={FadeInDown.duration(320)}>
+          <ChildHeader
+            name={profile.child?.name ?? childName}
+            avatarUrl={profile.child?.avatarUrl ?? null}
+            onPress={handleOpenSwitcher}
+          />
 
-        <BasicInfo
-          dateOfBirth={profile.child?.dateOfBirth ?? null}
-          gender={profile.child?.gender ?? null}
-          country={profile.child?.country ?? null}
-          gradeLevel={profile.child?.gradeLevel ?? null}
-        />
+          <BasicInfo
+            dateOfBirth={profile.child?.dateOfBirth ?? null}
+            gender={profile.child?.gender ?? null}
+            country={profile.child?.country ?? null}
+            gradeLevel={profile.child?.gradeLevel ?? null}
+          />
 
-        <MeasurementsSummary
-          latestWeight={profile.latestWeight}
-          latestHeight={profile.latestHeight}
-          measurementUnit={measurementUnit}
-          onPress={handleMeasurementPress}
-        />
+          <MeasurementsSummary
+            latestWeight={profile.latestWeight}
+            latestHeight={profile.latestHeight}
+            measurementUnit={measurementUnit}
+            onPress={handleMeasurementPress}
+          />
+        </Animated.View>
 
         <View style={styles.activitiesSection}>
           <Text style={styles.sectionTitle}>Activities</Text>

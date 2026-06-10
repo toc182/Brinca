@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 
 import { showToast } from '@/shared/utils/toast';
 import {
@@ -6,7 +7,7 @@ import {
   fetchFamilyMembers,
   fetchCurrentUserFamilyId,
   fetchCurrentUserRole,
-  updateDisplayName,
+  updateProfileInfo,
   updateEmail,
   updatePassword,
   uploadProfilePhoto,
@@ -15,6 +16,7 @@ import {
   changeMemberRole,
   removeFamilyMember,
   type FamilyRole,
+  type PersonaType,
 } from '../repositories/accounts-center.repository';
 
 const PROFILE_KEY = ['accounts-center', 'profile'] as const;
@@ -28,7 +30,33 @@ export function useProfileQuery() {
   return useQuery({
     queryKey: PROFILE_KEY,
     queryFn: fetchProfile,
+    // Keep the parent profile (incl. signed avatar URL) warm for the whole
+    // session so opening Settings never has to cold-fetch it. See prefetchProfile.
+    gcTime: Infinity,
   });
+}
+
+/**
+ * Warm the parent profile into the query cache at auth recovery, so the Settings
+ * screen renders the parent photo instantly instead of cold-fetching the profile
+ * row + signing the private avatar URL on open (~1s). Mirrors how the child
+ * profile query is already warm from the Profile tab. Fire-and-forget.
+ */
+export async function prefetchProfile(queryClient: QueryClient): Promise<void> {
+  await queryClient.prefetchQuery({
+    queryKey: PROFILE_KEY,
+    queryFn: fetchProfile,
+    gcTime: Infinity,
+  });
+  // Warm the avatar IMAGE bytes too, not just the query data. The parent photo
+  // is only ever rendered on the Settings screen, so — unlike the child photo,
+  // which Home/Profile already displayed and thus cached in expo-image — it still
+  // downloads on first Settings open. Prefetch the current signed URL's bytes so
+  // Settings shows it instantly, the same way Andrei's photo is already instant.
+  const data = queryClient.getQueryData<{ avatarUrl: string | null }>(PROFILE_KEY);
+  if (data?.avatarUrl) {
+    void Image.prefetch(data.avatarUrl).catch(() => {});
+  }
 }
 
 export function useFamilyIdQuery() {
@@ -54,10 +82,16 @@ export function useCurrentUserRoleQuery(familyId: string | null | undefined) {
   });
 }
 
-export function useUpdateDisplayNameMutation() {
+export function useUpdateProfileInfoMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => updateDisplayName(name),
+    mutationFn: ({
+      name,
+      personaType,
+    }: {
+      name: string;
+      personaType: PersonaType | null;
+    }) => updateProfileInfo(name, personaType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
       showToast('success', 'Changes saved.');
@@ -96,13 +130,19 @@ export function useUpdateProfilePhotoMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (localUri: string) => {
-      const publicUrl = await uploadProfilePhoto(localUri);
-      await updateProfilePhoto(publicUrl);
-      return publicUrl;
+      // uploadProfilePhoto now returns the storage path (avatars bucket is
+      // private — see signAvatarUrl in the repo). The path lands in
+      // profiles.avatar_url, and fetchProfile signs it on read.
+      const storagePath = await uploadProfilePhoto(localUri);
+      await updateProfilePhoto(storagePath);
+      return storagePath;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
       showToast('success', 'Changes saved.');
+    },
+    onError: () => {
+      showToast('error', "Couldn't update photo. Please try again.");
     },
   });
 }

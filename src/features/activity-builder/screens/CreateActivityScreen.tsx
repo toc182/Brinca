@@ -20,7 +20,14 @@ import { activityBuilderKeys } from '../queries/keys';
 
 const ACTIVITY_ICONS = ['⚽', '🏀', '🎾', '⚾', '🏈', '🏊', '🤸', '🎯', '📚', '🎵', '🎨', '🏃', '🧘', '🏋️', '🤼', '🥊', '🎸', '🧩'];
 
-const CATEGORIES = ['Sport', 'Therapy', 'Academic', 'Custom'] as const;
+type Category = 'sport' | 'therapy' | 'academic' | 'custom';
+const CATEGORIES: readonly Category[] = ['sport', 'therapy', 'academic', 'custom'];
+const CATEGORY_LABELS: Record<Category, string> = {
+  sport: 'Sport',
+  therapy: 'Therapy',
+  academic: 'Academic',
+  custom: 'Custom',
+};
 
 export function CreateActivityScreen() {
   const router = useRouter();
@@ -29,7 +36,7 @@ export function CreateActivityScreen() {
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(ACTIVITY_ICONS[0]);
-  const [category, setCategory] = useState<string | undefined>(undefined);
+  const [category, setCategory] = useState<Category | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isValid = name.trim().length >= 1 && name.trim().length <= 50;
@@ -91,7 +98,7 @@ export function CreateActivityScreen() {
             style={[styles.categoryChip, category === cat && styles.categoryChipSelected]}
           >
             <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextSelected]}>
-              {cat}
+              {CATEGORY_LABELS[cat]}
             </Text>
           </Pressable>
         ))}

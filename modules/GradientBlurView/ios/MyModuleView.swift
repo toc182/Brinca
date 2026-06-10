@@ -10,8 +10,15 @@ class MyModuleView: ExpoView {
     didSet { blurView.effect = UIBlurEffect(style: blurStyle) }
   }
 
-  /// Where the fade starts (0 = top, 1 = bottom). Content above this is fully blurred.
+  /// Where the fade starts along the direction axis (0 = start edge, 1 = end edge).
+  /// Content from the start edge to fadeStart is fully blurred; from fadeStart to the end edge fades to clear.
   var fadeStart: CGFloat = 0.7 {
+    didSet { updateMask() }
+  }
+
+  /// "down" (default): opaque at top, fades to clear at bottom.
+  /// "up": opaque at bottom, fades to clear at top.
+  var fadeDirection: String = "down" {
     didSet { updateMask() }
   }
 
@@ -24,8 +31,6 @@ class MyModuleView: ExpoView {
 
     // Gradient mask: black = visible, clear = hidden
     gradientMask.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
-    gradientMask.startPoint = CGPoint(x: 0.5, y: 0)
-    gradientMask.endPoint = CGPoint(x: 0.5, y: 1)
     updateMask()
 
     blurView.layer.mask = gradientMask
@@ -42,6 +47,13 @@ class MyModuleView: ExpoView {
   }
 
   private func updateMask() {
+    if fadeDirection == "up" {
+      gradientMask.startPoint = CGPoint(x: 0.5, y: 1)
+      gradientMask.endPoint = CGPoint(x: 0.5, y: 0)
+    } else {
+      gradientMask.startPoint = CGPoint(x: 0.5, y: 0)
+      gradientMask.endPoint = CGPoint(x: 0.5, y: 1)
+    }
     gradientMask.locations = [0, NSNumber(value: Float(fadeStart)), 1]
   }
 }

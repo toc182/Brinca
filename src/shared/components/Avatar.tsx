@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 
 import { colors, radii } from '../theme';
 
@@ -41,6 +42,8 @@ export function Avatar({ imageUrl, name, size = 'medium', style }: AvatarProps) 
         <Image
           source={{ uri: imageUrl }}
           style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
         />
       </View>
     );

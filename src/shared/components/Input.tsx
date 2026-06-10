@@ -107,7 +107,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    ...typography.bodySmall,
+    // Pull font props explicitly — spreading `typography.bodySmall` drags in
+    // `lineHeight` which top-aligns text inside a single-line TextInput on iOS.
+    fontFamily: typography.bodySmall.fontFamily,
+    fontSize: typography.bodySmall.fontSize,
+    letterSpacing: typography.bodySmall.letterSpacing,
     color: colors.textPrimary,
   },
   inputFocused: {

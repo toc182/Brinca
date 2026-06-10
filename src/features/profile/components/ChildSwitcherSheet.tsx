@@ -1,6 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import type { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { GearSix } from 'phosphor-react-native';
 
@@ -43,24 +48,43 @@ export function ChildSwitcherSheet({
   onAddChild,
   onGoToAccountsCenter,
 }: ChildSwitcherSheetProps) {
-  const snapPoints = useMemo(() => ['40%', '60%'], []);
+  const insets = useSafeAreaInsets();
+  const snapPoints = useMemo(() => ['75%'], []);
 
   const handleClose = useCallback(() => {
     sheetRef.current?.close();
   }, [sheetRef]);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.4}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
 
   return (
     <BottomSheet
       ref={sheetRef}
       index={-1}
       snapPoints={snapPoints}
+      enableDynamicSizing={false}
       enablePanDownToClose
+      backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.indicator}
     >
-      <BottomSheetView style={styles.content}>
-        <Text style={styles.title}>Switch child</Text>
-
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + spacing.xxxl },
+        ]}
+      >
         {childrenList.map((child) => {
           const isActive = child.id === activeChildId;
           return (
@@ -112,7 +136,7 @@ export function ChildSwitcherSheet({
             <Text style={styles.accountsLabel}>Go to Accounts Center</Text>
           </Pressable>
         ) : null}
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheet>
   );
 }
@@ -130,11 +154,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     gap: spacing.xs,
-  },
-  title: {
-    ...typography.titleSmall,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
   childRow: {
     flexDirection: 'row',

@@ -32,7 +32,9 @@ export async function insertElement(id: UUID, drillId: UUID, type: string, label
     `INSERT INTO tracking_elements (id, drill_id, type, label, config, display_order) VALUES (?, ?, ?, ?, ?, ?)`,
     id, drillId, type, label, configJson, displayOrder
   );
-  await appendToQueue('INSERT', 'tracking_elements', { id, drill_id: drillId, type, label, config: configJson, display_order: displayOrder });
+  // Sync payload carries the parsed object — Supabase's JSONB column expects
+  // a JSON value, not a JSON-as-string. Local SQLite still stores the string.
+  await appendToQueue('INSERT', 'tracking_elements', { id, drill_id: drillId, type, label, config, display_order: displayOrder });
 }
 
 export async function updateElement(id: UUID, fields: { label?: string; config?: Record<string, unknown> }) {
@@ -46,7 +48,7 @@ export async function updateElement(id: UUID, fields: { label?: string; config?:
   await db.runAsync(`UPDATE tracking_elements SET ${sets.join(', ')} WHERE id = ?`, ...values);
   const payload: Record<string, unknown> = { id };
   if (fields.label !== undefined) payload.label = fields.label;
-  if (fields.config !== undefined) payload.config = JSON.stringify(fields.config);
+  if (fields.config !== undefined) payload.config = fields.config;
   await appendToQueue('UPDATE', 'tracking_elements', payload);
 }
 

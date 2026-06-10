@@ -166,7 +166,7 @@ export function SessionSummaryScreen() {
 
         <Button
           title="Done"
-          onPress={() => router.replace('/(tabs)/home')}
+          onPress={() => router.dismissTo('/(tabs)/home')}
           style={styles.doneButton}
         />
       </ScrollView>

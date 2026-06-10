@@ -114,6 +114,7 @@ export function mapDrill(row: DrillRow): Drill {
     id: row.id,
     activityId: row.activity_id,
     name: row.name,
+    description: row.description,
     isActive: row.is_active,
     displayOrder: row.display_order,
     createdAt: row.created_at,

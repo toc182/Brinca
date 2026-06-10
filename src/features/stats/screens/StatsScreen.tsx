@@ -2,6 +2,7 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { CaretDown, CaretRight, Check, Funnel } from 'phosphor-react-native';
 
@@ -58,9 +59,15 @@ export function StatsScreen() {
   const childName = useActiveChildStore((s) => s.childName);
   const scrollY = useSharedValue(0);
   const headerHeight = useCollapsibleHeaderHeight();
+  const insets = useSafeAreaInsets();
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
   });
+
+  // NativeTabs (UITabBarController) inflates the bottom safe area to include
+  // the tab bar height, so this clears the bar even when minimizeBehavior
+  // collapses it on scroll down.
+  const scrollPaddingBottom = insets.bottom + spacing.md;
 
   // --- State ---
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
@@ -157,8 +164,7 @@ export function StatsScreen() {
         <CollapsibleHeader title={childName ?? 'Stats'} scrollY={scrollY} rightContent={filterButton} />
         <Animated.ScrollView
           style={styles.container}
-          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         >
           <OfflineBanner />
           <StatsLoadingSkeleton />
@@ -174,8 +180,7 @@ export function StatsScreen() {
         <CollapsibleHeader title={childName ?? 'Stats'} scrollY={scrollY} rightContent={filterButton} />
         <Animated.ScrollView
           style={styles.container}
-          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.listContent, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         >
           <OfflineBanner />
           <ErrorState onRetry={handleRetry} />
@@ -199,10 +204,9 @@ export function StatsScreen() {
         style={styles.container}
         data={sessions}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.listContent, { paddingTop: headerHeight }]}
+        contentContainerStyle={[styles.listContent, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
         ListHeaderComponent={
           <>
             <OfflineBanner />
@@ -478,7 +482,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingRight: spacing.md,
   },
   headerButton: {
     padding: spacing.xxs,
@@ -490,7 +493,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceDisabled,
     borderRadius: radii.md,
     padding: spacing.xxs,
-    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   segmentButton: {

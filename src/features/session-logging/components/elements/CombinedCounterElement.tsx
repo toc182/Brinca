@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Minus, Plus } from 'phosphor-react-native';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { CombinedCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { CombinedCounterValue } from '@/shared/tracking-elements/types/element-values';
@@ -57,7 +58,7 @@ export function CombinedCounterElement({ value, onValueChange, config }: Combine
           ]}
           disabled={count === 0}
         >
-          <Text style={[styles.buttonText, count === 0 && styles.buttonTextDisabled]}>-</Text>
+          <Minus size={26} weight="bold" color={colors.textOnPrimary} />
         </Pressable>
 
         <View style={styles.countContainer}>
@@ -84,7 +85,7 @@ export function CombinedCounterElement({ value, onValueChange, config }: Combine
           onPress={increment}
           style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>+</Text>
+          <Plus size={26} weight="bold" color={colors.textOnPrimary} />
         </Pressable>
       </View>
 
@@ -112,12 +113,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonMinus: { backgroundColor: colors.primary50 },
-  buttonPlus: { backgroundColor: colors.primary500 },
+  buttonMinus: { backgroundColor: colors.error500 },
+  buttonPlus: { backgroundColor: colors.success500 },
   buttonPressed: { opacity: 0.7 },
-  buttonDisabled: { backgroundColor: colors.surfaceDisabled },
-  buttonText: { ...typography.titleMedium, color: colors.primary700 },
-  buttonTextDisabled: { color: colors.textDisabled },
+  buttonDisabled: { opacity: 0.4 },
   countContainer: { alignItems: 'center', minWidth: 80 },
   count: { ...typography.counter, color: colors.textPrimary },
   countAtTarget: { color: colors.success500 },

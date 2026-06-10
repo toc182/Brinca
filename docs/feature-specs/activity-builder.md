@@ -118,7 +118,15 @@ Tap a drill → Drill edit screen
 **Drill name**
 - Text field (required, max 50 characters)
 
+**Description (optional)**
+- Multi-line text (max 2000 characters) — reference notes for the drill (what it is, how to do it, anything useful for next time)
+- Horizontal photo strip below the text, max 10 photos per drill — reference imagery, instructional photos, etc.
+- "Add Photo" card opens the OS picker (camera or library); thumbnails appear immediately and upload in the background. After one is added the card label becomes "Add Another".
+- Photos sync to other family members via the private `session-media` bucket under `<family_id>/drill-desc/<drill_id>/<photo_id>.jpg`; displayed with short-lived signed URLs.
+- In the New Drill flow, photos are held as drafts in component state until Save (the drill row doesn't exist yet); on Save they're materialized as `drill_photos` rows and the upload pipeline kicks. In the Edit flow, photos commit live as they're picked.
+
 **Tracking elements**
+- A permanent, non-removable "Mark as complete · DEFAULT" card sits at the top of the section. It documents the built-in behavior: every drill can be marked complete on its own, with no configuration. There is no "mark complete" element type — completion is inherent, so tracking elements are framed as optional extras layered on top.
 - List of configured tracking elements, each showing: type icon, label, type-specific summary
 - "Add element" button → opens grouped picker (see tracking element types below)
 - Multiple elements per drill allowed, including multiple of the same type
@@ -212,7 +220,7 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Activity list — empty | "No activities yet. Add your first activity to start tracking." with "Add activity" button |
 | Activity detail — normal | Full activity configuration shown |
 | Drill edit — normal | Full drill configuration shown |
-| Drill edit — no elements | Tracking elements section shows: "No elements yet. Add your first tracking element." |
+| Drill edit — no elements | Tracking section shows the permanent "Mark as complete · DEFAULT" card plus the hint: "No tracking elements added. This drill will just be marked complete." |
 | Loading | Skeleton with shimmer animation |
 | Offline | Subtle offline banner. Changes saved locally and synced when connection restored. |
 | Error | "Something went wrong. Please try again." with retry button |
@@ -224,7 +232,7 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Edge case | Expected behavior |
 |---|---|
 | Activity with no drills | Valid — activity appears in Activity tab but starts a session with no drills (session notes still available) |
-| Drill with no tracking elements | Valid — drill appears in session with a "Mark complete" button only |
+| Drill with no tracking elements | Valid. In a session it shows a "Mark as complete" checkbox plus the "Finish drill" button (the top-right header check is dropped for these drills, leaving only Back). Once finished and reopened, the checkbox is checked and the Finish button is hidden; tapping the checkbox asks to confirm before un-completing, which restores the Finish button. |
 | Drill with 10+ tracking elements | All elements visible on drill screen during session via scrolling |
 | Delete an activity with past sessions | Activity and drills removed from builder. Past sessions preserved in Stats and session history. |
 | Delete a drill with past session data | Drill removed from activity. Past session data for that drill preserved. |

@@ -3,23 +3,21 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
+import { formatTimerWithCentiseconds } from '@/shared/utils/formatTimer';
 import type { LapTimerConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { LapTimerValue } from '@/shared/tracking-elements/types/element-values';
 
 const elementTimerStorage = createMMKV({ id: 'element-timers' });
+
+// Centisecond display requires a sub-100ms tick so the trailing two digits
+// animate smoothly rather than chunking by 10.
+const TICK_INTERVAL_MS = 33;
 
 interface LapTimerElementProps {
   value: LapTimerValue;
   onValueChange: (value: LapTimerValue) => void;
   config: LapTimerConfig;
   elementId?: string;
-}
-
-function formatTime(totalSeconds: number): string {
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = Math.floor(totalSeconds % 60);
-  const tenths = Math.floor((totalSeconds % 1) * 10);
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${tenths}`;
 }
 
 export function LapTimerElement({ value, onValueChange, config, elementId }: LapTimerElementProps) {
@@ -55,7 +53,7 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
         const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
         onValueChange({ ...value, total_elapsed: elapsed });
       }
-    }, 100);
+    }, TICK_INTERVAL_MS);
   };
 
   const pause = () => {
@@ -111,10 +109,10 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
 
   return (
     <View style={styles.container}>
-      <Text style={styles.time}>{formatTime(value.total_elapsed)}</Text>
+      <Text style={styles.time}>{formatTimerWithCentiseconds(value.total_elapsed)}</Text>
 
       {isRunning && (
-        <Text style={styles.lapTime}>Lap {value.laps.length + 1}: {formatTime(Math.max(0, currentLapTime))}</Text>
+        <Text style={styles.lapTime}>Lap {value.laps.length + 1}: {formatTimerWithCentiseconds(Math.max(0, currentLapTime))}</Text>
       )}
 
       {hasLapTarget && (
@@ -175,7 +173,7 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
                 <View style={styles.lapRow}>
                   <Text style={styles.lapLabel}>Lap {index + 1}</Text>
                   <Text style={[styles.lapValue, isGoodLap && styles.lapValueGood]}>
-                    {formatTime(lapSec)}
+                    {formatTimerWithCentiseconds(lapSec)}
                   </Text>
                 </View>
               </SwipeToDeleteRow>

@@ -38,6 +38,7 @@ Values live in `src/shared/theme.ts`. Never hardcode hex / size values anywhere 
 
 | File | Topic |
 |---|---|
+| [button.md](components/button.md) | `<Button>` — variants, sizes, `iconLeft` |
 | [toast.md](components/toast.md) | Top-of-screen notifications (4 variants) |
 | [inline-form-error.md](components/inline-form-error.md) | Validation error text + input error state |
 | [form-input.md](components/form-input.md) | Text input — all 5 states |

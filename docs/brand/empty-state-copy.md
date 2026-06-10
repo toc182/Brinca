@@ -11,6 +11,7 @@ Per-context Capi expression and bilingual copy for empty states. Visual layout s
 | No children yet | Happy (waving) | "Let's add your first child" — Add a child to get started. | "Agreguemos al primer niño/a" — Agrega un niño/a para comenzar. |
 | No sessions yet | Encouraging (clipboard) | "No sessions yet" — Tap + to log the first one. | "Aún no hay sesiones" — Toca + para registrar la primera. |
 | No activities | Neutral / Thinking (stretching) | "Nothing scheduled today" — Pick an activity to build your plan. | "Nada programado para hoy" — Elige una actividad para armar tu plan. |
+| No activities configured (Activities tab, first run) | Neutral / Thinking | "Let's set up your first activity" — Add activities in Settings to start tracking sessions. | _TBD_ |
 | Search — 0 results | Neutral / Thinking (magnifying glass) | "No results for '{q}'" | "Sin resultados para '{q}'" |
 | All caught up (positive) | Cheer (confetti) | "You're all caught up!" | "¡Todo al día!" |
 | Offline | Sleepy (cloud with X) | "Can't reach the server" | "No podemos conectar" |

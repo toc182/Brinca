@@ -39,7 +39,13 @@ For per-context empty-state copy with Capi expression, see `empty-state-copy.md`
 |---|---|---|
 | Save | Save | Guardar |
 | Start session | Start session | Empezar sesión |
+| Pause session | Pause | Pausar |
+| Resume session | Resume | Reanudar |
 | Finish session | Finish session | Terminar sesión |
+| Add photo | Add Photo | Agregar foto |
+| Change photo | Change Photo | Cambiar foto |
+| Add note | Add Note | Agregar nota |
+| Edit note | Edit Note | Editar nota |
 | Log out | Log out | Cerrar sesión |
 | Add child | Add child | Agregar niño/a |
 | Upgrade | Upgrade | Mejorar plan |
@@ -48,6 +54,9 @@ For per-context empty-state copy with Capi expression, see `empty-state-copy.md`
 | Delete | Delete | Eliminar |
 | Confirm | Confirm | Confirmar |
 | Discard | Discard | Descartar |
+| In progress (drill status) | In progress | En progreso |
+| Add another photo | Add Another | Agregar otra |
+| Remove photo (action) | Remove | Quitar |
 
 ---
 

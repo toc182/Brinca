@@ -7,6 +7,7 @@ import { useActiveChildStore } from '@/stores/active-child.store';
 import { Button } from '@/shared/components/Button';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 
@@ -85,12 +86,17 @@ export function ExternalActivitiesScreen() {
   );
 
   return (
+    <>
+    <ModalHeader
+      title="External Activities"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
     <Screen edges={['bottom']}>
       <FlatList
         data={activities}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}
         ListHeaderComponent={
           <Button
             title="Add activity"
@@ -108,6 +114,7 @@ export function ExternalActivitiesScreen() {
         }
       />
     </Screen>
+    </>
   );
 }
 

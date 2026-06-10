@@ -1,5 +1,4 @@
-import { Platform, StyleSheet, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   interpolate,
@@ -9,19 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors } from '../theme';
-
-// Use native gradient blur on iOS, fallback to expo-blur on Android
-let GradientBlurBackground: React.ComponentType<{ style: object; fadeStart?: number }>;
-
-if (Platform.OS === 'ios') {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { GradientBlurView } = require('../../../modules/GradientBlurView') as { GradientBlurView: React.ComponentType<{ style: object; fadeStart?: number }> };
-  GradientBlurBackground = GradientBlurView;
-} else {
-  GradientBlurBackground = ({ style }: { style: object }) => (
-    <BlurView intensity={30} tint="light" style={style} />
-  );
-}
+import { GradientBlurBackground } from './GradientBlurBackground';
 
 const TITLE_LARGE = 34;
 const TITLE_SMALL = 17;

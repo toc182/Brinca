@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { signAvatarUrl } from '@/lib/supabase/avatar';
 import { profileKeys } from './keys';
 import {
   getChildById,
@@ -46,11 +47,12 @@ export function useProfileQuery(childId: string | null) {
         return { child: null, latestWeight: null, latestHeight: null, activities: [] };
       }
 
-      const [weightRow, heightRow, activityRows, externalRows] = await Promise.all([
+      const [weightRow, heightRow, activityRows, externalRows, signedAvatarUrl] = await Promise.all([
         getLatestMeasurement(childId!, 'weight'),
         getLatestMeasurement(childId!, 'height'),
         getActivitiesSummary(childId!),
         getExternalActivitiesSummary(childId!),
+        signAvatarUrl(row.avatar_url),
       ]);
 
       const appActivities: ActivityItem[] = activityRows.map((a) => ({
@@ -79,7 +81,7 @@ export function useProfileQuery(childId: string | null) {
           id: row.id,
           familyId: row.family_id,
           name: row.name,
-          avatarUrl: row.avatar_url,
+          avatarUrl: signedAvatarUrl,
           dateOfBirth: row.date_of_birth,
           gender: row.gender,
           country: row.country,

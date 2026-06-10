@@ -39,9 +39,12 @@ export async function upsertElementValue(
     drillResultId, trackingElementId
   );
   const json = JSON.stringify(value);
+  // Local SQLite stores `value` as TEXT (the JSON string). Supabase column is
+  // JSONB and expects a JSON value, so the queue payload carries the parsed
+  // object — not the string — to avoid double-encoding.
   if (existing) {
     await db.runAsync(`UPDATE element_values SET value = ? WHERE id = ?`, json, existing.id);
-    await appendToQueue('UPDATE', 'element_values', { id: existing.id, value: json });
+    await appendToQueue('UPDATE', 'element_values', { id: existing.id, value });
   } else {
     const id = randomUUID();
     await db.runAsync(
@@ -49,7 +52,7 @@ export async function upsertElementValue(
       id, drillResultId, trackingElementId, json
     );
     await appendToQueue('INSERT', 'element_values', {
-      id, drill_result_id: drillResultId, tracking_element_id: trackingElementId, value: json,
+      id, drill_result_id: drillResultId, tracking_element_id: trackingElementId, value,
     });
   }
 }
@@ -74,7 +77,11 @@ export async function getDrillResultsWithDrillNames(sessionId: UUID) {
 }
 
 /**
- * Updates the photo URL on a drill result row.
+ * @deprecated Drill-level photos moved to the `drill_result_photos` child
+ * table (multi-photo support) in migration 0003. SessionScreen still uses
+ * `updateSessionPhoto` (session-level single photo) — that path is unchanged.
+ * Kept here only for backward compat in case any caller still references it;
+ * drop after one release cycle once we're sure nothing's broken.
  */
 export async function updateDrillResultPhoto(id: UUID, photoUrl: string | null) {
   const db = await getDatabase();
@@ -95,6 +102,22 @@ export async function markDrillComplete(id: UUID) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE drill_results SET is_complete = 1 WHERE id = ?`, id);
   await appendToQueue('UPDATE', 'drill_results', { id, is_complete: true });
+}
+
+export async function markDrillIncomplete(id: UUID) {
+  const db = await getDatabase();
+  await db.runAsync(`UPDATE drill_results SET is_complete = 0 WHERE id = ?`, id);
+  await appendToQueue('UPDATE', 'drill_results', { id, is_complete: false });
+}
+
+/** Reads the saved completion flag for a drill result (defaults to false). */
+export async function getDrillResultIsComplete(id: UUID): Promise<boolean> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ is_complete: number }>(
+    `SELECT is_complete FROM drill_results WHERE id = ?`,
+    id
+  );
+  return row?.is_complete === 1;
 }
 
 export async function updateDrillResultNote(id: UUID, note: string) {
@@ -121,7 +144,7 @@ export async function insertElementValue(id: UUID, drillResultId: UUID, tracking
     `INSERT INTO element_values (id, drill_result_id, tracking_element_id, value) VALUES (?, ?, ?, ?)`,
     id, drillResultId, trackingElementId, JSON.stringify(value)
   );
-  await appendToQueue('INSERT', 'element_values', { id, drill_result_id: drillResultId, tracking_element_id: trackingElementId, value: JSON.stringify(value) });
+  await appendToQueue('INSERT', 'element_values', { id, drill_result_id: drillResultId, tracking_element_id: trackingElementId, value });
 }
 
 export async function updateElementValue(id: UUID, value: Record<string, unknown>) {
@@ -130,6 +153,7 @@ export async function updateElementValue(id: UUID, value: Record<string, unknown
     `UPDATE element_values SET value = ? WHERE id = ?`,
     JSON.stringify(value), id
   );
+  await appendToQueue('UPDATE', 'element_values', { id, value });
 }
 
 export async function getElementValuesByDrillResult(drillResultId: UUID) {

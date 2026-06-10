@@ -21,9 +21,10 @@ export function useFinishSessionMutation() {
       return { tierResults, newAccolades, durationSeconds: elapsedSeconds };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['recent-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['session-list'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-chart'] });
     },
   });
 }

@@ -2,11 +2,65 @@ import { supabase } from '@/lib/supabase/client';
 
 export type FamilyRole = 'admin' | 'co-admin' | 'collaborator' | 'member';
 
+/**
+ * Read the current user from the cached session. Unlike `supabase.auth.getUser()`
+ * — which validates the JWT against the auth server and can hang on a
+ * slow / stalled refresh — this resolves locally from the stored session.
+ * Use this for any read where RLS will re-verify the token on the server
+ * anyway; reserve `getUser()` for places that explicitly need a fresh
+ * server-side identity check.
+ */
+async function getCurrentUser() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const user = data.session?.user;
+  if (!user) throw new Error('No active session');
+  return user;
+}
+
+const AVATAR_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+/**
+ * Resolve an `avatar_url` column value into a renderable signed URL. The
+ * `avatars` bucket is private, so `getPublicUrl()` returns a 403 URL —
+ * native <Image> renders fail without auth. Newer uploads store just the
+ * storage path; legacy rows still hold a public URL with the path embedded
+ * (`.../object/public/avatars/<path>`), so we parse it out for those too.
+ */
+async function signAvatarUrl(stored: string | null): Promise<string | null> {
+  if (!stored) return null;
+  let path = stored;
+  if (stored.startsWith('http')) {
+    const marker = '/avatars/';
+    const idx = stored.indexOf(marker);
+    if (idx < 0) return null;
+    path = stored.slice(idx + marker.length);
+    // Strip any query string (signed URLs include ?token=, public URLs may
+    // include cache busters) and decode percent-encoding.
+    const qIdx = path.indexOf('?');
+    if (qIdx >= 0) path = path.slice(0, qIdx);
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      // leave path as-is if decode fails
+    }
+  }
+  const { data, error } = await supabase.storage
+    .from('avatars')
+    .createSignedUrl(path, AVATAR_SIGNED_URL_TTL_SECONDS);
+  if (error || !data) return null;
+  return data.signedUrl;
+}
+
+export type PersonaType = 'parent' | 'therapist' | 'coach' | 'teacher' | 'other';
+
 export interface ProfileData {
   id: string;
+  displayId: string;
   displayName: string;
   email: string;
   avatarUrl: string | null;
+  personaType: PersonaType | null;
 }
 
 export interface FamilyMember {
@@ -19,23 +73,22 @@ export interface FamilyMember {
 }
 
 export async function fetchProfile(): Promise<ProfileData> {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-
-  const user = authData.user;
+  const user = await getCurrentUser();
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('display_name, avatar_url')
+    .select('display_id, display_name, avatar_url, persona_type')
     .eq('id', user.id)
     .single();
   if (profileError) throw profileError;
 
   return {
     id: user.id,
+    displayId: profile.display_id,
     displayName: profile.display_name,
     email: user.email ?? '',
-    avatarUrl: profile.avatar_url,
+    avatarUrl: await signAvatarUrl(profile.avatar_url),
+    personaType: (profile.persona_type as PersonaType | null) ?? null,
   };
 }
 
@@ -59,32 +112,34 @@ export async function fetchFamilyMembers(familyId: string): Promise<FamilyMember
   // Since we can't query auth.users directly from client, we use the profile data
   // and get email from auth for the current user only. For other members,
   // we store email in a separate query via an RPC or just show profile data.
-  const members: FamilyMember[] = (data ?? []).map((row) => {
-    const profile = row.profiles as unknown as {
-      display_name: string;
-      avatar_url: string | null;
-    };
-    return {
-      id: row.id,
-      userId: row.user_id,
-      displayName: profile.display_name,
-      email: '', // Email populated separately for detail screen
-      avatarUrl: profile.avatar_url,
-      role: row.role as FamilyRole,
-    };
-  });
+  const rows = data ?? [];
+  const members: FamilyMember[] = await Promise.all(
+    rows.map(async (row) => {
+      const profile = row.profiles as unknown as {
+        display_name: string;
+        avatar_url: string | null;
+      };
+      return {
+        id: row.id,
+        userId: row.user_id,
+        displayName: profile.display_name,
+        email: '', // Email populated separately for detail screen
+        avatarUrl: await signAvatarUrl(profile.avatar_url),
+        role: row.role as FamilyRole,
+      };
+    }),
+  );
 
   return members;
 }
 
 export async function fetchCurrentUserFamilyId(): Promise<string | null> {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
+  const user = await getCurrentUser();
 
   const { data, error } = await supabase
     .from('family_members')
     .select('family_id')
-    .eq('user_id', authData.user.id)
+    .eq('user_id', user.id)
     .single();
 
   if (error) return null;
@@ -99,13 +154,16 @@ export async function fetchCurrentUserRole(familyId: string): Promise<FamilyRole
   return (data as string) as FamilyRole;
 }
 
-export async function updateDisplayName(name: string): Promise<void> {
+export async function updateProfileInfo(
+  name: string,
+  personaType: PersonaType | null,
+): Promise<void> {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
 
   const { error } = await supabase
     .from('profiles')
-    .update({ display_name: name })
+    .update({ display_name: name, persona_type: personaType })
     .eq('id', authData.user.id);
   if (error) throw error;
 }
@@ -154,21 +212,28 @@ export async function updateProfilePhoto(avatarUrl: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Upload a new profile photo to the (private) avatars bucket and return its
+ * storage path — NOT a `getPublicUrl()` result, because the bucket is private
+ * and that URL returns 403 in a request from <Image>. `fetchProfile` signs
+ * the path on read; the column still ends up holding a path, which the
+ * `signAvatarUrl` helper resolves into a renderable signed URL.
+ */
 export async function uploadProfilePhoto(uri: string): Promise<string> {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
+  const user = await getCurrentUser();
 
-  const fileName = `${authData.user.id}/avatar-${Date.now()}.jpg`;
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  const fileName = `${user.id}/avatar-${Date.now()}.jpg`;
+  // RN's fetch(file://).blob() returns an empty body when handed to
+  // supabase-js — the Storage object lands but is 0 bytes. ArrayBuffer is
+  // the documented RN-friendly path (see lib/sync/photo-upload-queue.ts).
+  const arrayBuffer = await fetch(uri).then((res) => res.arrayBuffer());
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+    .upload(fileName, arrayBuffer, { contentType: 'image/jpeg', upsert: true });
   if (uploadError) throw uploadError;
 
-  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-  return urlData.publicUrl;
+  return fileName;
 }
 
 export async function sendInvite(

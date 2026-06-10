@@ -208,6 +208,76 @@ export type Database = {
           },
         ]
       }
+      drill_photos: {
+        Row: {
+          created_at: string
+          display_order: number
+          drill_id: string
+          id: string
+          storage_path: string
+          storage_url: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          drill_id: string
+          id?: string
+          storage_path: string
+          storage_url: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          drill_id?: string
+          id?: string
+          storage_path?: string
+          storage_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drill_photos_drill_id_fkey"
+            columns: ["drill_id"]
+            isOneToOne: false
+            referencedRelation: "drills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drill_result_photos: {
+        Row: {
+          created_at: string
+          display_order: number
+          drill_result_id: string
+          id: string
+          storage_path: string
+          storage_url: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          drill_result_id: string
+          id?: string
+          storage_path: string
+          storage_url: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          drill_result_id?: string
+          id?: string
+          storage_path?: string
+          storage_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drill_result_photos_drill_result_id_fkey"
+            columns: ["drill_result_id"]
+            isOneToOne: false
+            referencedRelation: "drill_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drill_results: {
         Row: {
           created_at: string
@@ -260,6 +330,7 @@ export type Database = {
         Row: {
           activity_id: string
           created_at: string
+          description: string | null
           display_order: number
           id: string
           is_active: boolean
@@ -269,6 +340,7 @@ export type Database = {
         Insert: {
           activity_id: string
           created_at?: string
+          description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
@@ -278,6 +350,7 @@ export type Database = {
         Update: {
           activity_id?: string
           created_at?: string
+          description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
@@ -513,6 +586,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          display_id: string
           display_name: string
           id: string
           persona_type: string | null
@@ -521,6 +595,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          display_id: string
           display_name: string
           id: string
           persona_type?: string | null
@@ -529,6 +604,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          display_id?: string
           display_name?: string
           id?: string
           persona_type?: string | null
@@ -570,6 +646,41 @@ export type Database = {
             columns: ["child_id"]
             isOneToOne: false
             referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_photos: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          session_id: string
+          storage_path: string
+          storage_url: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          session_id: string
+          storage_path: string
+          storage_url: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          session_id?: string
+          storage_path?: string
+          storage_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_photos_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -713,6 +824,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      gen_display_id: { Args: never; Returns: string }
       get_family_role: { Args: { p_family_id: string }; Returns: string }
       has_write_access: { Args: { p_family_id: string }; Returns: boolean }
       is_admin_or_coadmin: { Args: { p_family_id: string }; Returns: boolean }

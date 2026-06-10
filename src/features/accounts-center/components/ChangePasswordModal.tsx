@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -10,7 +9,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Check, X } from 'phosphor-react-native';
 
-import { Button } from '@/shared/components/Button';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { colors, spacing, typography, radii, iconSizes } from '@/shared/theme';
 import { useUpdatePasswordMutation } from '../hooks/useAccountsCenter';
 
@@ -83,19 +82,31 @@ export function ChangePasswordModal({ visible, onDismiss }: ChangePasswordModalP
       onRequestClose={onDismiss}
       onShow={handleShow}
     >
-      <KeyboardAwareScrollView
-        style={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <Pressable onPress={onDismiss} hitSlop={8}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </Pressable>
-          <Text style={styles.title}>Change Password</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
-        <View style={styles.form}>
+      <View style={styles.container}>
+        <ModalHeader
+          title="Change Password"
+          leftAction={{
+            icon: 'back',
+            onPress: onDismiss,
+            accessibilityLabel: 'Back',
+          }}
+          rightAction={{
+            icon: 'check',
+            onPress: handleSave,
+            disabled: !canSave || updatePasswordMutation.isPending,
+            accessibilityLabel: 'Save',
+          }}
+        />
+        <KeyboardAwareScrollView
+          style={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View
+            style={[
+              styles.form,
+              { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md },
+            ]}
+          >
           <Text style={styles.label}>Current password</Text>
           <TextInput
             style={[styles.input, currentPasswordError ? styles.inputError : undefined]}
@@ -165,14 +176,9 @@ export function ChangePasswordModal({ visible, onDismiss }: ChangePasswordModalP
             <Text style={styles.errorText}>Passwords do not match.</Text>
           ) : null}
 
-          <Button
-            title="Save"
-            onPress={handleSave}
-            disabled={!canSave || updatePasswordMutation.isPending}
-            style={styles.saveButton}
-          />
         </View>
       </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }
@@ -182,28 +188,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderSubtle,
-  },
-  cancelText: {
-    ...typography.body,
-    color: colors.primary500,
-  },
-  title: {
-    ...typography.titleSmall,
-    color: colors.textPrimary,
-  },
-  headerSpacer: {
-    width: 50,
+  scroll: {
+    flex: 1,
   },
   form: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.lg,
   },
   label: {
     ...typography.caption,
@@ -246,8 +236,5 @@ const styles = StyleSheet.create({
   },
   requirementMet: {
     color: colors.success700,
-  },
-  saveButton: {
-    marginTop: spacing.lg,
   },
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { formatTimerWithCentiseconds } from '@/shared/utils/formatTimer';
 import type { StopwatchConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { StopwatchValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -11,21 +12,15 @@ const elementTimerStorage = createMMKV({ id: 'element-timers' });
 // timer at its last-saved value instead of letting it count up indefinitely.
 const STALE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 
+// Centisecond display requires a sub-100ms tick so the trailing two digits
+// animate smoothly rather than chunking by 10.
+const TICK_INTERVAL_MS = 33;
+
 interface StopwatchElementProps {
   value: StopwatchValue;
   onValueChange: (value: StopwatchValue) => void;
   config: StopwatchConfig;
   elementId?: string;
-}
-
-function formatTime(totalSeconds: number): string {
-  const hrs = Math.floor(totalSeconds / 3600);
-  const mins = Math.floor((totalSeconds % 3600) / 60);
-  const secs = Math.floor(totalSeconds % 60);
-  if (hrs > 0) {
-    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
-  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 export function StopwatchElement({ value, onValueChange, config, elementId }: StopwatchElementProps) {
@@ -63,7 +58,7 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
           const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
           onValueChange({ elapsed_seconds: elapsed });
         }
-      }, 100);
+      }, TICK_INTERVAL_MS);
     }
     return () => {
       if (intervalRef.current) {
@@ -86,7 +81,7 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
         const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
         onValueChange({ elapsed_seconds: elapsed });
       }
-    }, 100);
+    }, TICK_INTERVAL_MS);
   };
 
   const pause = () => {
@@ -115,11 +110,11 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
   return (
     <View style={styles.container}>
       <Text style={[styles.time, isAtTarget && styles.timeAtTarget]}>
-        {formatTime(value.elapsed_seconds)}
+        {formatTimerWithCentiseconds(value.elapsed_seconds)}
       </Text>
 
       {hasTarget && (
-        <Text style={styles.target}>Target: {formatTime(config.targetSeconds!)}</Text>
+        <Text style={styles.target}>Target: {formatTimerWithCentiseconds(config.targetSeconds!)}</Text>
       )}
 
       <View style={styles.buttonRow}>

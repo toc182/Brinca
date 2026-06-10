@@ -13,7 +13,8 @@
     "discard": "Discard",
     "addReward": "Add reward",
     "done": "Done",
-    "retry": "Retry"
+    "retry": "Retry",
+    "resume": "Resume"
   },
   "toast": {
     "sessionSaved": "Session saved",
@@ -71,6 +72,9 @@
     "logOutTitle": "Log out",
     "logOutMessage": "Are you sure you want to log out?",
     "discardChangesTitle": "Discard changes?",
-    "discardChangesMessage": "You have unsaved changes. Discard them?"
+    "discardChangesMessage": "You have unsaved changes. Discard them?",
+    "sessionInProgressTitle": "Session in progress",
+    "sessionInProgressStartNewMessage": "Resume it or finish it before starting a new one.",
+    "sessionInProgressSwitchChildMessage": "You have a session in progress. Finish it before switching children."
   }
 }

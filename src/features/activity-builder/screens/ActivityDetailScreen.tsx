@@ -16,6 +16,7 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
@@ -340,25 +341,38 @@ export function ActivityDetailScreen() {
   // Render — screen states
   // -------------------------------------------------------------------------
 
+  const header = (
+    <ModalHeader
+      title="Activity"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
+  );
+
   if (isLoading) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <OfflineBanner />
         <LoadingSkeleton />
       </View>
       </Screen>
+      </>
     );
   }
 
   if (isError) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <OfflineBanner />
         <ErrorState onRetry={handleRetry} />
       </View>
       </Screen>
+      </>
     );
   }
 
@@ -371,14 +385,17 @@ export function ActivityDetailScreen() {
   // -------------------------------------------------------------------------
 
   return (
+    <>
+    {header}
     <Screen edges={['bottom']}>
     <View style={styles.container}>
-      <OfflineBanner />
-
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.bannerInScroll}>
+          <OfflineBanner />
+        </View>
         {/* ---------------------------------------------------------------- */}
         {/* Activity header                                                  */}
         {/* ---------------------------------------------------------------- */}
@@ -416,6 +433,70 @@ export function ActivityDetailScreen() {
         </View>
 
         {/* ---------------------------------------------------------------- */}
+        {/* Drills                                                           */}
+        {/* ---------------------------------------------------------------- */}
+        <Text style={styles.sectionHeader}>Drills</Text>
+
+        {!drills?.length ? (
+          <EmptyState
+            title="No drills yet"
+            body="Add your first drill to start tracking."
+            ctaLabel="Add drill"
+            onCtaPress={handleAddDrill}
+            style={styles.emptyDrills}
+          />
+        ) : (
+          <>
+            {drills.map((drill, index) => (
+              <SwipeToDeleteRow
+                key={drill.id}
+                onDelete={() => handleDeleteDrill(drill.id)}
+                confirmTitle="Delete drill"
+                confirmMessage="Delete this drill? This cannot be undone."
+              >
+                <Pressable
+                  onPress={() => handleDrillPress(drill.id)}
+                  style={styles.drillRow}
+                  accessibilityLabel={`Open drill ${drill.name}`}
+                >
+                  <View style={styles.drillRowContent}>
+                    <Text style={styles.drillName}>{drill.name}</Text>
+                    <DrillElementCount drillId={drill.id} />
+                    {drill.is_active === 0 && (
+                      <View style={styles.drillRowMeta}>
+                        <Text style={styles.deactivatedLabel}>Deactivated</Text>
+                        <Pressable
+                          onPress={() => handleToggleDrillActive(drill.id, drill.is_active)}
+                          style={styles.reactivateButton}
+                          accessibilityLabel="Reactivate drill"
+                        >
+                          <Text style={styles.reactivateText}>Reactivate</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                  <ReorderHandle
+                    drillId={drill.id}
+                    index={index}
+                    total={drills.length}
+                    allIds={drillIds}
+                    onReordered={() => {}}
+                  />
+                </Pressable>
+              </SwipeToDeleteRow>
+            ))}
+            <Button
+              title="Add drill"
+              onPress={handleAddDrill}
+              style={styles.addDrillButton}
+            />
+          </>
+        )}
+
+        <View style={styles.divider} />
+
+        {/* ---------------------------------------------------------------- */}
         {/* Session rewards                                                  */}
         {/* ---------------------------------------------------------------- */}
         <Text style={styles.sectionHeader}>Session Rewards</Text>
@@ -431,69 +512,6 @@ export function ActivityDetailScreen() {
         <BonusPresetSection
           parentType="activity"
           parentId={activityId ?? ''}
-        />
-
-        <View style={styles.divider} />
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Drills                                                           */}
-        {/* ---------------------------------------------------------------- */}
-        <Text style={styles.sectionHeader}>Drills</Text>
-
-        {!drills?.length ? (
-          <EmptyState
-            title="No drills yet"
-            body="Add your first drill to start tracking."
-            ctaLabel="Add drill"
-            onCtaPress={handleAddDrill}
-            style={styles.emptyDrills}
-          />
-        ) : (
-          drills.map((drill, index) => (
-            <SwipeToDeleteRow
-              key={drill.id}
-              onDelete={() => handleDeleteDrill(drill.id)}
-              confirmTitle="Delete drill"
-              confirmMessage="Delete this drill? This cannot be undone."
-            >
-              <Pressable
-                onPress={() => handleDrillPress(drill.id)}
-                style={styles.drillRow}
-                accessibilityLabel={`Open drill ${drill.name}`}
-              >
-                <View style={styles.drillRowContent}>
-                  <Text style={styles.drillName}>{drill.name}</Text>
-                  <DrillElementCount drillId={drill.id} />
-                  {drill.is_active === 0 && (
-                    <View style={styles.drillRowMeta}>
-                      <Text style={styles.deactivatedLabel}>Deactivated</Text>
-                      <Pressable
-                        onPress={() => handleToggleDrillActive(drill.id, drill.is_active)}
-                        style={styles.reactivateButton}
-                        accessibilityLabel="Reactivate drill"
-                      >
-                        <Text style={styles.reactivateText}>Reactivate</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.chevron}>›</Text>
-                <ReorderHandle
-                  drillId={drill.id}
-                  index={index}
-                  total={drills.length}
-                  allIds={drillIds}
-                  onReordered={() => {}}
-                />
-              </Pressable>
-            </SwipeToDeleteRow>
-          ))
-        )}
-
-        <Button
-          title="Add drill"
-          onPress={handleAddDrill}
-          style={styles.addDrillButton}
         />
 
         <View style={styles.divider} />
@@ -522,6 +540,7 @@ export function ActivityDetailScreen() {
       />
     </View>
     </Screen>
+    </>
   );
 }
 
@@ -540,6 +559,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  bannerInScroll: { marginHorizontal: -spacing.md },
 
   // Header
   headerSection: {

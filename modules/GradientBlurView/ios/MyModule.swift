@@ -8,6 +8,9 @@ public class MyModule: Module {
       Prop("fadeStart") { (view: MyModuleView, value: Double) in
         view.fadeStart = CGFloat(value)
       }
+      Prop("fadeDirection") { (view: MyModuleView, value: String) in
+        view.fadeDirection = value
+      }
     }
   }
 }

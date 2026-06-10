@@ -1,17 +1,18 @@
 import { useCallback, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { CaretRight, UserPlus } from 'phosphor-react-native';
+import { CaretRight, Plus, UserPlus } from 'phosphor-react-native';
 
-import { useUIPreferencesStore } from '@/stores/ui-preferences.store';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { Avatar } from '@/shared/components/Avatar';
@@ -20,6 +21,7 @@ import { Card } from '@/shared/components/Card';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { showToast } from '@/shared/utils/toast';
 import { colors, iconSizes, spacing, typography, radii } from '@/shared/theme';
@@ -32,10 +34,13 @@ import {
   useCurrentUserRoleQuery,
   useUpdateProfilePhotoMutation,
 } from '../hooks/useAccountsCenter';
-import type { FamilyMember, FamilyRole } from '../repositories/accounts-center.repository';
+import type { FamilyMember, FamilyRole, PersonaType } from '../repositories/accounts-center.repository';
 
-import { EditNameModal } from '../components/EditNameModal';
-import { EditEmailModal } from '../components/EditEmailModal';
+import { getChildrenByFamily } from '@/features/profile/repositories/profile.repository';
+import { signAvatarUrl } from '@/lib/supabase/avatar';
+import { profileKeys } from '@/features/profile/queries/keys';
+
+import { EditProfileInfoModal } from '../components/EditProfileInfoModal';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
@@ -47,28 +52,47 @@ const ROLE_LABELS: Record<FamilyRole, string> = {
   member: 'Member',
 };
 
+const PERSONA_LABELS: Record<PersonaType, string> = {
+  parent: 'Parent',
+  therapist: 'Therapist',
+  coach: 'Coach',
+  teacher: 'Teacher',
+  other: 'Other',
+};
+
 // --- Sub-components ---
 
-function TappableInfoRow({
-  label,
-  value,
-  onPress,
+function ChildRow({
+  name,
+  avatarUrl,
+  dateOfBirth,
 }: {
-  label: string;
-  value: string;
-  onPress: () => void;
+  name: string;
+  avatarUrl: string | null;
+  dateOfBirth: string | null;
 }) {
   return (
-    <Pressable style={styles.infoRow} onPress={onPress}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <View style={styles.infoValueRow}>
-        <Text style={styles.infoValue} numberOfLines={1}>
-          {value}
-        </Text>
-        <CaretRight size={iconSizes.inline} color={colors.textPlaceholder} />
+    <View style={styles.memberRow}>
+      <Avatar imageUrl={avatarUrl} name={name} size="small" />
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName}>{name}</Text>
+        {dateOfBirth ? (
+          <Text style={styles.memberRole}>{calculateAge(dateOfBirth)}</Text>
+        ) : null}
       </View>
-    </Pressable>
+    </View>
   );
+}
+
+function calculateAge(dateOfBirth: string): string {
+  const birth = new Date(dateOfBirth);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1;
+  }
+  return `${age} yrs`;
 }
 
 function FamilyMemberRow({
@@ -143,10 +167,7 @@ export function AccountsCenterScreen() {
   const router = useRouter();
   const { isOnline } = useNetworkStatus();
   const { showDestructiveAlert } = useDestructiveAlert();
-
-  // Zustand
-  const measurementUnit = useUIPreferencesStore((s) => s.measurementUnit);
-  const setMeasurementUnit = useUIPreferencesStore((s) => s.setMeasurementUnit);
+  const insets = useSafeAreaInsets();
 
   // Server state
   const profileQuery = useProfileQuery();
@@ -157,12 +178,33 @@ export function AccountsCenterScreen() {
   const deleteAccountMutation = useDeleteAccountMutation();
   const photoMutation = useUpdateProfilePhotoMutation();
 
-  // Modal visibility
-  const [showEditName, setShowEditName] = useState(false);
-  const [showEditEmail, setShowEditEmail] = useState(false);
+  const { data: childrenList = [] } = useQuery({
+    queryKey: profileKeys.children(familyId ?? ''),
+    queryFn: async () => {
+      const rows = await getChildrenByFamily(familyId!);
+      return Promise.all(
+        rows.map(async (r) => ({ ...r, avatar_url: await signAvatarUrl(r.avatar_url) })),
+      );
+    },
+    enabled: !!familyId,
+  });
+
+  // Modal visibility (email modal removed — email is now read-only per spec)
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
+  // Explicit-save dirty state for the photo on the Profile card. The profile
+  // info modal (name + persona type) self-commits from its own ✓ button, so
+  // those don't need staging slots here. Photo:
+  // - `pickedUri` holds the locally picked URI — null = unchanged. Uploads
+  //   only when the user taps ✓ Save on Accounts Center.
+  // - `isPickerLaunching` covers the 3–4 sec OS picker mount delay.
+  // - `isSavingChanges` covers the commit phase (between ✓ tap and close).
+  const [pickedUri, setPickedUri] = useState<string | null>(null);
+  const [isPickerLaunching, setIsPickerLaunching] = useState(false);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
 
   const profile = profileQuery.data;
   const members = membersQuery.data ?? [];
@@ -182,29 +224,71 @@ export function AccountsCenterScreen() {
     roleQuery.refetch();
   }, [profileQuery, familyIdQuery, membersQuery, roleQuery]);
 
-  const handleToggleMeasurementUnit = useCallback(
-    (useImperial: boolean) => {
-      setMeasurementUnit(useImperial ? 'imperial' : 'metric');
-    },
-    [setMeasurementUnit],
-  );
-
-  const handlePickPhoto = useCallback(async () => {
+const handlePickPhoto = useCallback(async () => {
     if (!isOnline) {
       showToast('warning', "You're offline. Please try again when connected.");
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+    setIsPickerLaunching(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      photoMutation.mutate(result.assets[0].uri);
+      // Per data-persistence spec: stage the local URI only — do NOT upload
+      // now. The upload happens on ✓ Save.
+      if (!result.canceled && result.assets[0]) {
+        setPickedUri(result.assets[0].uri);
+      }
+    } finally {
+      setIsPickerLaunching(false);
     }
-  }, [isOnline, photoMutation]);
+  }, [isOnline]);
+
+  const handleAddChild = useCallback(() => {
+    router.push('/(settings)/add-child');
+  }, [router]);
+
+  // Dirty when a new photo has been picked. Name + email + password all
+  // commit independently via their own modals (or are read-only), so they
+  // don't contribute to the screen-level dirty state.
+  const displayName = profile?.displayName ?? '';
+  const isDirty = pickedUri !== null;
+
+  const handleSaveAndClose = useCallback(async () => {
+    if (!isDirty) {
+      router.back();
+      return;
+    }
+    setIsSavingChanges(true);
+    try {
+      if (pickedUri !== null) {
+        await photoMutation.mutateAsync(pickedUri);
+      }
+      router.back();
+    } catch {
+      // Mutation shows its own error toast; stay on screen so the user
+      // can retry without losing the staged photo.
+    } finally {
+      setIsSavingChanges(false);
+    }
+  }, [isDirty, pickedUri, photoMutation, router]);
+
+  const handleBack = useCallback(() => {
+    if (!isDirty) {
+      router.back();
+      return;
+    }
+    showDestructiveAlert({
+      title: 'Discard changes?',
+      message: 'You have unsaved changes. Discard them?',
+      destructiveLabel: 'Discard',
+      onConfirm: () => router.back(),
+    });
+  }, [isDirty, router, showDestructiveAlert]);
 
   const handleMemberPress = useCallback(
     (member: FamilyMember) => {
@@ -272,62 +356,119 @@ export function AccountsCenterScreen() {
 
   // --- Render ---
 
+  const header = (
+    <ModalHeader
+      title="Accounts Center"
+      leftAction={{ icon: 'back', onPress: handleBack, accessibilityLabel: 'Back' }}
+      rightAction={{
+        icon: 'check',
+        onPress: handleSaveAndClose,
+        disabled: isSavingChanges,
+        accessibilityLabel: 'Save',
+      }}
+    />
+  );
+
   if (isError) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.fullScreen}>
+      <View style={[styles.fullScreen, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <ErrorState onRetry={handleRetry} />
       </View>
       </Screen>
+      </>
     );
   }
 
   if (isLoading) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.fullScreen}>
+      <View style={[styles.fullScreen, { paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md }]}>
         <OfflineBanner />
         <AccountsCenterSkeleton />
       </View>
       </Screen>
+      </>
     );
   }
 
   return (
-    <Screen edges={['bottom']}>
+    <>
+    {header}
+    <Screen edges={[]}>
     <View style={styles.fullScreen}>
-      <OfflineBanner />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: MODAL_HEADER_CONTENT_BOTTOM + spacing.md,
+            paddingBottom: insets.bottom + spacing.xxl,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile section */}
-        <Text style={styles.sectionTitle}>Profile</Text>
+        <View style={styles.bannerInScroll}>
+          <OfflineBanner />
+        </View>
+
+        {/* Profile card */}
         <Card style={styles.card}>
-          <Pressable style={styles.avatarContainer} onPress={handlePickPhoto}>
-            <Avatar
-              imageUrl={profile?.avatarUrl ?? null}
-              name={profile?.displayName ?? ''}
-              size="large"
-            />
-            <Text style={styles.changePhotoText}>Change photo</Text>
-          </Pressable>
+          {(() => {
+            const showPhotoSpinner =
+              isPickerLaunching ||
+              (isSavingChanges && photoMutation.isPending);
+            const displayAvatarUrl = pickedUri ?? profile?.avatarUrl ?? null;
+            return (
+              <View style={styles.profileBlock}>
+                <Pressable
+                  style={styles.profileInfo}
+                  onPress={() => handleOpenModal(setShowEditProfile)}
+                >
+                  <Text style={styles.nameText} numberOfLines={1}>
+                    {displayName}
+                  </Text>
+                  {profile?.personaType ? (
+                    <Text style={styles.profileInfoText} numberOfLines={1}>
+                      {PERSONA_LABELS[profile.personaType]}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.profileInfoText} numberOfLines={1}>
+                    {profile?.email ?? ''}
+                  </Text>
+                  <Text style={styles.profileInfoText} numberOfLines={1}>
+                    {profile?.displayId ?? ''}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={styles.photoPressable}
+                  onPress={handlePickPhoto}
+                  disabled={showPhotoSpinner || isSavingChanges}
+                >
+                  <View>
+                    <Avatar
+                      imageUrl={displayAvatarUrl}
+                      name={displayName}
+                      size="large"
+                    />
+                    {showPhotoSpinner ? (
+                      <View style={styles.avatarSpinnerOverlay}>
+                        <ActivityIndicator color={colors.textOnPrimary} />
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.changePhotoText}>Change photo</Text>
+                </Pressable>
+              </View>
+            );
+          })()}
 
           <View style={styles.cardSeparator} />
 
-          <TappableInfoRow
-            label="Display name"
-            value={profile?.displayName ?? ''}
-            onPress={() => handleOpenModal(setShowEditName)}
-          />
-          <View style={styles.cardSeparator} />
-          <TappableInfoRow
-            label="Email"
-            value={profile?.email ?? ''}
-            onPress={() => handleOpenModal(setShowEditEmail)}
-          />
-          <View style={styles.cardSeparator} />
           <Pressable
             style={styles.infoRow}
             onPress={() => handleOpenModal(setShowChangePassword)}
@@ -337,29 +478,35 @@ export function AccountsCenterScreen() {
           </Pressable>
         </Card>
 
+        {/* Children section */}
+        <Text style={styles.sectionTitle}>Children</Text>
+        <Card style={styles.card}>
+          {childrenList.length > 0 ? (
+            <>
+              <View style={styles.memberList}>
+                {childrenList.map((child) => (
+                  <ChildRow
+                    key={child.id}
+                    name={child.name}
+                    avatarUrl={child.avatar_url}
+                    dateOfBirth={child.date_of_birth}
+                  />
+                ))}
+              </View>
+              <View style={styles.cardSeparator} />
+            </>
+          ) : null}
+          <Pressable style={styles.inviteRow} onPress={handleAddChild}>
+            <Plus size={iconSizes.body} color={colors.primary500} />
+            <Text style={styles.inviteText}>Add child</Text>
+          </Pressable>
+        </Card>
+
         {/* Family section */}
         <Text style={styles.sectionTitle}>Family</Text>
         <Card style={styles.card}>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleInfo}>
-              <Text style={styles.toggleLabel}>Use imperial units</Text>
-              <Text style={styles.toggleDescription}>
-                {measurementUnit === 'imperial' ? 'lbs, ft/in' : 'kg, cm'}
-              </Text>
-            </View>
-            <Switch
-              value={measurementUnit === 'imperial'}
-              onValueChange={handleToggleMeasurementUnit}
-              trackColor={{ false: colors.borderDefault, true: colors.primary100 }}
-              thumbColor={
-                measurementUnit === 'imperial' ? colors.primary500 : colors.surface
-              }
-            />
-          </View>
-
           {members.length > 0 ? (
             <>
-              <View style={styles.cardSeparator} />
               <View style={styles.memberList}>
                 {members.map((member) => (
                   <FamilyMemberRow
@@ -415,15 +562,11 @@ export function AccountsCenterScreen() {
       </ScrollView>
 
       {/* Modals */}
-      <EditNameModal
-        visible={showEditName}
-        currentName={profile?.displayName ?? ''}
-        onDismiss={() => setShowEditName(false)}
-      />
-      <EditEmailModal
-        visible={showEditEmail}
-        currentEmail={profile?.email ?? ''}
-        onDismiss={() => setShowEditEmail(false)}
+      <EditProfileInfoModal
+        visible={showEditProfile}
+        currentName={displayName}
+        currentPersonaType={profile?.personaType ?? null}
+        onDismiss={() => setShowEditProfile(false)}
       />
       <ChangePasswordModal
         visible={showChangePassword}
@@ -445,6 +588,7 @@ export function AccountsCenterScreen() {
       />
     </View>
     </Screen>
+    </>
   );
 }
 
@@ -459,8 +603,8 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     gap: spacing.xs,
-    paddingBottom: spacing.xxxl,
   },
+  bannerInScroll: { marginHorizontal: -spacing.md },
   sectionTitle: {
     ...typography.titleSmall,
     color: colors.textPrimary,
@@ -476,15 +620,43 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
 
-  // Profile photo
-  avatarContainer: {
+  // Profile card
+  nameText: {
+    ...typography.titleMedium,
+    color: colors.textPrimary,
+  },
+  profileBlock: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
+    gap: spacing.md,
+    paddingVertical: spacing.xxs,
+  },
+  profileInfo: {
+    flex: 1,
+    gap: spacing.xxxs,
+  },
+  profileInfoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  photoPressable: {
+    alignItems: 'center',
+    gap: spacing.xxs,
   },
   changePhotoText: {
     ...typography.caption,
     color: colors.primary500,
+  },
+  avatarSpinnerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: radii.full,
+    backgroundColor: 'rgba(15, 11, 31, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Info rows
@@ -495,50 +667,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
     minHeight: 44,
   },
-  infoLabel: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  infoValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xxs,
-    flex: 1,
-    justifyContent: 'flex-end',
-    marginLeft: spacing.md,
-  },
-  infoValue: {
-    ...typography.bodySmall,
-    fontFamily: 'Lexend_500Medium',
-    color: colors.textPrimary,
-    flexShrink: 1,
-  },
   changePasswordText: {
     ...typography.bodySmall,
     fontFamily: 'Lexend_500Medium',
     color: colors.textPrimary,
-  },
-
-  // Toggle
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xxs,
-  },
-  toggleInfo: {
-    flex: 1,
-    gap: spacing.xxxs,
-    marginRight: spacing.md,
-  },
-  toggleLabel: {
-    ...typography.bodySmall,
-    fontFamily: 'Lexend_500Medium',
-    color: colors.textPrimary,
-  },
-  toggleDescription: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
 
   // Members list

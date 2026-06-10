@@ -1,25 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, type AppStateStatus, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, type AppStateStatus, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from '@/shared/components/Button';
 import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
-import { colors, typography, spacing, radii, shadows } from '@/shared/theme';
+import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useActiveSessionStore } from '@/stores/active-session.store';
-import { SessionTimer } from '../components/SessionTimer';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+
+import { SessionHeader, useSessionHeaderContentBottom } from '../components/SessionHeader';
+import { SessionFooter, useSessionFooterContentTop } from '../components/SessionFooter';
 import { DrillListItem } from '../components/DrillListItem';
-import { SessionNotes } from '../components/SessionNotes';
+import { DrillDescriptionSheet } from '../components/DrillDescriptionSheet';
+import { SessionPhotosNotes } from '../components/SessionPhotosNotes';
 import { useSessionTimer } from '../hooks/useSessionTimer';
 import { useFinishSessionMutation } from '../mutations/useFinishSessionMutation';
 import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteMutation';
 import { useUpdateSessionNoteMutation } from '../mutations/useUpdateSessionNoteMutation';
 import { useDrillResultsQuery } from '../queries/useDrillResultsQuery';
 import { getDrillsByActivity } from '@/features/activity-builder/repositories/drill.repository';
+import { getDrillIdsWithPhotos } from '@/features/activity-builder/repositories/drill-photo.repository';
 
 const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -30,14 +34,14 @@ export function SessionScreen() {
   const activityName = useActiveSessionStore((s) => s.activityName);
   const childId = useActiveChildStore((s) => s.childId);
   const childName = useActiveChildStore((s) => s.childName);
-  const insets = useSafeAreaInsets();
+  const headerContentBottom = useSessionHeaderContentBottom();
+  const footerContentTop = useSessionFooterContentTop();
   const timer = useSessionTimer();
   const finishSession = useFinishSessionMutation();
   const markDrillComplete = useMarkDrillCompleteMutation();
   const updateSessionNote = useUpdateSessionNoteMutation();
 
   const [note, setNote] = useState('');
-  const [sessionPhotoUri, setSessionPhotoUri] = useState<string | null>(null);
   const [showInactivityBanner, setShowInactivityBanner] = useState(false);
   const backgroundTimestampRef = useRef<number | null>(null);
 
@@ -77,10 +81,46 @@ export function SessionScreen() {
     enabled: !!activityId,
   });
 
+  // Which drills have description photos — combined with drill.description
+  // text below to decide whether to render the info icon per row. Cheap
+  // DISTINCT scan against drill_photos; cached for the session.
+  const { data: drillIdsWithPhotos } = useQuery({
+    queryKey: ['drill-ids-with-photos'],
+    queryFn: getDrillIdsWithPhotos,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: drillResults } = useDrillResultsQuery(sessionId);
+
+  // Description sheet — single instance shared across rows. State holds the
+  // currently selected drill's id + text so we can present without remounting.
+  const descriptionSheetRef = useRef<BottomSheetModal>(null);
+  const [activeDescription, setActiveDescription] = useState<{
+    drillId: string;
+    description: string | null;
+  } | null>(null);
+
+  const handleInfoPress = useCallback(
+    (drillId: string, description: string | null) => {
+      setActiveDescription({ drillId, description });
+    },
+    [],
+  );
+
+  // Present the sheet only after activeDescription is set — mounting the
+  // sheet and calling present() in the same tick races against React's
+  // ref attachment, so the present() call no-ops on a null ref.
+  useEffect(() => {
+    if (activeDescription) {
+      descriptionSheetRef.current?.present();
+    }
+  }, [activeDescription]);
 
   const completedDrillIds = new Set(
     drillResults?.filter((dr) => dr.is_complete).map((dr) => dr.drill_id)
+  );
+  const activeDrillIds = new Set(
+    drillResults?.filter((dr) => !dr.is_complete).map((dr) => dr.drill_id)
   );
 
   const handleMinimize = () => {
@@ -88,16 +128,6 @@ export function SessionScreen() {
     router.back();
   };
 
-  // Block child switching mid-session
-  const handleChildSwitch = useCallback(() => {
-    Alert.alert(
-      'Session in progress',
-      'You have a session in progress. Finish it before switching children.',
-      [{ text: 'OK', style: 'default' }]
-    );
-  }, []);
-
-  // Mark a drill with no elements complete directly from session screen
   const handleMarkComplete = useCallback(async (drillId: string) => {
     if (!sessionId) return;
     try {
@@ -106,6 +136,15 @@ export function SessionScreen() {
       // silently fail — user can retry by tapping again
     }
   }, [sessionId, markDrillComplete]);
+
+  const handleTogglePause = useCallback(() => {
+    if (timer.isPaused) {
+      timer.resume();
+      setShowInactivityBanner(false);
+    } else {
+      timer.pause();
+    }
+  }, [timer]);
 
   const handleFinishSession = async () => {
     if (!sessionId || !childId) return;
@@ -134,11 +173,12 @@ export function SessionScreen() {
 
   const activeDrills = drills?.filter((d) => d.is_active) ?? [];
 
-  return (
-    <Screen edges={['bottom']} style={{ paddingTop: insets.top }}>
+  // Banners that sit under the absolute blur header — full-width strips that
+  // need to negate the FlatList contentContainer horizontal padding so they
+  // span edge-to-edge.
+  const listHeader = (
+    <View style={styles.banners}>
       <OfflineBanner />
-
-      {/* Inactivity banner */}
       {showInactivityBanner && (
         <View style={styles.inactivityBanner}>
           <Text style={styles.inactivityText}>
@@ -155,20 +195,34 @@ export function SessionScreen() {
           </Pressable>
         </View>
       )}
+    </View>
+  );
 
-      <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.activityName}>{activityName}</Text>
-          <Text style={styles.childName}>{childName}</Text>
-        </View>
-        <SessionTimer />
-        <Pressable onPress={handleMinimize} style={styles.minimizeButton}>
-          <Text style={styles.minimizeText}>▼</Text>
-        </Pressable>
-      </View>
+  const listContentStyle = [
+    styles.list,
+    {
+      paddingTop: headerContentBottom + spacing.md,
+      paddingBottom: footerContentTop + spacing.md,
+    },
+  ];
+
+  const scrimOpacity = useSharedValue(0);
+  useEffect(() => {
+    scrimOpacity.value = withTiming(timer.isPaused ? 1 : 0, { duration: 280 });
+  }, [timer.isPaused, scrimOpacity]);
+  const scrimAnimatedStyle = useAnimatedStyle(() => ({ opacity: scrimOpacity.value }));
+
+  return (
+    <Screen edges={[]}>
+      <SessionHeader
+        activityName={activityName ?? ''}
+        childName={childName ?? ''}
+        onMinimize={handleMinimize}
+      />
 
       {drillsLoading ? (
-        <View style={styles.list}>
+        <View style={listContentStyle}>
+          {listHeader}
           <SkeletonPlaceholder>
             <View style={styles.skeletonItem} />
             <View style={styles.skeletonItem} />
@@ -179,7 +233,8 @@ export function SessionScreen() {
         <FlatList
           data={activeDrills}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={listContentStyle}
+          ListHeaderComponent={listHeader}
           renderItem={({ item }) => {
             const hasElements = (item as unknown as { element_count?: number }).element_count !== 0;
             const isComplete = completedDrillIds.has(item.id);
@@ -199,55 +254,72 @@ export function SessionScreen() {
               );
             }
 
+            const hasDescription =
+              !!item.description?.trim() || (drillIdsWithPhotos?.has(item.id) ?? false);
+
             return (
               <DrillListItem
                 name={item.name}
                 isComplete={isComplete}
+                isActive={activeDrillIds.has(item.id)}
+                hasDescription={hasDescription}
                 onPress={() => {
                   if (!hasElements && isComplete) return;
                   router.push(`/(modals)/session/${item.id}` as never);
                 }}
+                onInfoPress={
+                  hasDescription
+                    ? () => handleInfoPress(item.id, item.description ?? null)
+                    : undefined
+                }
               />
             );
           }}
           ListFooterComponent={
-            <SessionNotes
-              value={note}
-              onChangeText={setNote}
-              photoUri={sessionPhotoUri}
-              onPhotoChange={setSessionPhotoUri}
-              sessionId={sessionId ?? undefined}
+            <SessionPhotosNotes
+              sessionId={sessionId}
+              note={note}
+              onChangeNote={setNote}
             />
           }
         />
       )}
 
-      <View style={styles.footer}>
-        <Button
-          title="Finish session"
-          onPress={handleFinishSession}
-          disabled={finishSession.isPending}
+      <Animated.View
+        pointerEvents={timer.isPaused ? 'auto' : 'none'}
+        style={[
+          styles.pausedScrim,
+          { top: headerContentBottom, bottom: footerContentTop },
+          scrimAnimatedStyle,
+        ]}
+      />
+
+      <SessionFooter
+        isPaused={timer.isPaused}
+        onTogglePause={handleTogglePause}
+        onFinish={handleFinishSession}
+        finishDisabled={finishSession.isPending}
+      />
+
+      {activeDescription && (
+        <DrillDescriptionSheet
+          ref={descriptionSheetRef}
+          drillId={activeDescription.drillId}
+          description={activeDescription.description}
         />
-      </View>
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.borderSubtle,
+  list: {
+    paddingHorizontal: spacing.md,
   },
-  headerInfo: { flex: 1 },
-  activityName: { ...typography.titleSmall, color: colors.textPrimary },
-  childName: { ...typography.caption, color: colors.textSecondary },
-  minimizeButton: { padding: spacing.sm },
-  minimizeText: { fontSize: 18, color: colors.textSecondary },
-  list: { padding: spacing.md },
-  footer: { padding: spacing.md },
+  banners: {
+    marginHorizontal: -spacing.md,
+    marginBottom: spacing.xs,
+  },
   inactivityBanner: {
     backgroundColor: colors.warning50,
     borderBottomWidth: 1,
@@ -289,4 +361,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
   },
   markCompleteText: { ...typography.buttonSmall, color: colors.textOnPrimary },
+  pausedScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: colors.scrim,
+  },
 });

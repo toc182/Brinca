@@ -1,13 +1,15 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import GorhomBottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 
 import { Button } from '@/shared/components/Button';
+import { InBottomSheetContext } from '@/shared/components/BottomSheet';
 import { Input } from '@/shared/components/Input';
 import { colors, radii, spacing, typography, shadows } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
@@ -59,7 +61,15 @@ export function TierRewardBottomSheet({
   onDismiss,
   onSaved,
 }: TierRewardBottomSheetProps) {
-  const sheetRef = useRef<GorhomBottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
+
+  useEffect(() => {
+    sheetRef.current?.present();
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    sheetRef.current?.dismiss();
+  }, []);
 
   const [name, setName] = useState(tierRow?.name ?? '');
   const [amount, setAmount] = useState(String(tierRow?.currency_amount ?? ''));
@@ -177,13 +187,15 @@ export function TierRewardBottomSheet({
   };
 
   return (
-    <GorhomBottomSheet
+    <BottomSheetModal
       ref={sheetRef}
-      index={0}
       snapPoints={['90%']}
-      onClose={onDismiss}
+      onDismiss={onDismiss}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
@@ -192,6 +204,7 @@ export function TierRewardBottomSheet({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <InBottomSheetContext.Provider value={true}>
         <Text style={styles.title}>{tierRow ? 'Edit tier' : 'Add tier'}</Text>
 
         <Input
@@ -307,7 +320,7 @@ export function TierRewardBottomSheet({
         </View>
 
         <View style={styles.actions}>
-          <Button title="Cancel" onPress={onDismiss} variant="secondary" style={styles.cancelButton} />
+          <Button title="Cancel" onPress={handleCancel} variant="secondary" style={styles.cancelButton} />
           <Button
             title={isSaving ? 'Saving…' : 'Save tier'}
             onPress={handleSave}
@@ -315,8 +328,9 @@ export function TierRewardBottomSheet({
             style={styles.saveButton}
           />
         </View>
+        </InBottomSheetContext.Provider>
       </BottomSheetScrollView>
-    </GorhomBottomSheet>
+    </BottomSheetModal>
   );
 }
 

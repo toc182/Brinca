@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import GorhomBottomSheet, {
+import {
   BottomSheetBackdrop,
+  BottomSheetModal,
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useCallback, useRef } from 'react';
 
 import { Button } from '@/shared/components/Button';
+import { InBottomSheetContext } from '@/shared/components/BottomSheet';
 import { Input } from '@/shared/components/Input';
 import { colors, radii, spacing, typography } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
@@ -34,9 +35,17 @@ export function BonusPresetBottomSheet({
   onDismiss,
   onSaved,
 }: BonusPresetBottomSheetProps) {
-  const sheetRef = useRef<GorhomBottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const [amount, setAmount] = useState(presetRow ? String(presetRow.amount) : '');
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    sheetRef.current?.present();
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    sheetRef.current?.dismiss();
+  }, []);
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -73,13 +82,15 @@ export function BonusPresetBottomSheet({
   };
 
   return (
-    <GorhomBottomSheet
+    <BottomSheetModal
       ref={sheetRef}
-      index={0}
       snapPoints={['45%']}
-      onClose={onDismiss}
+      onDismiss={onDismiss}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       handleStyle={styles.handle}
       handleIndicatorStyle={styles.handleIndicator}
       backgroundStyle={styles.background}
@@ -88,6 +99,7 @@ export function BonusPresetBottomSheet({
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <InBottomSheetContext.Provider value={true}>
         <Text style={styles.title}>{presetRow ? 'Edit bonus preset' : 'Add bonus preset'}</Text>
 
         <Input
@@ -102,7 +114,7 @@ export function BonusPresetBottomSheet({
         <View style={styles.actions}>
           <Button
             title="Cancel"
-            onPress={onDismiss}
+            onPress={handleCancel}
             variant="secondary"
             style={styles.cancelButton}
           />
@@ -113,8 +125,9 @@ export function BonusPresetBottomSheet({
             style={styles.saveButton}
           />
         </View>
+        </InBottomSheetContext.Provider>
       </BottomSheetScrollView>
-    </GorhomBottomSheet>
+    </BottomSheetModal>
   );
 }
 

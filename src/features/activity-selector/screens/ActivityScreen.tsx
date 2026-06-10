@@ -1,113 +1,122 @@
 // No <Screen> wrapper: CollapsibleHeader handles top inset, NativeTabs handles bottom.
-import { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSharedValue } from 'react-native-reanimated';
-import { BottomSheet } from '@/shared/components/BottomSheet';
-import { BottomSheetView } from '@gorhom/bottom-sheet';
+
 import { EmptyState } from '@/shared/components/EmptyState';
-import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { ParentAvatar } from '@/shared/components/ParentAvatar';
 import { CollapsibleHeader, useCollapsibleHeaderHeight } from '@/shared/components/CollapsibleHeader';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
-import { colors, spacing, typography } from '@/shared/theme';
+import { colors, radii, spacing } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
+import { useActiveSessionStore } from '@/stores/active-session.store';
 
-import { useActiveSession } from '../hooks/useActiveSession';
-import { useActivitiesQuery } from '../queries/useActivitiesQuery';
+import { ActivityGrid } from '../components/ActivityGrid';
+import { useActivitiesQuery, type ActivityWithRecency } from '../queries/useActivitiesQuery';
 import { useStartSessionMutation } from '../mutations/useStartSessionMutation';
-import { ActivityPickerSheet } from '../components/ActivityPickerSheet';
 
 export function ActivityScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const scrollY = useSharedValue(0);
+  const headerHeight = useCollapsibleHeaderHeight();
   const childId = useActiveChildStore((s) => s.childId);
   const childName = useActiveChildStore((s) => s.childName);
-  const { isActive } = useActiveSession();
   const { data: activities, isPending, refetch } = useActivitiesQuery(childId);
   const startSession = useStartSessionMutation();
-  const [showSheet, setShowSheet] = useState(true);
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
 
-  // When the tab gains focus: navigate straight to session if one is active,
-  // otherwise ensure the sheet is visible and data is fresh.
+  // Auto-resume only when the session is in foreground state. If the user
+  // explicitly minimized (status === 'minimized'), respect that — the mini
+  // player bar is the resume affordance from this point on.
+  // Read status at the moment of focus, not from a captured closure — the
+  // closure value would be stale right after minimize, causing a focus loop.
   useFocusEffect(
     useCallback(() => {
-      if (isActive) {
+      const currentStatus = useActiveSessionStore.getState().status;
+      if (currentStatus === 'active') {
         router.push('/(modals)/session' as never);
-      } else {
-        setShowSheet(true);
       }
       refetchRef.current();
-    }, [isActive, router])
+    }, [router])
   );
 
   const handleSelectActivity = useCallback(
-    (activity: { id: string; name: string; icon: string | null }) => {
+    (activity: ActivityWithRecency) => {
       if (!childId) return;
+
+      // Active session guard — mirrors useChildSwitchGuard, but offers a
+      // Resume path back into the running session instead of just blocking.
+      // Auto-focus already routes when status === 'active', so this fires
+      // in practice when the user minimized and is now on the activity grid.
+      const { status } = useActiveSessionStore.getState();
+      if (status !== 'idle' && status !== 'complete') {
+        Alert.alert(
+          t('alert.sessionInProgressTitle'),
+          t('alert.sessionInProgressStartNewMessage'),
+          [
+            { text: t('cta.cancel'), style: 'cancel' },
+            {
+              text: t('cta.resume'),
+              onPress: () => {
+                useActiveSessionStore.getState().setStatus('active');
+                router.push('/(modals)/session' as never);
+              },
+            },
+          ],
+        );
+        return;
+      }
+
       startSession.mutate(
         { childId, activityId: activity.id, activityName: activity.name },
         {
           onSuccess: () => {
-            setShowSheet(false);
             router.push('/(modals)/session' as never);
           },
-        }
+        },
       );
     },
-    [childId, startSession, router]
+    [childId, startSession, router, t],
   );
-
-  const handleDismiss = useCallback(() => {
-    setShowSheet(false);
-  }, []);
 
   return (
     <View style={styles.container}>
       <CollapsibleHeader title={childName ?? 'Activity'} scrollY={scrollY} rightContent={<ParentAvatar />} />
-      {showSheet && !isActive && (
-        <BottomSheet snapPoints={['50%']} onDismiss={handleDismiss}>
-          <BottomSheetView style={styles.sheetContent}>
-            {isPending ? (
-              <ActivityListSkeleton />
-            ) : !activities?.length ? (
-              <EmptyState
-                title="No activities yet"
-                body="Add your first activity in Settings."
-                ctaLabel="Go to Settings"
-                onCtaPress={() => {
-                  setShowSheet(false);
-                  router.push('/(settings)' as never);
-                }}
-              />
-            ) : (
-              <>
-                <Text style={styles.sheetTitle}>Select an activity</Text>
-                <ActivityPickerSheet
-                  activities={activities}
-                  onSelect={handleSelectActivity}
-                />
-              </>
-            )}
-          </BottomSheetView>
-        </BottomSheet>
+      {isPending ? (
+        <ActivityGridSkeleton topInset={headerHeight} />
+      ) : !activities?.length ? (
+        <View style={[styles.centered, { paddingTop: headerHeight }]}>
+          <EmptyState
+            title="Let's set up your first activity"
+            body="Add activities in Settings to start tracking sessions."
+          />
+        </View>
+      ) : (
+        <ActivityGrid
+          activities={activities}
+          onSelectActivity={handleSelectActivity}
+          contentTopInset={headerHeight}
+        />
       )}
     </View>
   );
 }
 
-function ActivityListSkeleton() {
+function ActivityGridSkeleton({ topInset }: { topInset: number }) {
   return (
-    <View style={styles.skeletonContainer}>
-      <SkeletonPlaceholder>
-        <View style={styles.skeletonTitle} />
-      </SkeletonPlaceholder>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <SkeletonPlaceholder key={i} style={styles.skeletonRow}>
-          <View style={styles.skeletonRowInner} />
-        </SkeletonPlaceholder>
+    <View style={[styles.skeletonContainer, { paddingTop: topInset + spacing.md }]}>
+      {Array.from({ length: 2 }).map((_, row) => (
+        <View key={row} style={styles.skeletonRow}>
+          {Array.from({ length: 2 }).map((_, col) => (
+            <SkeletonPlaceholder key={col} style={styles.skeletonTile}>
+              <View style={styles.skeletonTileInner} />
+            </SkeletonPlaceholder>
+          ))}
+        </View>
       ))}
     </View>
   );
@@ -118,30 +127,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  sheetContent: {
+  centered: {
     flex: 1,
-  },
-  sheetTitle: {
-    ...typography.titleMedium,
-    color: colors.textPrimary,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   skeletonContainer: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
     gap: spacing.sm,
   },
-  skeletonTitle: {
-    height: 24,
-    width: '50%',
-    borderRadius: 8,
-    marginBottom: spacing.xs,
-  },
   skeletonRow: {
-    borderRadius: 8,
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
-  skeletonRowInner: {
-    height: 48,
-    borderRadius: 8,
+  skeletonTile: {
+    flex: 1,
+    borderRadius: radii.md,
+  },
+  skeletonTileInner: {
+    height: 96,
+    borderRadius: radii.md,
   },
 });

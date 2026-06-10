@@ -10,6 +10,12 @@ interface ToastProps {
   variant: ToastVariant;
   visible: boolean;
   onDismiss: () => void;
+  /**
+   * Distance from the top of the toast's container, in px. Defaults to 56
+   * (below the status bar on a plain screen). Screens with a custom overlay
+   * header (ModalHeader) pass a larger value so the toast clears the header.
+   */
+  topOffset?: number;
 }
 
 const VARIANT_STYLES: Record<ToastVariant, { borderColor: string; iconColor: string }> = {
@@ -26,7 +32,7 @@ const DURATION: Record<ToastVariant, number> = {
   error: 6000,
 };
 
-export function Toast({ message, variant, visible, onDismiss }: ToastProps) {
+export function Toast({ message, variant, visible, onDismiss, topOffset = 56 }: ToastProps) {
   const translateY = useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
@@ -58,7 +64,7 @@ export function Toast({ message, variant, visible, onDismiss }: ToastProps) {
     <Animated.View
       style={[
         styles.container,
-        { borderLeftColor: borderColor, transform: [{ translateY }] },
+        { top: topOffset, borderLeftColor: borderColor, transform: [{ translateY }] },
       ]}
     >
       <Text style={styles.message} numberOfLines={2}>

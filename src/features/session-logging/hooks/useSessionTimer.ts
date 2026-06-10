@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createMMKV } from 'react-native-mmkv';
+import { createMMKV, useMMKVNumber } from 'react-native-mmkv';
 
 const timerStorage = createMMKV({ id: 'session-timer' });
 
@@ -11,24 +11,25 @@ const KEYS = {
 
 export function useSessionTimer() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  // Subscribe to pausedAt across hook instances — when one consumer pauses,
+  // all others (header timer pill, footer button, screen overlay) re-render.
+  const [pausedAt] = useMMKVNumber(KEYS.pausedAt, timerStorage);
+  const isPaused = !!pausedAt;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const calculateElapsed = useCallback(() => {
     const startTime = timerStorage.getNumber(KEYS.startTime);
     if (!startTime) return 0;
 
-    const pausedAt = timerStorage.getNumber(KEYS.pausedAt);
+    const pausedAtVal = timerStorage.getNumber(KEYS.pausedAt);
     const totalPausedMs = timerStorage.getNumber(KEYS.totalPausedMs) ?? 0;
 
-    const now = pausedAt ?? Date.now();
+    const now = pausedAtVal ?? Date.now();
     return Math.floor((now - startTime - totalPausedMs) / 1000);
   }, []);
 
   useEffect(() => {
-    // Initial calculation
     setElapsedSeconds(calculateElapsed());
-    setIsPaused(!!timerStorage.getNumber(KEYS.pausedAt));
 
     intervalRef.current = setInterval(() => {
       if (!timerStorage.getNumber(KEYS.pausedAt)) {
@@ -41,28 +42,31 @@ export function useSessionTimer() {
     };
   }, [calculateElapsed]);
 
+  // Recompute elapsed when paused state flips, so the display freezes/unfreezes
+  // immediately instead of waiting for the next 1s tick.
+  useEffect(() => {
+    setElapsedSeconds(calculateElapsed());
+  }, [isPaused, calculateElapsed]);
+
   const start = useCallback(() => {
     timerStorage.set(KEYS.startTime, Date.now());
     timerStorage.remove(KEYS.pausedAt);
     timerStorage.set(KEYS.totalPausedMs, 0);
-    setIsPaused(false);
     setElapsedSeconds(0);
   }, []);
 
   const pause = useCallback(() => {
     if (!timerStorage.getNumber(KEYS.pausedAt)) {
       timerStorage.set(KEYS.pausedAt, Date.now());
-      setIsPaused(true);
     }
   }, []);
 
   const resume = useCallback(() => {
-    const pausedAt = timerStorage.getNumber(KEYS.pausedAt);
-    if (pausedAt) {
+    const p = timerStorage.getNumber(KEYS.pausedAt);
+    if (p) {
       const totalPausedMs = timerStorage.getNumber(KEYS.totalPausedMs) ?? 0;
-      timerStorage.set(KEYS.totalPausedMs, totalPausedMs + (Date.now() - pausedAt));
+      timerStorage.set(KEYS.totalPausedMs, totalPausedMs + (Date.now() - p));
       timerStorage.remove(KEYS.pausedAt);
-      setIsPaused(false);
     }
   }, []);
 
@@ -71,7 +75,6 @@ export function useSessionTimer() {
     timerStorage.remove(KEYS.pausedAt);
     timerStorage.remove(KEYS.totalPausedMs);
     setElapsedSeconds(0);
-    setIsPaused(false);
   }, []);
 
   const formatTime = useCallback((seconds: number) => {

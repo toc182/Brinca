@@ -13,7 +13,8 @@
     "discard": "Descartar",
     "addReward": "Agregar recompensa",
     "done": "Listo",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "resume": "Reanudar"
   },
   "toast": {
     "sessionSaved": "Sesión guardada",
@@ -71,6 +72,9 @@
     "logOutTitle": "Cerrar sesión",
     "logOutMessage": "¿Seguro que quieres cerrar sesión?",
     "discardChangesTitle": "¿Descartar cambios?",
-    "discardChangesMessage": "Tienes cambios sin guardar. ¿Descartarlos?"
+    "discardChangesMessage": "Tienes cambios sin guardar. ¿Descartarlos?",
+    "sessionInProgressTitle": "Sesión en curso",
+    "sessionInProgressStartNewMessage": "Reanúdala o termínala antes de empezar otra.",
+    "sessionInProgressSwitchChildMessage": "Tienes una sesión en curso. Termínala antes de cambiar de niño/a."
   }
 }

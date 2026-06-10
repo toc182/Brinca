@@ -8,12 +8,15 @@ import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { Screen } from '@/shared/components/Screen';
+import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { colors, typography, spacing, shadows, radii } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { updateActivity } from '../repositories/activity.repository';
 import { activityBuilderKeys } from '../queries/keys';
 import { useActivitiesQuery } from '../queries/useActivitiesQuery';
+
+const HEADER_OFFSET = MODAL_HEADER_CONTENT_BOTTOM + spacing.md;
 
 export function ActivityListScreen() {
   const router = useRouter();
@@ -27,53 +30,75 @@ export function ActivityListScreen() {
     queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId ?? '') });
   };
 
+  const header = (
+    <ModalHeader
+      title="Activities"
+      leftAction={{ icon: 'back', onPress: () => router.back(), accessibilityLabel: 'Back' }}
+    />
+  );
+
   if (isLoading) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <View style={styles.container}>
-        <OfflineBanner />
-        <View style={styles.list}>
-          <SkeletonPlaceholder>
-            <View style={styles.skeletonRow} />
-            <View style={styles.skeletonRow} />
-            <View style={styles.skeletonRow} />
-          </SkeletonPlaceholder>
+        <View style={[styles.skeletonWrapper, { paddingTop: HEADER_OFFSET }]}>
+          <OfflineBanner />
+          <View style={styles.list}>
+            <SkeletonPlaceholder>
+              <View style={styles.skeletonRow} />
+              <View style={styles.skeletonRow} />
+              <View style={styles.skeletonRow} />
+            </SkeletonPlaceholder>
+          </View>
         </View>
-      </View>
       </Screen>
+      </>
     );
   }
 
   if (isError) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-        <ErrorState onRetry={refetch} />
+        <View style={{ paddingTop: HEADER_OFFSET, flex: 1 }}>
+          <ErrorState onRetry={refetch} />
+        </View>
       </Screen>
+      </>
     );
   }
 
   if (!activities?.length) {
     return (
+      <>
+      {header}
       <Screen edges={['bottom']}>
-      <EmptyState
-        title="No activities yet"
-        body={t('empty.noActivities')}
-        ctaLabel="Add activity"
-        onCtaPress={() => router.push('/(settings)/activities/create' as never)}
-        style={styles.empty}
-      />
+        <View style={{ paddingTop: HEADER_OFFSET, flex: 1 }}>
+          <EmptyState
+            title="No activities yet"
+            body={t('empty.noActivities')}
+            ctaLabel="Add activity"
+            onCtaPress={() => router.push('/(settings)/activities/create' as never)}
+            style={styles.empty}
+          />
+        </View>
       </Screen>
+      </>
     );
   }
 
   return (
+    <>
+    {header}
     <Screen edges={['bottom']}>
     <View style={styles.container}>
-      <OfflineBanner />
       <FlatList
         data={activities}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: HEADER_OFFSET }]}
+        ListHeaderComponent={<OfflineBanner />}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push(`/(settings)/activities/${item.id}` as never)}
@@ -114,11 +139,13 @@ export function ActivityListScreen() {
       </View>
     </View>
     </Screen>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  skeletonWrapper: { flex: 1, backgroundColor: colors.background },
   empty: { flex: 1 },
   list: { padding: spacing.md },
   skeletonRow: {

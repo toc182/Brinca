@@ -1,23 +1,34 @@
-// No <Screen> wrapper: Stack header handles top inset, NativeTabs handles bottom.
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+// No <Screen> wrapper: custom blur header (below) handles top inset, NativeTabs handles bottom.
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle, XCircle } from 'phosphor-react-native';
+import { CaretLeft, CheckCircle, XCircle } from 'phosphor-react-native';
 
 import { Button } from '@/shared/components/Button';
 import { Card } from '@/shared/components/Card';
 import { ErrorState } from '@/shared/components/ErrorState';
+import { GradientBlurBackground } from '@/shared/components/GradientBlurBackground';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
+import { PhotoGallery } from '@/features/session-logging/components/PhotoGallery';
 import { colors, iconSizes, radii, spacing, typography } from '@/shared/theme';
 import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { getSessionDetail, type DrillResultDetail, type ElementValueRow } from '../repositories/stats.repository';
 import { useDeleteSessionMutation } from '../mutations/useDeleteSessionMutation';
 import { statsKeys } from '../queries/keys';
 
+// Header geometry — mirrors DrillScreen/SessionHeader for visual consistency
+// across the app's blur headers.
+const HEADER_ROW_TOP_BUFFER = 12;
+const HEADER_ROW_HEIGHT = 50;
+const HEADER_FADE_ZONE = 26;
+const HEADER_CONTENT_HEIGHT = HEADER_ROW_TOP_BUFFER + HEADER_ROW_HEIGHT + HEADER_FADE_ZONE;
+
 export function SessionDetailScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { showDestructiveAlert } = useDestructiveAlert();
   const deleteMutation = useDeleteSessionMutation();
 
@@ -39,12 +50,37 @@ export function SessionDetailScreen() {
     });
   };
 
-  // Task 212: Loading skeleton
+  const headerContentBottom = insets.top + HEADER_ROW_TOP_BUFFER + HEADER_ROW_HEIGHT;
+  const scrollPaddingTop = headerContentBottom + spacing.md;
+
+  const Header = (
+    <View style={[styles.header, { height: insets.top + HEADER_CONTENT_HEIGHT }]}>
+      <GradientBlurBackground style={StyleSheet.absoluteFill} fadeStart={0.55} />
+      <View style={[styles.headerRow, { marginTop: insets.top + HEADER_ROW_TOP_BUFFER }]}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={spacing.sm}
+          accessibilityLabel="Back"
+          style={styles.headerButton}
+        >
+          <CaretLeft size={22} color={colors.textPrimary} weight="bold" />
+        </Pressable>
+        <View style={styles.titleBlock}>
+          <Text style={styles.headerTitle} numberOfLines={1}>Session Details</Text>
+        </View>
+        <View style={styles.headerSpacer} />
+      </View>
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <OfflineBanner />
-        <SessionDetailSkeleton />
+        {Header}
+        <View style={[styles.content, { paddingTop: scrollPaddingTop }]}>
+          <OfflineBanner />
+          <SessionDetailSkeleton />
+        </View>
       </View>
     );
   }
@@ -52,28 +88,39 @@ export function SessionDetailScreen() {
   if (isError) {
     return (
       <View style={styles.container}>
-        <OfflineBanner />
-        <ErrorState onRetry={refetch} />
+        {Header}
+        <View style={[styles.content, { paddingTop: scrollPaddingTop }]}>
+          <OfflineBanner />
+          <ErrorState onRetry={refetch} />
+        </View>
       </View>
     );
   }
 
   if (!data?.session) return null;
 
-  const { session, activityName, drillResults } = data;
+  const { session, activityName, drillResults, sessionPhotos } = data;
   const minutes = Math.floor((session.duration_seconds ?? 0) / 60);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <OfflineBanner />
+    <View style={styles.container}>
+      {Header}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingTop: scrollPaddingTop }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => { void refetch(); }}
+            tintColor={colors.primary500}
+          />
+        }
+      >
+        <OfflineBanner />
 
-      <Text style={styles.activity}>{activityName}</Text>
-      <Text style={styles.date}>{new Date(session.started_at).toLocaleDateString()}</Text>
-      <Text style={styles.duration}>{minutes} min</Text>
+        <Text style={styles.activity}>{activityName}</Text>
+        <Text style={styles.date}>{new Date(session.started_at).toLocaleDateString()}</Text>
+        <Text style={styles.duration}>{minutes} min</Text>
 
       {/* Session-level notes */}
       {session.note && (
@@ -83,9 +130,11 @@ export function SessionDetailScreen() {
         </Card>
       )}
 
-      {/* Session-level photos (task 210) */}
-      {session.photo_url && (
-        <Image source={{ uri: session.photo_url }} style={styles.photo} />
+      {/* Session-level multi-photo strip (read-only) */}
+      {sessionPhotos.length > 0 && (
+        <PhotoGallery
+          photos={sessionPhotos.map((p) => ({ id: p.id, uri: p.uri, status: 'uploaded' as const }))}
+        />
       )}
 
       <Text style={styles.sectionTitle}>Drills ({drillResults.length})</Text>
@@ -94,13 +143,14 @@ export function SessionDetailScreen() {
         <DrillResultCard key={dr.id} drill={dr} />
       ))}
 
-      <Button
-        title="Delete session"
-        onPress={handleDelete}
-        variant="destructive"
-        style={styles.deleteButton}
-      />
-    </ScrollView>
+        <Button
+          title="Delete session"
+          onPress={handleDelete}
+          variant="destructive"
+          style={styles.deleteButton}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -131,9 +181,11 @@ function DrillResultCard({ drill }: { drill: DrillResultDetail }) {
 
       {drill.note && <Text style={styles.drillNote}>{drill.note}</Text>}
 
-      {/* Task 209: Drill-level photos */}
-      {drill.photo_url && (
-        <Image source={{ uri: drill.photo_url }} style={styles.drillPhoto} />
+      {/* Drill-level multi-photo strip (read-only view) */}
+      {drill.photos.length > 0 && (
+        <PhotoGallery
+          photos={drill.photos.map((p) => ({ id: p.id, uri: p.uri, status: 'uploaded' as const }))}
+        />
       )}
     </Card>
   );
@@ -234,18 +286,35 @@ function SessionDetailSkeleton() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, paddingBottom: spacing.xxxl },
+  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  headerRow: {
+    height: HEADER_ROW_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  headerButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.borderDefault,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerSpacer: { width: 50, height: 50 },
+  titleBlock: { flex: 1, alignItems: 'center' },
+  headerTitle: {
+    ...typography.titleMedium,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
   activity: { ...typography.titleLarge, color: colors.textPrimary },
   date: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xxs },
   duration: { ...typography.titleMedium, color: colors.primary500, marginTop: spacing.xs, marginBottom: spacing.lg },
   noteCard: { marginBottom: spacing.md },
   noteLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.xxs },
   noteText: { ...typography.bodySmall, color: colors.textPrimary },
-  photo: {
-    width: '100%',
-    height: 200,
-    borderRadius: radii.md,
-    marginBottom: spacing.md,
-  },
   sectionTitle: { ...typography.titleSmall, color: colors.textPrimary, marginBottom: spacing.sm },
   drillCard: { marginBottom: spacing.xs },
   drillHeader: {
@@ -264,11 +333,5 @@ const styles = StyleSheet.create({
   elementLabel: { ...typography.caption, color: colors.textSecondary },
   elementValue: { ...typography.bodySmall, color: colors.textPrimary, fontFamily: 'Lexend_600SemiBold' },
   drillNote: { ...typography.bodySmall, color: colors.textSecondary, marginTop: spacing.xs },
-  drillPhoto: {
-    width: '100%',
-    height: 150,
-    borderRadius: radii.sm,
-    marginTop: spacing.xs,
-  },
   deleteButton: { marginTop: spacing.xl },
 });

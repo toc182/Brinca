@@ -37,7 +37,15 @@ async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
     if (appliedVersions.has(migration.version)) continue;
 
     await db.withTransactionAsync(async () => {
-      await db.execAsync(migration.sql);
+      // Migrations are either a raw SQL string (declarative, idempotent
+      // CREATE/INSERT/UPDATE) or an async runner (for cases SQLite can't
+      // express declaratively — e.g. ALTER TABLE ADD COLUMN, which has no
+      // IF NOT EXISTS form and must be guarded by a PRAGMA check).
+      if ('sql' in migration) {
+        await db.execAsync(migration.sql);
+      } else {
+        await migration.run(db);
+      }
       await db.runAsync(
         'INSERT INTO _migrations (version) VALUES (?)',
         migration.version

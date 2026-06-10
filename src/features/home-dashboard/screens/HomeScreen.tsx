@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useScrollToTop } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 
 import { Card } from '@/shared/components/Card';
@@ -10,6 +11,7 @@ import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { ParentAvatar } from '@/shared/components/ParentAvatar';
+import { APP_VERSION_LABEL } from '@/shared/appVersion';
 import { CollapsibleHeader, useCollapsibleHeaderHeight } from '@/shared/components/CollapsibleHeader';
 import { Button } from '@/shared/components/Button';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -22,12 +24,24 @@ import { ConsistencyMetrics } from '../components/ConsistencyMetrics';
 import { RecentSessions } from '../components/RecentSessions';
 import { AccoladeRow } from '../components/AccoladeRow';
 
+// Small version label + parent avatar for the header right slot. The version lets
+// the user confirm which OTA bundle is live (see src/shared/appVersion.ts).
+function HeaderRight() {
+  return (
+    <View style={styles.headerRight}>
+      <Text style={styles.versionLabel}>{APP_VERSION_LABEL}</Text>
+      <ParentAvatar />
+    </View>
+  );
+}
+
 export function HomeScreen() {
   const router = useRouter();
   const scrollRef = useRef<Animated.ScrollView>(null);
   useScrollToTop(scrollRef);
   const scrollY = useSharedValue(0);
   const headerHeight = useCollapsibleHeaderHeight();
+  const insets = useSafeAreaInsets();
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => { scrollY.value = e.contentOffset.y; },
   });
@@ -35,10 +49,15 @@ export function HomeScreen() {
   const childName = useActiveChildStore((s) => s.childName);
   const { data, isLoading, isError, refetch } = useDashboardQuery(childId);
 
+  // NativeTabs (UITabBarController) inflates the bottom safe area to include
+  // the tab bar height, so this clears the bar even when minimizeBehavior
+  // collapses it on scroll down.
+  const scrollPaddingBottom = insets.bottom + spacing.md;
+
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<ParentAvatar />} />
+        <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<HeaderRight />} />
         <HomeSkeleton headerHeight={headerHeight} />
       </View>
     );
@@ -47,11 +66,10 @@ export function HomeScreen() {
   if (isError || !data) {
     return (
       <View style={styles.container}>
-        <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<ParentAvatar />} />
+        <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<HeaderRight />} />
         <Animated.ScrollView
           style={styles.container}
-          contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
-          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         >
           <ErrorState onRetry={() => { void refetch(); }} />
         </Animated.ScrollView>
@@ -64,14 +82,13 @@ export function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<ParentAvatar />} />
+      <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<HeaderRight />} />
       <Animated.ScrollView
         ref={scrollRef}
         style={styles.container}
-        contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
+        contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md, paddingBottom: scrollPaddingBottom }]}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentInsetAdjustmentBehavior="automatic"
       >
         <OfflineBanner />
 
@@ -141,8 +158,7 @@ function HomeSkeleton({ headerHeight }: { headerHeight: number }) {
   return (
     <Animated.ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: headerHeight }]}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={[styles.content, { paddingTop: headerHeight + spacing.md }]}
     >
       <SkeletonPlaceholder>
         <View style={{ height: 72, borderRadius: radii.md, marginBottom: spacing.md }} />
@@ -166,4 +182,6 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.titleSmall, color: colors.textPrimary, marginBottom: spacing.xxs },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
   ctaButton: { alignSelf: 'flex-start', marginTop: spacing.xs },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  versionLabel: { ...typography.captionSmall, color: colors.textPlaceholder },
 });
