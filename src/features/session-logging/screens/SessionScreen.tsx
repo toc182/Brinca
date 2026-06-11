@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Screen } from '@/shared/components/Screen';
 import { SkeletonPlaceholder } from '@/shared/components/SkeletonPlaceholder';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
-import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
+import { colors, radii, spacing, typography } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useActiveSessionStore } from '@/stores/active-session.store';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -17,9 +17,11 @@ import { SessionFooter, useSessionFooterContentTop } from '../components/Session
 import { DrillListItem } from '../components/DrillListItem';
 import { DrillDescriptionSheet } from '../components/DrillDescriptionSheet';
 import { SessionPhotosNotes } from '../components/SessionPhotosNotes';
+import { UndoBar } from '../components/UndoBar';
 import { useSessionTimer } from '../hooks/useSessionTimer';
 import { useFinishSessionMutation } from '../mutations/useFinishSessionMutation';
 import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteMutation';
+import { useUnmarkDrillCompleteMutation } from '../mutations/useUnmarkDrillCompleteMutation';
 import { useUpdateSessionNoteMutation } from '../mutations/useUpdateSessionNoteMutation';
 import { useDrillResultsQuery } from '../queries/useDrillResultsQuery';
 import { getDrillsByActivity } from '@/features/activity-builder/repositories/drill.repository';
@@ -39,10 +41,14 @@ export function SessionScreen() {
   const timer = useSessionTimer();
   const finishSession = useFinishSessionMutation();
   const markDrillComplete = useMarkDrillCompleteMutation();
+  const unmarkDrillComplete = useUnmarkDrillCompleteMutation();
   const updateSessionNote = useUpdateSessionNoteMutation();
 
   const [note, setNote] = useState('');
   const [showInactivityBanner, setShowInactivityBanner] = useState(false);
+  // Last drill completed from this list — drives the UndoBar. Cleared on
+  // dismiss (timeout) or when Undo reverts the completion.
+  const [undoTarget, setUndoTarget] = useState<{ drillId: string; name: string } | null>(null);
   const backgroundTimestampRef = useRef<number | null>(null);
 
   // Auto-start timer when session screen mounts
@@ -128,14 +134,30 @@ export function SessionScreen() {
     router.back();
   };
 
-  const handleMarkComplete = useCallback(async (drillId: string) => {
+  const handleToggleComplete = useCallback(async (drillId: string, drillName: string, isComplete: boolean) => {
     if (!sessionId) return;
     try {
-      await markDrillComplete.mutateAsync({ sessionId, drillId });
+      if (isComplete) {
+        await unmarkDrillComplete.mutateAsync({ sessionId, drillId });
+        setUndoTarget((prev) => (prev?.drillId === drillId ? null : prev));
+      } else {
+        await markDrillComplete.mutateAsync({ sessionId, drillId });
+        setUndoTarget({ drillId, name: drillName });
+      }
     } catch {
       // silently fail — user can retry by tapping again
     }
-  }, [sessionId, markDrillComplete]);
+  }, [sessionId, markDrillComplete, unmarkDrillComplete]);
+
+  const handleUndo = useCallback(async () => {
+    if (!sessionId || !undoTarget) return;
+    try {
+      await unmarkDrillComplete.mutateAsync({ sessionId, drillId: undoTarget.drillId });
+    } catch {
+      // silently fail — the circle stays green and can be tapped to retry
+    }
+    setUndoTarget(null);
+  }, [sessionId, undoTarget, unmarkDrillComplete]);
 
   const handleTogglePause = useCallback(() => {
     if (timer.isPaused) {
@@ -172,6 +194,10 @@ export function SessionScreen() {
   };
 
   const activeDrills = drills?.filter((d) => d.is_active) ?? [];
+  const completedCount = activeDrills.filter((d) => completedDrillIds.has(d.id)).length;
+  const progressText = activeDrills.length > 0
+    ? `${completedCount} of ${activeDrills.length} done`
+    : undefined;
 
   // Banners that sit under the absolute blur header — full-width strips that
   // need to negate the FlatList contentContainer horizontal padding so they
@@ -217,6 +243,7 @@ export function SessionScreen() {
       <SessionHeader
         activityName={activityName ?? ''}
         childName={childName ?? ''}
+        progressText={progressText}
         onMinimize={handleMinimize}
       />
 
@@ -236,37 +263,21 @@ export function SessionScreen() {
           contentContainerStyle={listContentStyle}
           ListHeaderComponent={listHeader}
           renderItem={({ item }) => {
-            const hasElements = (item as unknown as { element_count?: number }).element_count !== 0;
             const isComplete = completedDrillIds.has(item.id);
-
-            // Drills with no tracking elements: show "Mark complete" inline
-            if (!hasElements && !isComplete) {
-              return (
-                <View style={styles.markCompleteRow}>
-                  <Text style={styles.drillNameText}>{item.name}</Text>
-                  <Pressable
-                    onPress={() => handleMarkComplete(item.id)}
-                    style={({ pressed }) => [styles.markCompleteButton, pressed && { opacity: 0.7 }]}
-                  >
-                    <Text style={styles.markCompleteText}>Mark complete</Text>
-                  </Pressable>
-                </View>
-              );
-            }
-
             const hasDescription =
               !!item.description?.trim() || (drillIdsWithPhotos?.has(item.id) ?? false);
 
+            // One row shape for every drill: the circle completes/un-completes
+            // in place, the rest of the row opens the drill (always — completed
+            // and elementless drills stay reachable for photos/notes).
             return (
               <DrillListItem
                 name={item.name}
                 isComplete={isComplete}
                 isActive={activeDrillIds.has(item.id)}
                 hasDescription={hasDescription}
-                onPress={() => {
-                  if (!hasElements && isComplete) return;
-                  router.push(`/(modals)/session/${item.id}` as never);
-                }}
+                onPress={() => router.push(`/(modals)/session/${item.id}` as never)}
+                onToggleComplete={() => handleToggleComplete(item.id, item.name, isComplete)}
                 onInfoPress={
                   hasDescription
                     ? () => handleInfoPress(item.id, item.description ?? null)
@@ -299,6 +310,14 @@ export function SessionScreen() {
         onTogglePause={handleTogglePause}
         onFinish={handleFinishSession}
         finishDisabled={finishSession.isPending}
+      />
+
+      <UndoBar
+        visible={undoTarget !== null}
+        message={undoTarget ? `${undoTarget.name} done` : ''}
+        onUndo={handleUndo}
+        onDismiss={() => setUndoTarget(null)}
+        bottomOffset={footerContentTop + spacing.sm}
       />
 
       {activeDescription && (
@@ -344,23 +363,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginBottom: spacing.xs,
   },
-  markCompleteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.xs,
-    ...shadows.sm,
-  },
-  drillNameText: { ...typography.titleSmall, color: colors.textPrimary, flex: 1 },
-  markCompleteButton: {
-    backgroundColor: colors.primary500,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.sm,
-  },
-  markCompleteText: { ...typography.buttonSmall, color: colors.textOnPrimary },
   pausedScrim: {
     position: 'absolute',
     left: 0,

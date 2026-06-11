@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check, Info } from 'phosphor-react-native';
+import { Info } from 'phosphor-react-native';
 
 import { colors, radii, shadows, spacing, typography } from '@/shared/theme';
+
+import { CompletionCircle } from './CompletionCircle';
 
 interface DrillListItemProps {
   name: string;
@@ -9,6 +11,7 @@ interface DrillListItemProps {
   isActive: boolean;
   hasDescription: boolean;
   onPress: () => void;
+  onToggleComplete: () => void;
   onInfoPress?: () => void;
 }
 
@@ -18,6 +21,7 @@ export function DrillListItem({
   isActive,
   hasDescription,
   onPress,
+  onToggleComplete,
   onInfoPress,
 }: DrillListItemProps) {
   // Complete wins over active. When started but not complete, show an
@@ -32,9 +36,6 @@ export function DrillListItem({
         pressed && styles.containerPressed,
       ]}
     >
-      <View style={[styles.indicator, isComplete && styles.indicatorComplete]}>
-        {isComplete ? <Check size={14} color={colors.textOnPrimary} weight="bold" /> : null}
-      </View>
       <View style={styles.textContainer}>
         <Text
           style={[styles.name, isComplete && styles.nameComplete]}
@@ -55,6 +56,12 @@ export function DrillListItem({
           <Info size={22} color={colors.textPrimary} weight="regular" />
         </Pressable>
       )}
+      <CompletionCircle
+        size="small"
+        complete={isComplete}
+        onToggle={onToggleComplete}
+        accessibilityLabel={isComplete ? `Mark ${name} as not done` : `Mark ${name} as done`}
+      />
     </Pressable>
   );
 }
@@ -79,20 +86,6 @@ const styles = StyleSheet.create({
   },
   containerPressed: {
     opacity: 0.85,
-  },
-  indicator: {
-    width: 24,
-    height: 24,
-    borderRadius: radii.full,
-    borderWidth: 1.5,
-    borderColor: colors.borderDefault,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  indicatorComplete: {
-    backgroundColor: colors.primary500,
-    borderColor: colors.primary500,
   },
   textContainer: { flex: 1 },
   name: {

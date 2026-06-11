@@ -27,9 +27,10 @@ The session logging screen exists to let the user work through an activity's dri
 ```
 Activity selected → Full session screen opens (tab bar hides)
     ↓
-User logs drills in any order → tap a drill to open drill screen
+User logs drills in any order → tap a drill row to open drill screen,
+or tap the row's completion circle to mark it done in place
     ↓
-Tap "Finish drill" → returns to drill list
+On the drill screen, tap the big completion circle when done → back arrow returns to drill list
     ↓
 Tap "Finish Session" → session summary screen pushes in
     ↓
@@ -41,18 +42,17 @@ Tap "Done" → saves session notes and photo, lands on Home
 ## Session screen
 
 ### What the screen shows (top to bottom)
-1. **Header** — activity name, child name, session timer (stopwatch, counts up from 0), minimize button (top right)
-2. **Drill list** — all configured drills for this activity, each showing name and completion status
+1. **Header** — activity name, child name + completion progress ("2 of 4 done"), session timer (stopwatch, counts up from 0), minimize button (top right)
+2. **Drill list** — all configured drills for this activity, each showing name, completion status, and a tappable completion circle on the right
 3. **Session notes + photos** — two-card row ("Add Photo" / "Add Note") with a horizontal thumbnail strip below for any photos added; always visible by scrolling to the bottom
 4. **"Finish Session" button** — always visible at the bottom
 
 ### Drill list behavior
 - Drills can be logged in any order
 - The user can skip drills or not do them at all
-- Tapping a drill opens the drill screen (stack navigation — slides in from right)
-- Completed drills are visually distinguished from incomplete ones
-- Tapping a completed drill reopens the drill screen to add or correct data
-- A drill with no tracking elements configured shows a "Mark complete" button directly on the session screen — no drill screen needed
+- Every row has a **completion circle** (the `CompletionCircle` component, small size) at its right end. Tapping the circle marks the drill complete in place — ink-fill + bounce animation, success haptic (see `design-system/components/completion-circle.md`) — and shows an **UndoBar** at the bottom for 3 seconds (also dismissible by sideways swipe). Tapping a green circle un-completes the drill (light haptic, no confirmation). This works the same for all drills, with or without tracking elements.
+- Tapping anywhere else on the row opens the drill screen (stack navigation — slides in from right) — for all drills, including completed and elementless ones (photos/notes stay reachable)
+- Completed drills are visually distinguished from incomplete ones (tinted background, muted name, green circle)
 - An **info icon** appears at the right end of a row when the drill template has description text or at least one description photo. Tapping the icon opens the same description sheet shown on the drill screen (see *Description sheet* below) without leaving the session screen. The icon replaces what was previously a navigation chevron — the chevron is gone; the row itself remains tappable to enter the drill.
 
 ### Session timer
@@ -86,8 +86,9 @@ Tap "Done" → saves session notes and photo, lands on Home
   - **Timers** — Stopwatch, Countdown, Lap, Interval
   - **Selection** — Checklist, Single select, Multi-select, Yes/No, Rating scale, Emoji face scale
   - **Input** — Number input, Multi-number input, Free text note, Voice note
+- The **completion circle**. For drills with no tracking elements: large size, front and center, with a hint label below ("Tap when done" / "Completed"). For tracked drills: the compact labeled-row form ("Mark as complete" / "Completed" + small circle) below the elements. Tapping it flushes any pending element/note saves, marks the drill complete (pop + burst + haptic), and shows the UndoBar — the screen does **not** auto-navigate back, so photos/notes can still be added. Tapping the green circle un-completes without confirmation.
 - Notes + photos section at the bottom — same two-card row pattern as the session screen: "Add Note" opens a bottom sheet; "Add Photo" picks from camera or library and appends to a horizontal thumbnail strip (multi-photo, max 10 per drill). Photos upload to the private `session-media` bucket under `<family_id>/<session_id>/<drill_result_id>/<photo_id>.jpg`.
-- "Finish drill" button — prominent at bottom
+- There is no "Finish drill" button and no header check icon — the completion circle is the only completion control. The back arrow only navigates.
 
 ### Description sheet
 - The info icon (drill screen header and session screen drill row) appears only when the drill template has either non-empty description text or at least one description photo (whitespace-only descriptions don't count).
@@ -101,7 +102,7 @@ Tap "Done" → saves session notes and photo, lands on Home
 
 ### Element behaviors
 
-All 18 element types behave as described below. Every element auto-saves state after each interaction (per `docs/ux/data-persistence.md`). State survives app close, minimize, and background; timers and recorders continue running in the background where applicable. Every element's target indicator (a green check in the corner) lights up when the recorded value meets the element's configured target; reaching the target does **not** auto-complete the drill — only tapping Finish drill does.
+All 18 element types behave as described below. Every element auto-saves state after each interaction (per `docs/ux/data-persistence.md`). State survives app close, minimize, and background; timers and recorders continue running in the background where applicable. Every element's target indicator (a green check in the corner) lights up when the recorded value meets the element's configured target; reaching the target does **not** auto-complete the drill — only tapping the completion circle does.
 
 #### Counters
 
@@ -128,9 +129,9 @@ All 18 element types behave as described below. Every element auto-saves state a
 
 #### Input
 
-- **Number input.** Single numeric field with the optional unit label (e.g. "lbs") shown inline. Numeric keyboard opens on tap. Accepts decimals. Saves on blur and on Finish drill. Saved as number or `null`. Target met = recorded value ≥ target.
+- **Number input.** Single numeric field with the optional unit label (e.g. "lbs") shown inline. Numeric keyboard opens on tap. Accepts decimals. Saves on blur and when the drill is completed. Saved as number or `null`. Target met = recorded value ≥ target.
 - **Multi-number input.** A growing list of numeric entries plus an "Add" button. Tapping Add opens an inline row with a numeric field and a ✓ button to commit. Committed entries appear in the list above in insertion order. Each row has a swipe-to-delete action. No reset button — individual wrong entries are swiped away. Saved as `number[]`. Target met = list length ≥ target entries.
-- **Free text note.** Multiline text area, no character limit. Autosaves every few seconds and on Finish drill. Saved as string (may be empty). Target met = any non-empty value.
+- **Free text note.** Multiline text area, no character limit. Autosaves every few seconds and when the drill is completed. Saved as string (may be empty). Target met = any non-empty value.
 - **Voice note.** Inline recorder widget on the drill screen — not a modal. Three visual states:
   - *Empty:* a large red circle record button with label "Tap to record."
   - *Recording:* the record button becomes a stop square; an animated waveform shows; the elapsed time counts up. Automatic stop at 3:00, with a toast: "Maximum 3 minutes reached."
@@ -138,10 +139,11 @@ All 18 element types behave as described below. Every element auto-saves state a
   
   One recording per element (not a list). To capture multiple audio clips, the parent adds multiple Voice Note elements in the builder. Audio is stored as a local file and uploaded to Supabase Storage on WiFi — same rule as photos per `docs/research/01-stack-decision.md`. Microphone permission is requested the first time the record button is tapped; if denied, the widget shows "Microphone access required" with a button that opens iOS Settings. Saved as `{ file_uri: string, duration_seconds: number } | null`. Target met = a recording exists (any duration).
 
-### Finishing a drill
-- Tap "Finish drill" — drill is logged with whatever was tracked at that moment — returns to session drill list
-- Drill is marked as complete on the session screen
-- Tapping a completed drill reopens the drill screen to add or correct data
+### Completing a drill
+- Tap the completion circle — drill is logged with whatever was tracked at that moment. The screen stays put; the back arrow returns to the session drill list.
+- The drill shows as complete on the session screen (and counts toward the header's "n of m done")
+- An UndoBar appears for 3 seconds after completing — tap Undo to revert, or swipe it sideways to dismiss
+- Tapping a completed drill's row reopens the drill screen to add or correct data; tapping its green circle un-completes it
 
 ---
 
@@ -193,7 +195,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 | Reset counter | Native iOS alert: "Reset counter to zero?" — confirmed — resets to 0 |
 | Countdown timer reaches zero | Timer stops, device plays default alert sound, parent taps to silence. Drill does not auto-complete. |
 | Reset timer | Returns to configured start value in paused state. No confirmation needed. |
-| Drill with no tracking elements | "Mark complete" button appears directly on session screen. No drill screen needed. |
+| Drill with no tracking elements | Same row as every other drill — the circle completes it in place; the row still opens the drill screen for photos/notes. |
 | Photo upload fails | Saved locally, uploaded automatically when connection restored. No error shown mid-session. |
 | App closed on summary screen | Session already saved. Notes and photo saved on next open. |
 
@@ -204,7 +206,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 | Trigger | Destination |
 |---|---|
 | Tap a drill on session screen | Drill screen (pushes in from right) |
-| Tap "Finish drill" | Returns to session screen |
+| Tap back arrow on drill screen | Returns to session screen (completion state untouched) |
 | Tap minimize button | Collapses session, returns to previous screen, mini player bar appears |
 | Tap mini player bar | Resumes full session screen |
 | Tap "Finish Session" | Session summary screen (pushes in) |
@@ -250,7 +252,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] Tapping a drill opens the drill screen
 - [ ] Completed drills are visually distinguished from incomplete drills
 - [ ] Tapping a completed drill reopens the drill screen
-- [ ] Drill with no tracking elements shows "Mark complete" button directly on session screen
+- [ ] Every drill row has a completion circle that marks the drill done in place, with an UndoBar to revert
 - [ ] Session notes + photos section (two-card row + thumbnail strip) is visible by scrolling to bottom of drill list
 - [ ] "Finish Session" button is always visible at the bottom
 
@@ -260,7 +262,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] Every element's target indicator lights up when the recorded value meets its configured target; target-met never auto-completes the drill
 - [ ] Notes field accepts free text with no character limit
 - [ ] "Add Photo" opens device camera or library (photos only); picked photos appear in the thumbnail strip immediately and upload in the background; up to 10 photos per drill and per session
-- [ ] Tapping "Finish drill" logs the drill and returns to session screen
+- [ ] Tapping the drill screen's completion circle logs the drill; the back arrow returns to the session screen
 
 **Counters**
 - [ ] Regular counter increments and decrements by 1, minimum value 0
@@ -291,7 +293,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 - [ ] Emoji face scale shows 3 or 5 faces per configuration, supports selecting and deselecting
 
 **Input**
-- [ ] Number input accepts a single numeric value, shows the configured unit inline, and saves on blur and on Finish drill
+- [ ] Number input accepts a single numeric value, shows the configured unit inline, and saves on blur and on drill completion
 - [ ] Multi-number input supports adding entries via an inline field, shows them in insertion order, and allows swipe-to-delete
 - [ ] Free text note accepts multiline text with no character limit and autosaves
 - [ ] Voice note record button requests microphone permission on first use and shows a permission-denied state with a link to iOS Settings if refused

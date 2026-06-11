@@ -7,9 +7,9 @@ import { colors, radii, spacing, typography } from '@/shared/theme';
  * tracking section. Communicates that every drill can be marked complete on
  * its own — tracking elements are optional extras layered on top.
  *
- * This is purely presentational. The behavior it describes is inherent: a
- * drill with zero tracking elements already surfaces a "Mark complete" action
- * in a live session (see session-logging DrillScreen + useMarkDrillCompleteMutation).
+ * This is purely presentational. The behavior it describes is inherent:
+ * every drill gets a tappable CompletionCircle in a live session (both in
+ * the session drill list and on the drill screen).
  */
 export function MarkCompleteDefaultCard() {
   return (
@@ -19,7 +19,7 @@ export function MarkCompleteDefaultCard() {
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>Mark as complete</Text>
-        <Text style={styles.subtitle}>Built in — every drill can be finished on its own, with nothing to track.</Text>
+        <Text style={styles.subtitle}>Built in — every drill gets a tap-to-complete circle in a session. Tracking is optional.</Text>
       </View>
       <View style={styles.pill}>
         <Text style={styles.pillText}>DEFAULT</Text>

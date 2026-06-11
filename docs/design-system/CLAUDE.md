@@ -52,6 +52,7 @@ Values live in `src/shared/theme.ts`. Never hardcode hex / size values anywhere 
 | [badges.md](components/badges.md) | Status indicators with bilingual labels |
 | [progress.md](components/progress.md) | Linear bar, circular, streak counter |
 | [dividers.md](components/dividers.md) | List and section dividers |
+| [completion-circle.md](components/completion-circle.md) | Tap-to-complete circle + UndoBar pattern |
 
 ---
 

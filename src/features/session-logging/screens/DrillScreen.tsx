@@ -4,18 +4,18 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CaretLeft, Check, Info } from 'phosphor-react-native';
+import { CaretLeft, Info } from 'phosphor-react-native';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
-import { Button } from '@/shared/components/Button';
 import { GradientBlurBackground } from '@/shared/components/GradientBlurBackground';
 import { Screen } from '@/shared/components/Screen';
-import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { colors, typography, spacing, radii } from '@/shared/theme';
+import { CompletionCircle } from '../components/CompletionCircle';
 import { DrillPhotosNotes } from '../components/DrillPhotosNotes';
 import { DrillDescriptionSheet } from '../components/DrillDescriptionSheet';
+import { UndoBar } from '../components/UndoBar';
 import { showToast } from '@/shared/utils/toast';
-import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import { useActiveSessionStore } from '@/stores/active-session.store';
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { getDrillById } from '@/features/activity-builder/repositories/drill.repository';
@@ -51,7 +51,6 @@ export function DrillScreen() {
   const insets = useSafeAreaInsets();
   const markDrillCompleteMutation = useMarkDrillCompleteMutation();
   const queryClient = useQueryClient();
-  const { showDestructiveAlert } = useDestructiveAlert();
 
   const { data: drill } = useQuery({
     queryKey: ['drill', drillId],
@@ -65,14 +64,12 @@ export function DrillScreen() {
     enabled: !!drillId,
   });
 
-  // A drill with no tracking elements shows a "Mark as complete" checkbox plus
-  // the "Finish drill" button (the redundant top-right header check is dropped
-  // for these drills). `checked` is the box's visual state; `savedComplete` is
-  // the committed completion. Once committed, the Finish button is hidden (only
-  // Back remains) and tapping the box asks to confirm before un-completing.
+  // Completion is a single committed flag, toggled only by the big
+  // CompletionCircle in the body. The back arrow never changes it, and
+  // completing no longer auto-navigates back — photos/notes stay reachable.
   const hasElements = (elements?.length ?? 0) > 0;
-  const [checked, setChecked] = useState(false);
-  const [savedComplete, setSavedComplete] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const [showUndo, setShowUndo] = useState(false);
 
   // Drill description metadata: text comes from the drill row, photos via
   // the dedicated hook (signed-URL fetch). The header info icon shows only
@@ -111,11 +108,10 @@ export function DrillScreen() {
         // shows the active state immediately when the user goes back.
         queryClient.invalidateQueries({ queryKey: sessionKeys.drillResults(sessionId!) });
 
-        // Reflect saved completion so a re-opened completed drill shows checked.
+        // Reflect saved completion so a re-opened completed drill shows green.
         const alreadyComplete = await getDrillResultIsComplete(id);
         if (cancelled) return;
-        setChecked(alreadyComplete);
-        setSavedComplete(alreadyComplete);
+        setIsComplete(alreadyComplete);
 
         // Load persisted element values
         const existingValues = await getElementValuesByDrillResult(id);
@@ -163,27 +159,25 @@ export function DrillScreen() {
     }
   }, []);
 
-  const handleUnmarkComplete = () => {
-    showDestructiveAlert({
-      title: 'Unmark as complete?',
-      message: 'This drill will no longer be marked complete.',
-      destructiveLabel: 'Unmark',
-      onConfirm: async () => {
-        const id = drillResultIdRef.current;
-        if (!id || !sessionId) return;
-        try {
-          await markDrillIncomplete(id);
-          setSavedComplete(false);
-          setChecked(false);
-          queryClient.invalidateQueries({ queryKey: sessionKeys.drillResults(sessionId) });
-        } catch {
-          showToast('error', 'Could not update drill.');
-        }
-      },
-    });
+  const handleUnmark = async () => {
+    const id = drillResultIdRef.current;
+    if (!id || !sessionId) return;
+    try {
+      await markDrillIncomplete(id);
+      setIsComplete(false);
+      setShowUndo(false);
+      queryClient.invalidateQueries({ queryKey: sessionKeys.drillResults(sessionId) });
+    } catch {
+      showToast('error', 'Could not update drill.');
+    }
   };
 
-  const handleFinishDrill = async () => {
+  const handleToggleComplete = async () => {
+    if (isComplete) {
+      await handleUnmark();
+      return;
+    }
+
     if (!drillResultIdRef.current || !sessionId || !drillId) {
       showToast('error', 'Session error. Please restart the session.');
       return;
@@ -206,7 +200,8 @@ export function DrillScreen() {
       }
 
       await markDrillCompleteMutation.mutateAsync({ sessionId, drillId });
-      router.back();
+      setIsComplete(true);
+      setShowUndo(true);
     } catch {
       showToast('error', 'Could not save drill. Please try again.');
     }
@@ -253,20 +248,9 @@ export function DrillScreen() {
               </Pressable>
             )}
           </View>
-          {hasElements ? (
-            <Pressable
-              onPress={handleFinishDrill}
-              hitSlop={spacing.sm}
-              accessibilityLabel="Finish drill"
-              style={styles.headerButton}
-            >
-              <Check size={20} color={colors.textPrimary} weight="bold" />
-            </Pressable>
-          ) : (
-            // Elementless drill: finishing is done via the body button, so the
-            // redundant header check is dropped — just the back button remains.
-            <View style={styles.headerButtonSpacer} />
-          )}
+          {/* Completion lives in the body's CompletionCircle — the header has
+              no finish action, just the back arrow and a layout spacer. */}
+          <View style={styles.headerButtonSpacer} />
         </View>
       </View>
 
@@ -303,22 +287,31 @@ export function DrillScreen() {
           );
         })}
 
-        {/* Elementless drill: the "Mark as complete" checkbox. Before the drill
-            is committed it just toggles; once committed, tapping it confirms
-            before un-completing (which restores the Finish button). */}
-        {!hasElements && (
-          <Pressable
-            onPress={savedComplete ? handleUnmarkComplete : () => setChecked((prev) => !prev)}
-            style={({ pressed }) => [styles.completeRow, pressed && styles.completeRowPressed]}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked }}
-            accessibilityLabel="Mark as complete"
-          >
-            <View style={[styles.completeCheckbox, checked && styles.completeCheckboxChecked]}>
-              {checked && <Text style={styles.completeCheckmark}>&#10003;</Text>}
-            </View>
-            <Text style={styles.completeLabel}>Mark as complete</Text>
-          </Pressable>
+        {/* The one completion control. Elementless drills: big centered circle
+            as the screen's main content. Tracked drills: compact labeled row
+            below the elements so it doesn't compete with them. Tapping again
+            un-completes — no confirmation, the UndoBar covers slips. */}
+        {hasElements ? (
+          <CompletionCircle
+            size="small"
+            label={isComplete ? 'Completed' : 'Mark as complete'}
+            complete={isComplete}
+            onToggle={handleToggleComplete}
+            accessibilityLabel={isComplete ? 'Mark drill as not done' : 'Mark drill as done'}
+            style={styles.completeRowCard}
+          />
+        ) : (
+          <View style={styles.completeSection}>
+            <CompletionCircle
+              size="large"
+              complete={isComplete}
+              onToggle={handleToggleComplete}
+              accessibilityLabel={isComplete ? 'Mark drill as not done' : 'Mark drill as done'}
+            />
+            <Text style={styles.completeHint}>
+              {isComplete ? 'Completed' : 'Tap when done'}
+            </Text>
+          </View>
         )}
 
         {/* Drill-level multi-photo + note: two-card row + thumbnail strip */}
@@ -329,15 +322,15 @@ export function DrillScreen() {
           title="Drill note"
           placeholder="Anything notable from this drill?"
         />
-
-        {(hasElements || !savedComplete) && (
-          <Button
-            title="Finish drill"
-            onPress={handleFinishDrill}
-            style={styles.finishButton}
-          />
-        )}
       </KeyboardAwareScrollView>
+
+      <UndoBar
+        visible={showUndo}
+        message={`${drill?.name ?? 'Drill'} done`}
+        onUndo={handleUnmark}
+        onDismiss={() => setShowUndo(false)}
+        bottomOffset={insets.bottom + spacing.md}
+      />
     </Screen>
     {drillId && (
       <DrillDescriptionSheet
@@ -408,43 +401,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   targetBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  finishButton: { marginTop: spacing.lg },
   headerButtonSpacer: { width: 50, height: 50 },
 
-  // "Mark as complete" checkbox (elementless drills only)
-  completeRow: {
-    flexDirection: 'row',
+  // Completion control. Elementless drills: roomy centered circle as the
+  // screen's main content. Tracked drills: compact labeled row card.
+  completeSection: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    minHeight: touchTargets.adult,
+    paddingVertical: spacing.xl,
     marginBottom: spacing.md,
   },
-  completeRowPressed: { backgroundColor: colors.success50 },
-  completeCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: radii.xs,
-    borderWidth: 2,
-    borderColor: colors.borderDefault,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+  completeHint: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
-  completeCheckboxChecked: {
-    backgroundColor: colors.success500,
-    borderColor: colors.success500,
-  },
-  completeCheckmark: {
-    ...typography.caption,
-    color: colors.textOnPrimary,
-    marginTop: -1,
-  },
-  completeLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    flex: 1,
+  completeRowCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
+    marginBottom: spacing.md,
   },
 });

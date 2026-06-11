@@ -24,10 +24,12 @@ export function useSessionHeaderContentBottom(): number {
 interface SessionHeaderProps {
   activityName: string;
   childName: string;
+  /** e.g. "2 of 4 done" — shown after the child name when provided. */
+  progressText?: string;
   onMinimize: () => void;
 }
 
-export function SessionHeader({ activityName, childName, onMinimize }: SessionHeaderProps) {
+export function SessionHeader({ activityName, childName, progressText, onMinimize }: SessionHeaderProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.header, { height: insets.top + HEADER_CONTENT_HEIGHT }]}>
@@ -44,7 +46,9 @@ export function SessionHeader({ activityName, childName, onMinimize }: SessionHe
 
         <View style={styles.titleBlock}>
           <Text style={styles.activityName} numberOfLines={1}>{activityName}</Text>
-          <Text style={styles.childName} numberOfLines={1}>{childName}</Text>
+          <Text style={styles.childName} numberOfLines={1}>
+            {childName}{progressText ? ` · ${progressText}` : ''}
+          </Text>
         </View>
 
         <View style={styles.timerSlot}>

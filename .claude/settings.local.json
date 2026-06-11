@@ -28,7 +28,13 @@
       "Bash(rmdir docs-public *)",
       "Bash(bun remove *)",
       "Bash(gh issue *)",
-      "Bash(gh label *)"
+      "Bash(gh label *)",
+      "Bash(git -C /c/ProyectosCC/AppSeg status --short)",
+      "Bash(git -C /c/ProyectosCC/AppSeg log --oneline -3)",
+      "Bash(git -C /c/ProyectosCC/AppSeg status -sb)",
+      "Bash(npx eas-cli *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget"
     ]
   }
 }

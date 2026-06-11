@@ -232,7 +232,7 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Edge case | Expected behavior |
 |---|---|
 | Activity with no drills | Valid — activity appears in Activity tab but starts a session with no drills (session notes still available) |
-| Drill with no tracking elements | Valid. In a session it shows a "Mark as complete" checkbox plus the "Finish drill" button (the top-right header check is dropped for these drills, leaving only Back). Once finished and reopened, the checkbox is checked and the Finish button is hidden; tapping the checkbox asks to confirm before un-completing, which restores the Finish button. |
+| Drill with no tracking elements | Valid. In a session it's completed via the standard completion circle — tappable directly on the session drill list, or front-and-center on the drill screen. Tapping a green circle un-completes (no confirmation; an UndoBar covers accidental taps). See `session-logging.md`. |
 | Drill with 10+ tracking elements | All elements visible on drill screen during session via scrolling |
 | Delete an activity with past sessions | Activity and drills removed from builder. Past sessions preserved in Stats and session history. |
 | Delete a drill with past session data | Drill removed from activity. Past session data for that drill preserved. |
