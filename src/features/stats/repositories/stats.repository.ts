@@ -216,7 +216,7 @@ export async function getChartData(
 export async function getChildActivities(childId: UUID) {
   const db = await getDatabase();
   return db.getAllAsync<{ id: string; name: string; icon: string | null }>(
-    `SELECT id, name, icon FROM activities WHERE child_id = ? AND is_active = 1 ORDER BY display_order`,
+    `SELECT id, name, icon FROM activities WHERE child_id = ? AND is_active = 1 AND deleted_at IS NULL ORDER BY display_order`,
     childId,
   );
 }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+// Gesture-aware Pressable: cancelled when the SwipeToDeleteRow pan activates,
+// so swiping to reveal Delete doesn't also fire the row's onPress.
+import { Pressable as GHPressable } from 'react-native-gesture-handler';
 
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -346,7 +349,7 @@ export function DrillEditScreen() {
             confirmTitle="Remove element"
             confirmMessage="Remove this element? This cannot be undone."
           >
-            <Pressable
+            <GHPressable
               onPress={() => setEditingElementId(el.id)}
               style={styles.elementRow}
               accessibilityLabel={`Edit ${el.label}`}
@@ -377,7 +380,7 @@ export function DrillEditScreen() {
                 </Pressable>
                 <Text style={styles.elementChevron}>›</Text>
               </View>
-            </Pressable>
+            </GHPressable>
           </SwipeToDeleteRow>
         ))}
 

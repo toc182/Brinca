@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +33,7 @@ import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteM
 import { ElementRenderer } from '../components/elements/ElementRenderer';
 import { sessionKeys } from '../queries/keys';
 import type { ElementType } from '@/shared/tracking-elements/types/element-types';
-import { getDefaultValue, isTargetMet } from '@/shared/tracking-elements/validation';
+import { getDefaultValue, hasConfiguredTarget, isTargetMet } from '@/shared/tracking-elements/validation';
 
 // Header geometry — mirrors SessionHeader so blur looks consistent across the
 // session-logging surfaces. Top buffer + content row + fade-zone below.
@@ -87,6 +87,23 @@ export function DrillScreen() {
   const [drillResultId, setDrillResultId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, Record<string, unknown>>>({});
   const [note, setNote] = useState('');
+
+  // "All targets met" nudge: when every element that has a target (explicit
+  // or inherent) reports met, the Mark-as-complete row lights up green.
+  // Elements with no target notion are ignored; if none has one, no nudge.
+  const allTargetsMet = useMemo(() => {
+    if (!elements || elements.length === 0) return false;
+    let candidates = 0;
+    for (const el of elements) {
+      const type = el.type as ElementType;
+      const elConfig = JSON.parse(el.config) as Record<string, unknown>;
+      if (!hasConfiguredTarget(type, elConfig)) continue;
+      candidates += 1;
+      const elValue = values[el.id] ?? getDefaultValue(type);
+      if (!isTargetMet(type, elConfig, elValue)) return false;
+    }
+    return candidates > 0;
+  }, [elements, values]);
 
   // Debounce timer for SQLite writes (avoids writing every 100ms during timer ticks)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -294,11 +311,20 @@ export function DrillScreen() {
         {hasElements ? (
           <CompletionCircle
             size="small"
-            label={isComplete ? 'Completed' : 'Mark as complete'}
+            label={
+              isComplete
+                ? 'Completed'
+                : allTargetsMet
+                  ? 'All targets met — mark complete'
+                  : 'Mark as complete'
+            }
             complete={isComplete}
             onToggle={handleToggleComplete}
             accessibilityLabel={isComplete ? 'Mark drill as not done' : 'Mark drill as done'}
-            style={styles.completeRowCard}
+            style={[
+              styles.completeRowCard,
+              allTargetsMet && !isComplete && styles.completeRowCardReady,
+            ]}
           />
         ) : (
           <View style={styles.completeSection}>
@@ -422,5 +448,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     minHeight: 56,
     marginBottom: spacing.md,
+  },
+  completeRowCardReady: {
+    backgroundColor: colors.success50,
+    borderWidth: 1.5,
+    borderColor: colors.success500,
   },
 });

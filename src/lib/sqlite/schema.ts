@@ -77,6 +77,7 @@ export const TABLE_DEFINITIONS = {
       category TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -90,6 +91,7 @@ export const TABLE_DEFINITIONS = {
       description TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
       display_order INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -103,6 +105,7 @@ export const TABLE_DEFINITIONS = {
       label TEXT NOT NULL,
       config TEXT NOT NULL DEFAULT '{}',
       display_order INTEGER NOT NULL DEFAULT 0,
+      deleted_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

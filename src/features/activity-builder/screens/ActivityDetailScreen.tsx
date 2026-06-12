@@ -8,6 +8,9 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+// Gesture-aware Pressable: cancelled when the SwipeToDeleteRow pan activates,
+// so swiping to reveal Delete doesn't also fire the row's onPress.
+import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -454,7 +457,7 @@ export function ActivityDetailScreen() {
                 confirmTitle="Delete drill"
                 confirmMessage="Delete this drill? This cannot be undone."
               >
-                <Pressable
+                <GHPressable
                   onPress={() => handleDrillPress(drill.id)}
                   style={styles.drillRow}
                   accessibilityLabel={`Open drill ${drill.name}`}
@@ -483,7 +486,7 @@ export function ActivityDetailScreen() {
                     allIds={drillIds}
                     onReordered={() => {}}
                   />
-                </Pressable>
+                </GHPressable>
               </SwipeToDeleteRow>
             ))}
             <Button

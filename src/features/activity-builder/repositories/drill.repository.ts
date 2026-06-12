@@ -1,5 +1,4 @@
 import { getDatabase } from '@/lib/sqlite/db';
-import { deleteStorageObject } from '@/lib/sync/photo-upload-queue';
 import { appendToQueue } from '@/lib/sync/queue';
 import type { UUID } from '@/types/domain.types';
 
@@ -17,7 +16,7 @@ export interface DrillRow {
 export async function getDrillsByActivity(activityId: UUID): Promise<DrillRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<DrillRow>(
-    `SELECT * FROM drills WHERE activity_id = ? ORDER BY display_order ASC`,
+    `SELECT * FROM drills WHERE activity_id = ? AND deleted_at IS NULL ORDER BY display_order ASC`,
     activityId
   );
 }
@@ -73,21 +72,18 @@ export async function updateDrill(
   await appendToQueue('UPDATE', 'drills', payload);
 }
 
+/**
+ * Soft delete: stamps deleted_at instead of removing the row. drill_results
+ * reference drills with no ON DELETE rule (locally and on Supabase), so a
+ * hard DELETE fails for any drill with logged session data — and stats
+ * screens resolve drill names from this row for that history anyway.
+ * Description photos stay in Storage since the row (and its history) lives on.
+ */
 export async function deleteDrill(id: UUID) {
   const db = await getDatabase();
-  // Best-effort Storage cleanup of any drill_photos objects before the
-  // SQLite CASCADE removes the rows. Supabase's FK CASCADE handles the
-  // server-side rows but doesn't touch Storage objects — same blind spot
-  // as drill_result_photos and session_photos.
-  const photoRows = await db.getAllAsync<{ storage_path: string | null }>(
-    `SELECT storage_path FROM drill_photos WHERE drill_id = ? AND storage_path IS NOT NULL`,
-    id,
-  );
-  for (const row of photoRows) {
-    if (row.storage_path) void deleteStorageObject(row.storage_path);
-  }
-  await db.runAsync(`DELETE FROM drills WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'drills', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE drills SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'drills', { id, deleted_at: deletedAt });
 }
 
 export async function reorderDrills(drillIds: UUID[]) {

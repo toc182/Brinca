@@ -158,6 +158,7 @@ A named activity configured for a specific child (e.g. "Baseball", "Dr. Melillo 
 | `category` | text, nullable | `sport`, `therapy`, `academic`, `custom` |
 | `is_active` | boolean | Default: true. Deactivated activities hidden from Activity tab. |
 | `display_order` | integer | |
+| `deleted_at` | timestamptz, nullable | Soft delete. "Delete" stamps this instead of removing the row: sessions FK here with no ON DELETE rule, and stats resolve names from this row for history. List queries filter `deleted_at IS NULL`; lookups by id don't. |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
@@ -178,6 +179,7 @@ A named drill within an activity (e.g. "Consecutive catches", "Tongue placement 
 | `description` | text, nullable | Free text reference notes for the drill (max 2000 chars). Shown in the live DrillScreen via the header info icon → bottom sheet. Multi-photo companion lives in `drill_photos`. |
 | `is_active` | boolean | Default: true. Deactivated drills hidden from sessions. |
 | `display_order` | integer | Reorderable via long-press drag in builder |
+| `deleted_at` | timestamptz, nullable | Soft delete — same rationale and query rules as `activities.deleted_at` (drill_results FK here with no ON DELETE rule). |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
@@ -220,6 +222,7 @@ A configurable input widget on a drill (e.g. a counter, a timer, a checklist). O
 | `label` | text, required | User-facing label |
 | `config` | JSONB | Type-specific configuration: target values, options, durations, substep names, etc. Shape depends on `type`. |
 | `display_order` | integer | Reorderable via long-press drag in builder |
+| `deleted_at` | timestamptz, nullable | Soft delete — same rationale and query rules as `activities.deleted_at` (element_values FK here with no ON DELETE rule). |
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 

@@ -83,7 +83,7 @@ export async function getActivitiesSummary(childId: UUID): Promise<ActivitySumma
        SELECT activity_id, COUNT(*) AS cnt, MAX(started_at) AS last_date
        FROM sessions GROUP BY activity_id
      ) s ON s.activity_id = a.id
-     WHERE a.child_id = ? AND a.is_active = 1
+     WHERE a.child_id = ? AND a.is_active = 1 AND a.deleted_at IS NULL
      ORDER BY a.display_order ASC`,
     childId
   );

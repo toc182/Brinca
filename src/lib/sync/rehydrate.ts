@@ -245,16 +245,16 @@ export async function rehydrateActivities(
   if (!activityCount || activityCount.count === 0) {
     const { data, error } = await supabase
       .from('activities')
-      .select('id, child_id, name, icon, category, is_active, display_order, created_at, updated_at')
+      .select('id, child_id, name, icon, category, is_active, display_order, deleted_at, created_at, updated_at')
       .eq('child_id', childId)
       .order('display_order', { ascending: true });
     if (!error && data) {
       for (const a of data) {
         await db.runAsync(
-          `INSERT OR IGNORE INTO activities (id, child_id, name, icon, category, is_active, display_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO activities (id, child_id, name, icon, category, is_active, display_order, deleted_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           a.id, a.child_id, a.name, a.icon ?? null, a.category ?? null,
-          a.is_active ? 1 : 0, a.display_order, a.created_at, a.updated_at,
+          a.is_active ? 1 : 0, a.display_order, a.deleted_at ?? null, a.created_at, a.updated_at,
         );
       }
     }
@@ -280,16 +280,16 @@ export async function rehydrateActivities(
   if (!drillCount || drillCount.count === 0) {
     const { data, error } = await supabase
       .from('drills')
-      .select('id, activity_id, name, description, is_active, display_order, created_at, updated_at')
+      .select('id, activity_id, name, description, is_active, display_order, deleted_at, created_at, updated_at')
       .in('activity_id', activityIds)
       .order('display_order', { ascending: true });
     if (!error && data) {
       for (const d of data) {
         await db.runAsync(
-          `INSERT OR IGNORE INTO drills (id, activity_id, name, description, is_active, display_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO drills (id, activity_id, name, description, is_active, display_order, deleted_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           d.id, d.activity_id, d.name, d.description, d.is_active ? 1 : 0, d.display_order,
-          d.created_at, d.updated_at,
+          d.deleted_at ?? null, d.created_at, d.updated_at,
         );
       }
     }
@@ -314,7 +314,7 @@ export async function rehydrateActivities(
   {
     const { data, error } = await supabase
       .from('tracking_elements')
-      .select('id, drill_id, type, label, config, display_order, created_at, updated_at')
+      .select('id, drill_id, type, label, config, display_order, deleted_at, created_at, updated_at')
       .in('drill_id', drillIds)
       .order('display_order', { ascending: true });
     if (!error && data) {
@@ -325,10 +325,10 @@ export async function rehydrateActivities(
         const configStr =
           typeof e.config === 'string' ? e.config : JSON.stringify(e.config);
         await db.runAsync(
-          `INSERT OR REPLACE INTO tracking_elements (id, drill_id, type, label, config, display_order, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO tracking_elements (id, drill_id, type, label, config, display_order, deleted_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           e.id, e.drill_id, e.type, e.label, configStr,
-          e.display_order, e.created_at, e.updated_at,
+          e.display_order, e.deleted_at ?? null, e.created_at, e.updated_at,
         );
       }
     }

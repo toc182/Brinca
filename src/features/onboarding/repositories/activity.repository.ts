@@ -23,7 +23,7 @@ export async function getActivitiesByChild(childId: UUID) {
     id: string;
     child_id: string;
     name: string;
-  }>(`SELECT * FROM activities WHERE child_id = ? AND is_active = 1 ORDER BY display_order ASC`, childId);
+  }>(`SELECT * FROM activities WHERE child_id = ? AND is_active = 1 AND deleted_at IS NULL ORDER BY display_order ASC`, childId);
 }
 
 export async function getFirstActivity(childId: UUID) {
@@ -32,5 +32,5 @@ export async function getFirstActivity(childId: UUID) {
     id: string;
     child_id: string;
     name: string;
-  }>(`SELECT * FROM activities WHERE child_id = ? ORDER BY created_at ASC LIMIT 1`, childId);
+  }>(`SELECT * FROM activities WHERE child_id = ? AND deleted_at IS NULL ORDER BY created_at ASC LIMIT 1`, childId);
 }

@@ -34,7 +34,10 @@
       "Bash(git -C /c/ProyectosCC/AppSeg status -sb)",
       "Bash(npx eas-cli *)",
       "mcp__visualize__read_me",
-      "mcp__visualize__show_widget"
+      "mcp__visualize__show_widget",
+      "Bash(git -C /c/ProyectosCC/AppSeg add -A)",
+      "Bash(git -C /c/ProyectosCC/AppSeg commit -m ' *)",
+      "Bash(git -C /c/ProyectosCC/AppSeg push)"
     ]
   }
 }

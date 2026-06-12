@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { X } from 'phosphor-react-native';
 
+import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { colors, radii, shadows, spacing, touchTargets, typography } from '@/shared/theme';
@@ -37,6 +48,17 @@ export function ElementInfoModal({ type, onDismiss, onAdd }: ElementInfoModalPro
     onAdd(type, finalLabel, config);
   };
 
+  // Tapping outside while typing should put the keyboard away, not throw the
+  // whole modal (and the half-entered config) in the trash. Only a tap with
+  // the keyboard already closed dismisses the modal.
+  const handleScrimPress = () => {
+    if (Keyboard.isVisible()) {
+      Keyboard.dismiss();
+      return;
+    }
+    onDismiss();
+  };
+
   return (
     <Modal
       visible={type !== null}
@@ -44,8 +66,12 @@ export function ElementInfoModal({ type, onDismiss, onAdd }: ElementInfoModalPro
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <Pressable style={styles.scrim} onPress={onDismiss}>
-        <Pressable style={styles.card} onPress={() => {}}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+      <Pressable style={styles.scrim} onPress={handleScrimPress}>
+        <Pressable style={styles.card} onPress={Keyboard.dismiss}>
           <Pressable
             onPress={onDismiss}
             style={styles.closeButton}
@@ -78,11 +104,16 @@ export function ElementInfoModal({ type, onDismiss, onAdd }: ElementInfoModalPro
           )}
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
+      <AppKeyboardToolbar />
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   scrim: {
     flex: 1,
     backgroundColor: colors.scrim,

@@ -16,7 +16,7 @@ interface TrackingElementRow {
 export async function getElementsByDrill(drillId: UUID): Promise<TrackingElementRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<TrackingElementRow>(
-    `SELECT * FROM tracking_elements WHERE drill_id = ? ORDER BY display_order ASC`,
+    `SELECT * FROM tracking_elements WHERE drill_id = ? AND deleted_at IS NULL ORDER BY display_order ASC`,
     drillId
   );
 }
@@ -52,10 +52,17 @@ export async function updateElement(id: UUID, fields: { label?: string; config?:
   await appendToQueue('UPDATE', 'tracking_elements', payload);
 }
 
+/**
+ * Soft delete: element_values reference tracking_elements with no ON DELETE
+ * rule (locally and on Supabase), so a hard DELETE fails once the element
+ * has logged session data — and stats label that history from this row.
+ * Same pattern as activities/drills.
+ */
 export async function deleteElement(id: UUID) {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM tracking_elements WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'tracking_elements', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE tracking_elements SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'tracking_elements', { id, deleted_at: deletedAt });
 }
 
 export async function reorderElements(elementIds: UUID[]) {

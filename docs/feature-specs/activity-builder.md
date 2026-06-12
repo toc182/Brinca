@@ -234,8 +234,8 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Activity with no drills | Valid — activity appears in Activity tab but starts a session with no drills (session notes still available) |
 | Drill with no tracking elements | Valid. In a session it's completed via the standard completion circle — tappable directly on the session drill list, or front-and-center on the drill screen. Tapping a green circle un-completes (no confirmation; an UndoBar covers accidental taps). See `session-logging.md`. |
 | Drill with 10+ tracking elements | All elements visible on drill screen during session via scrolling |
-| Delete an activity with past sessions | Activity and drills removed from builder. Past sessions preserved in Stats and session history. |
-| Delete a drill with past session data | Drill removed from activity. Past session data for that drill preserved. |
+| Delete an activity with past sessions | Activity and drills removed from builder. Past sessions preserved in Stats and session history. (Implemented as soft delete — `deleted_at` stamp — because sessions FK activities with no ON DELETE rule and stats resolve names from the row.) |
+| Delete a drill with past session data | Drill removed from activity. Past session data for that drill preserved. (Soft delete, same mechanism as activities.) |
 | Deactivate an activity | Activity hidden from Activity tab bottom sheet. Stays in builder list, dimmed. Past sessions preserved. |
 | Deactivate a drill | Drill hidden from sessions. Stays in drill list, dimmed. Past session data preserved. |
 | Reactivate a deactivated drill/activity | Immediately available in sessions again |

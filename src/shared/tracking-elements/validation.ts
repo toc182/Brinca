@@ -151,6 +151,53 @@ export function isTargetMet(type: ElementType, config: Record<string, unknown>, 
   }
 }
 
+/**
+ * Returns true if the element has something `isTargetMet` can ever satisfy —
+ * either an explicitly configured target, or an inherent completion notion
+ * (a countdown finishing, an interval's cycles, "any progress" types).
+ * Used by the drill screen to decide whether the "all targets met" nudge
+ * applies: elements where this is false are ignored by the nudge.
+ */
+export function hasConfiguredTarget(type: ElementType, config: Record<string, unknown>): boolean {
+  switch (type) {
+    case 'counter':
+    case 'combined_counter':
+      return config.target != null;
+    case 'split_counter':
+      return config.targetLeft != null || config.targetRight != null;
+    case 'multistep_counter':
+      return config.targetReps != null;
+    case 'stopwatch':
+      return config.targetSeconds != null;
+    case 'countdown_timer':
+      return true;
+    case 'lap_timer':
+      return config.targetLaps != null;
+    case 'interval_timer':
+      return true;
+    case 'checklist':
+      return true;
+    case 'single_select':
+      return config.targetOptionId != null;
+    case 'multi_select':
+      return true;
+    case 'yes_no':
+      return config.targetAnswer != null;
+    case 'rating_scale':
+    case 'emoji_face_scale':
+    case 'number_input':
+      return config.targetValue != null;
+    case 'multi_number_input':
+      return true;
+    case 'free_text_note':
+      return true;
+    case 'voice_note':
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function getDefaultConfig(type: ElementType): Record<string, unknown> {
   switch (type) {
     case 'counter': return {};

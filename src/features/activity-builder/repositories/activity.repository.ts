@@ -17,7 +17,7 @@ interface ActivityRow {
 export async function getActivitiesByChild(childId: UUID): Promise<ActivityRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<ActivityRow>(
-    `SELECT * FROM activities WHERE child_id = ? ORDER BY display_order ASC`,
+    `SELECT * FROM activities WHERE child_id = ? AND deleted_at IS NULL ORDER BY display_order ASC`,
     childId
   );
 }
@@ -59,8 +59,15 @@ export async function updateActivity(id: UUID, fields: { name?: string; icon?: s
   await appendToQueue('UPDATE', 'activities', payload);
 }
 
+/**
+ * Soft delete: stamps deleted_at instead of removing the row. Sessions
+ * reference activities with no ON DELETE rule (locally and on Supabase), so
+ * a hard DELETE fails for any activity with session history — and stats
+ * screens resolve activity names from this row for that history anyway.
+ */
 export async function deleteActivity(id: UUID) {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM activities WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'activities', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE activities SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'activities', { id, deleted_at: deletedAt });
 }
