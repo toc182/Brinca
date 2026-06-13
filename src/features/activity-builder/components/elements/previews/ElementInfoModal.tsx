@@ -29,18 +29,47 @@ interface ElementInfoModalProps {
   type: ElementType | null;
   onDismiss: () => void;
   onAdd: (type: ElementType, label: string, config: Record<string, unknown>) => void;
+  /**
+   * Stable identity for the thing being configured. Reset fires when this
+   * changes, so editing two elements of the same type reseeds correctly.
+   * Defaults to the type. For editing, pass the element's stable id.
+   */
+  seedKey?: string;
+  /** Seed the Name field (edit mode). Falls back to the type's default label. */
+  initialLabel?: string;
+  /** Seed the config (edit mode). Falls back to the type's default config. */
+  initialConfig?: Record<string, unknown>;
+  /** Submit button text. Defaults to "Add to drill". */
+  submitLabel?: string;
 }
 
-export function ElementInfoModal({ type, onDismiss, onAdd }: ElementInfoModalProps) {
-  // Reset whenever the modal opens for a different type so leftover values
-  // from a prior open don't bleed in.
+export function ElementInfoModal({
+  type,
+  onDismiss,
+  onAdd,
+  seedKey,
+  initialLabel,
+  initialConfig,
+  submitLabel = 'Add to drill',
+}: ElementInfoModalProps) {
+  // Reset whenever the modal opens for a different thing (seedKey, or the type
+  // when no seedKey) so leftover values from a prior open don't bleed in.
   const [label, setLabel] = useState('');
   const [config, setConfig] = useState<Record<string, unknown>>({});
+  const resetKey = seedKey ?? type;
 
   useEffect(() => {
-    setLabel(type ? ELEMENT_LABELS[type] : '');
-    setConfig(type ? getDefaultConfig(type) : {});
-  }, [type]);
+    if (!type) {
+      setLabel('');
+      setConfig({});
+      return;
+    }
+    setLabel(initialLabel ?? ELEMENT_LABELS[type]);
+    setConfig(initialConfig ?? getDefaultConfig(type));
+    // initialLabel/initialConfig are seeds tied to resetKey; intentionally not
+    // deps (their identity changes each render and would wipe live edits).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
 
   const handleAdd = () => {
     if (!type) return;
@@ -99,7 +128,7 @@ export function ElementInfoModal({ type, onDismiss, onAdd }: ElementInfoModalPro
                 maxLength={50}
               />
               <ElementAddConfigRouter type={type} value={config} onChange={setConfig} />
-              <Button title="Add to drill" onPress={handleAdd} />
+              <Button title={submitLabel} onPress={handleAdd} />
             </ScrollView>
           )}
         </Pressable>

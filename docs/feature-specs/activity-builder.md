@@ -126,7 +126,7 @@ Tap a drill → Drill edit screen
 - In the New Drill flow, photos are held as drafts in component state until Save (the drill row doesn't exist yet); on Save they're materialized as `drill_photos` rows and the upload pipeline kicks. In the Edit flow, photos commit live as they're picked.
 
 **Tracking elements**
-- A permanent, non-removable "Mark as complete · DEFAULT" card sits at the top of the section. It documents the built-in behavior: every drill can be marked complete on its own, with no configuration. There is no "mark complete" element type — completion is inherent, so tracking elements are framed as optional extras layered on top.
+- There is no "mark complete" element type — completion is inherent (every drill gets a completion circle in a session), so tracking elements are framed as optional extras layered on top. The builder communicates this only when it's relevant: the section subtitle ("…Otherwise the drill just gets marked complete") and, on an elementless drill, the hint "No tracking elements added. This drill will just be marked complete." (A permanent "Mark as complete · DEFAULT" card shipped briefly and was removed as confusing.)
 - List of configured tracking elements, each showing: type icon, label, type-specific summary
 - "Add element" button → opens grouped picker (see tracking element types below)
 - Multiple elements per drill allowed, including multiple of the same type
@@ -220,7 +220,7 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Activity list — empty | "No activities yet. Add your first activity to start tracking." with "Add activity" button |
 | Activity detail — normal | Full activity configuration shown |
 | Drill edit — normal | Full drill configuration shown |
-| Drill edit — no elements | Tracking section shows the permanent "Mark as complete · DEFAULT" card plus the hint: "No tracking elements added. This drill will just be marked complete." |
+| Drill edit — no elements | Tracking section shows the hint: "No tracking elements added. This drill will just be marked complete." |
 | Loading | Skeleton with shimmer animation |
 | Offline | Subtle offline banner. Changes saved locally and synced when connection restored. |
 | Error | "Something went wrong. Please try again." with retry button |

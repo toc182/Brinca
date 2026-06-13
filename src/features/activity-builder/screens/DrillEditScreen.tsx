@@ -44,7 +44,6 @@ import { ElementConfigRouter } from '../components/elements/ElementConfigRouter'
 import { ElementLabelInput } from '../components/elements/ElementLabelInput';
 import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
 import { ElementPreview } from '../components/elements/previews/element-previews';
-import { MarkCompleteDefaultCard } from '../components/MarkCompleteDefaultCard';
 import { TierRewardSection } from '../components/TierRewardSection';
 import { BonusPresetSection } from '../components/BonusPresetSection';
 import type { ConditionItem } from '../components/TierRewardBottomSheet';
@@ -333,8 +332,6 @@ export function DrillEditScreen() {
         {/* Tracking elements                                                 */}
         {/* ---------------------------------------------------------------- */}
         <Text style={styles.sectionHeader}>Tracking Elements</Text>
-
-        <MarkCompleteDefaultCard />
 
         {!elements?.length && (
           <Text style={styles.emptyElements}>
