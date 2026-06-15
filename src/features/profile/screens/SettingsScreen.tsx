@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Plus } from 'phosphor-react-native';
 
 import { useActiveChildStore } from '@/stores/active-child.store';
 import { useUIPreferencesStore } from '@/stores/ui-preferences.store';
@@ -41,6 +42,12 @@ function RowSeparator() {
   return <View style={styles.separator} />;
 }
 
+const BUBBLE_TINTS = [colors.secondary50, colors.accent50, colors.primary50] as const;
+// Row holds at most 5 squares including the New tile: show all activities
+// when there are ≤4 (+ New); past that, show 3 + a "+N more" + New.
+const FULL_LIMIT = 4;
+const TRUNCATED_COUNT = 3;
+
 export function SettingsScreen() {
   const router = useRouter();
   const childId = useActiveChildStore((s) => s.childId);
@@ -56,6 +63,11 @@ export function SettingsScreen() {
   const childDisplayName = childName ?? childProfileQuery.data?.child?.name ?? 'Child';
   const userAvatar = userProfileQuery.data?.avatarUrl ?? null;
   const userName = userProfileQuery.data?.displayName ?? 'You';
+
+  const appActivities = (childProfileQuery.data?.activities ?? []).filter((a) => a.type === 'app');
+  const visibleActivities =
+    appActivities.length > FULL_LIMIT ? appActivities.slice(0, TRUNCATED_COUNT) : appActivities;
+  const overflowCount = appActivities.length - visibleActivities.length;
 
   const handleLogout = useCallback(() => {
     showDestructiveAlert({
@@ -119,9 +131,52 @@ export function SettingsScreen() {
               <Avatar imageUrl={childAvatar} name={childDisplayName} size="medium" />
             </View>
             <View style={styles.cardSeparator} />
-            <SettingsRow label="Edit Profile" onPress={goEditChild} />
+
+            {/* Activities launchpad — the child's activities as tappable
+                bubbles. At most 5 squares including New: show all activities
+                when ≤4 (+ New), otherwise show 3 + a "+N more" + New. */}
+            <View style={styles.lp}>
+              <View style={styles.lpHeader}>
+                <Text style={styles.lpLabel}>Activities</Text>
+                <Pressable onPress={goActivities} hitSlop={spacing.sm}>
+                  <Text style={styles.lpManage}>Manage all ›</Text>
+                </Pressable>
+              </View>
+              <View style={styles.bubRow}>
+                {visibleActivities.map((a, i) => (
+                  <Pressable
+                    key={a.id}
+                    onPress={() => router.push(`/(settings)/activities/${a.id}` as never)}
+                    style={styles.bub}
+                  >
+                    <View style={[styles.bubCircle, { backgroundColor: BUBBLE_TINTS[i % BUBBLE_TINTS.length] }]}>
+                      <Text style={styles.bubEmoji}>{a.icon ?? '•'}</Text>
+                    </View>
+                    <Text style={styles.bubLabel} numberOfLines={1}>{a.name}</Text>
+                  </Pressable>
+                ))}
+                {overflowCount > 0 && (
+                  <Pressable onPress={goActivities} style={styles.bub}>
+                    <View style={[styles.bubCircle, styles.bubMore]}>
+                      <Text style={styles.bubMoreText}>+{overflowCount}</Text>
+                    </View>
+                    <Text style={styles.bubLabel}>More</Text>
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={() => router.push('/(settings)/activities/create' as never)}
+                  style={styles.bub}
+                >
+                  <View style={styles.bubAdd}>
+                    <Plus size={20} color={colors.primary500} weight="bold" />
+                  </View>
+                  <Text style={styles.bubLabel}>New</Text>
+                </Pressable>
+              </View>
+            </View>
+
             <RowSeparator />
-            <SettingsRow label="Activities" onPress={goActivities} />
+            <SettingsRow label="Edit Profile" onPress={goEditChild} />
             <RowSeparator />
             <SettingsRow label="Measurements" onPress={goMeasurements} />
             <RowSeparator />
@@ -178,12 +233,54 @@ export function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    // Match the Add drill canvas tint
+    backgroundColor: colors.primary50,
   },
   content: {
     padding: spacing.md,
     gap: spacing.xs,
     paddingBottom: spacing.xxxl,
+  },
+
+  // Activities launchpad
+  lp: { paddingHorizontal: spacing.md, paddingVertical: spacing.md },
+  lpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  lpLabel: { ...typography.bodySmall, fontFamily: 'Lexend_500Medium', color: colors.primary700 },
+  lpManage: { ...typography.caption, color: colors.primary500 },
+  // Fixed row that divides the width evenly — up to 5 squares always fit, no scroll
+  bubRow: { flexDirection: 'row', gap: spacing.xs },
+  bub: { flex: 1, alignItems: 'center' },
+  bubCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubEmoji: { fontSize: 22 },
+  bubMore: { backgroundColor: colors.primary100 },
+  bubMoreText: { ...typography.titleSmall, color: colors.primary700 },
+  bubAdd: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.primary100,
+    borderStyle: 'dashed',
+  },
+  bubLabel: {
+    ...typography.captionSmall,
+    color: colors.textSecondary,
+    marginTop: spacing.xxs,
+    textAlign: 'center',
   },
 
   // Hub card (child + user)

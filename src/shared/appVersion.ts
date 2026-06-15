@@ -9,4 +9,4 @@
  * is otherwise invisible). Kept manual + predictable on purpose: the command and
  * the on-screen number can be cross-checked.
  */
-export const APP_VERSION_LABEL = 'v30';
+export const APP_VERSION_LABEL = 'v36';
