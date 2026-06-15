@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { supabase } from '@/lib/supabase/client';
 import { isLocalAvatarUri, uploadChildAvatar } from '@/lib/supabase/avatar';
 import { profileKeys } from '../queries/keys';
 import { updateChild } from '../repositories/profile.repository';
@@ -29,6 +30,15 @@ export function useUpdateChildMutation() {
       const next = { ...fields };
       if (isLocalAvatarUri(next.avatar_url)) {
         next.avatar_url = await uploadChildAvatar(next.avatar_url as string, childId);
+        // Write the new photo path straight to the server (like the parent
+        // photo flow) so it propagates across devices immediately, instead of
+        // depending on the offline queue draining. Uploading already required
+        // a connection, so a direct write here is safe.
+        const { error } = await supabase
+          .from('children')
+          .update({ avatar_url: next.avatar_url })
+          .eq('id', childId);
+        if (error) throw error;
       }
       await updateChild(childId, next);
       return { childId };

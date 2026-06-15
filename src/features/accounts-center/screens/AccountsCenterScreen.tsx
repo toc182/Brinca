@@ -38,6 +38,7 @@ import type { FamilyMember, FamilyRole, PersonaType } from '../repositories/acco
 
 import { getChildrenByFamily } from '@/features/profile/repositories/profile.repository';
 import { signAvatarUrl } from '@/lib/supabase/avatar';
+import { refreshChildrenFromServer } from '@/lib/supabase/child-sync';
 import { profileKeys } from '@/features/profile/queries/keys';
 
 import { EditProfileInfoModal } from '../components/EditProfileInfoModal';
@@ -181,6 +182,7 @@ export function AccountsCenterScreen() {
   const { data: childrenList = [] } = useQuery({
     queryKey: profileKeys.children(familyId ?? ''),
     queryFn: async () => {
+      await refreshChildrenFromServer(familyId!);
       const rows = await getChildrenByFamily(familyId!);
       return Promise.all(
         rows.map(async (r) => ({ ...r, avatar_url: await signAvatarUrl(r.avatar_url) })),

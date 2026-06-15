@@ -31,6 +31,7 @@ import { useProfileQuery, type ActivityItem } from '../queries/useProfileQuery';
 import { profileKeys } from '../queries/keys';
 import { getChildrenByFamily } from '../repositories/profile.repository';
 import { signAvatarUrl } from '@/lib/supabase/avatar';
+import { refreshChildrenFromServer } from '@/lib/supabase/child-sync';
 
 function ProfileSkeleton() {
   return (
@@ -126,6 +127,7 @@ export function ProfileScreen() {
   const { data: childrenList = [] } = useQuery({
     queryKey: profileKeys.children(familyId ?? ''),
     queryFn: async () => {
+      await refreshChildrenFromServer(familyId!);
       const rows = await getChildrenByFamily(familyId!);
       return Promise.all(
         rows.map(async (r) => ({ ...r, avatar_url: await signAvatarUrl(r.avatar_url) })),

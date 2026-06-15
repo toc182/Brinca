@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { signAvatarUrl } from '@/lib/supabase/avatar';
+import { refreshChildFromServer } from '@/lib/supabase/child-sync';
 import { profileKeys } from './keys';
 import {
   getChildById,
@@ -42,6 +43,9 @@ export function useProfileQuery(childId: string | null) {
   return useQuery({
     queryKey: profileKeys.child(childId ?? ''),
     queryFn: async (): Promise<ProfileData> => {
+      // Pull the child's latest name + photo from the server first, so the
+      // photo behaves like the parent's (fresh across devices).
+      await refreshChildFromServer(childId!);
       const row = await getChildById(childId!);
       if (!row) {
         return { child: null, latestWeight: null, latestHeight: null, activities: [] };
