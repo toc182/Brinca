@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
@@ -273,7 +273,10 @@ export function CreateDrillScreen() {
 
       {/* Add tracking tile */}
       <Pressable
-        onPress={() => setShowTrackingPicker(true)}
+        onPress={() => {
+          Keyboard.dismiss();
+          setShowTrackingPicker(true);
+        }}
         style={({ pressed }) => [styles.addTile, pressed && styles.addTilePressed]}
         accessibilityLabel="Add tracking element"
       >
