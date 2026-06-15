@@ -30,6 +30,7 @@ import {
 } from '@/shared/tracking-elements/types/element-types';
 import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
 import { ElementPreview } from '../components/elements/previews/element-previews';
+import { ElementStaticPreview } from '../components/ElementStaticPreview';
 
 const CATEGORY_LABELS: Record<ElementCategory, string> = {
   counters: 'Counters',
@@ -264,8 +265,8 @@ export function CreateDrillScreen() {
               <Text style={styles.removeText}>Remove</Text>
             </Pressable>
           </View>
-          <View style={styles.elementPreviewBox} pointerEvents="none">
-            <ElementPreview type={el.type} />
+          <View style={styles.elementPreviewBox}>
+            <ElementStaticPreview type={el.type} config={el.config} />
           </View>
         </Pressable>
       ))}
@@ -390,9 +391,8 @@ const styles = StyleSheet.create({
   elementLabel: { ...typography.titleSmall, color: colors.textPrimary, flex: 1 },
   removeText: { ...typography.caption, color: colors.error600 },
   elementPreviewBox: {
-    minHeight: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 56,
+    paddingTop: spacing.xs,
   },
 
   // Dashed add tiles

@@ -44,6 +44,7 @@ import { ElementConfigRouter } from '../components/elements/ElementConfigRouter'
 import { ElementLabelInput } from '../components/elements/ElementLabelInput';
 import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
 import { ElementPreview } from '../components/elements/previews/element-previews';
+import { ElementStaticPreview } from '../components/ElementStaticPreview';
 import { TierRewardSection } from '../components/TierRewardSection';
 import { BonusPresetSection } from '../components/BonusPresetSection';
 import type { ConditionItem } from '../components/TierRewardBottomSheet';
@@ -348,34 +349,39 @@ export function DrillEditScreen() {
           >
             <GHPressable
               onPress={() => setEditingElementId(el.id)}
-              style={styles.elementRow}
+              style={styles.elementCard}
               accessibilityLabel={`Edit ${el.label}`}
             >
-              <View style={styles.elementInfo}>
-                <Text style={styles.elementLabel}>{el.label}</Text>
-                <Text style={styles.elementType}>{ELEMENT_LABELS[el.type as ElementType]}</Text>
+              <View style={styles.elementTopRow}>
+                <View style={styles.elementInfo}>
+                  <Text style={styles.elementLabel}>{el.label}</Text>
+                  <Text style={styles.elementType}>{ELEMENT_LABELS[el.type as ElementType]}</Text>
+                </View>
+                <View style={styles.elementActions}>
+                  <Pressable
+                    onPress={() => handleMoveElement(el.id, 'up')}
+                    disabled={index === 0}
+                    style={[styles.moveBtn, index === 0 && styles.moveBtnDisabled]}
+                    accessibilityLabel="Move element up"
+                  >
+                    <Text style={styles.moveBtnText}>▲</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleMoveElement(el.id, 'down')}
+                    disabled={index === (elements?.length ?? 0) - 1}
+                    style={[
+                      styles.moveBtn,
+                      index === (elements?.length ?? 0) - 1 && styles.moveBtnDisabled,
+                    ]}
+                    accessibilityLabel="Move element down"
+                  >
+                    <Text style={styles.moveBtnText}>▼</Text>
+                  </Pressable>
+                  <Text style={styles.elementChevron}>›</Text>
+                </View>
               </View>
-              <View style={styles.elementActions}>
-                <Pressable
-                  onPress={() => handleMoveElement(el.id, 'up')}
-                  disabled={index === 0}
-                  style={[styles.moveBtn, index === 0 && styles.moveBtnDisabled]}
-                  accessibilityLabel="Move element up"
-                >
-                  <Text style={styles.moveBtnText}>▲</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => handleMoveElement(el.id, 'down')}
-                  disabled={index === (elements?.length ?? 0) - 1}
-                  style={[
-                    styles.moveBtn,
-                    index === (elements?.length ?? 0) - 1 && styles.moveBtnDisabled,
-                  ]}
-                  accessibilityLabel="Move element down"
-                >
-                  <Text style={styles.moveBtnText}>▼</Text>
-                </Pressable>
-                <Text style={styles.elementChevron}>›</Text>
+              <View style={styles.elementPreviewBox}>
+                <ElementStaticPreview type={el.type as ElementType} config={JSON.parse(el.config)} />
               </View>
             </GHPressable>
           </SwipeToDeleteRow>
@@ -555,12 +561,18 @@ const styles = StyleSheet.create({
   },
 
   // Element rows
-  elementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  elementCard: {
     backgroundColor: colors.surface,
     padding: spacing.sm,
     ...shadows.sm,
+  },
+  elementTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  elementPreviewBox: {
+    minHeight: 56,
+    paddingTop: spacing.sm,
   },
   elementInfo: { flex: 1 },
   elementLabel: { ...typography.bodySmall, color: colors.textPrimary },
