@@ -10,6 +10,10 @@ export interface CounterConfig {
   target?: number;
 }
 
+export interface TapCounterConfig {
+  target?: number;
+}
+
 export interface CombinedCounterConfig {
   target?: number;
 }
@@ -109,6 +113,7 @@ import type { ElementType } from './element-types';
 
 export type ElementConfig =
   | { type: 'counter'; config: CounterConfig }
+  | { type: 'tap_counter'; config: TapCounterConfig }
   | { type: 'combined_counter'; config: CombinedCounterConfig }
   | { type: 'split_counter'; config: SplitCounterConfig }
   | { type: 'multistep_counter'; config: MultistepCounterConfig }

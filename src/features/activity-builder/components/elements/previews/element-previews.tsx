@@ -7,6 +7,7 @@ import {
   CounterPreview,
   MultistepCounterPreview,
   SplitCounterPreview,
+  TapCounterPreview,
 } from './CounterPreviews';
 import {
   CountdownTimerPreview,
@@ -37,6 +38,7 @@ import {
  */
 export const ELEMENT_PREVIEWS: Record<ElementType, ComponentType> = {
   counter: CounterPreview,
+  tap_counter: TapCounterPreview,
   combined_counter: CombinedCounterPreview,
   split_counter: SplitCounterPreview,
   multistep_counter: MultistepCounterPreview,

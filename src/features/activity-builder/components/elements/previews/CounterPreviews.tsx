@@ -20,6 +20,15 @@ export function CounterPreview() {
   );
 }
 
+export function TapCounterPreview() {
+  return (
+    <View style={s.tapCard}>
+      <Text style={s.tapCount}>3</Text>
+      <Text style={s.tapHint}>tap</Text>
+    </View>
+  );
+}
+
 export function CombinedCounterPreview() {
   return (
     <View style={s.row}>
@@ -103,6 +112,27 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     minWidth: 28,
     textAlign: 'center',
+  },
+
+  // Tap counter — a small tappable card
+  tapCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    backgroundColor: colors.surface,
+  },
+  tapCount: {
+    fontFamily: 'Fredoka_600SemiBold',
+    fontSize: COUNT_FONT_SIZE,
+    color: colors.textPrimary,
+  },
+  tapHint: {
+    ...typography.captionSmall,
+    color: colors.textSecondary,
   },
 
   // Combined counter — count is editable

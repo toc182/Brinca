@@ -5,6 +5,7 @@
  */
 
 export interface CounterValue { count: number }
+export interface TapCounterValue { count: number }
 export interface CombinedCounterValue { count: number }
 export interface SplitCounterValue { left: number; right: number }
 export interface MultistepCounterValue { reps: number }
@@ -27,6 +28,7 @@ import type { ElementType } from './element-types';
 
 export type ElementValue =
   | { type: 'counter'; value: CounterValue }
+  | { type: 'tap_counter'; value: TapCounterValue }
   | { type: 'combined_counter'; value: CombinedCounterValue }
   | { type: 'split_counter'; value: SplitCounterValue }
   | { type: 'multistep_counter'; value: MultistepCounterValue }

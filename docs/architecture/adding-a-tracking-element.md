@@ -1,0 +1,102 @@
+# Adding a new tracking element type
+
+A tracking element (counter, timer, checklist, …) is wired through several
+typed registries. Most are exhaustive `Record<ElementType, …>` maps or
+`switch` statements **with no `default`**, so TypeScript fails the build until
+the new type is added everywhere it's required — that's the safety net. A few
+spots have a `default` and won't error; those are marked "silent" below and
+must be updated by hand or the element misbehaves at runtime.
+
+Work top-to-bottom. Run `bun run typecheck` after the type edits — the errors
+are your checklist for the required steps.
+
+## 0. Decide the shape
+
+- **Identifier**: `snake_case`, e.g. `tap_counter`.
+- **Category**: one of `counters | timers | selection | input`.
+- **Config shape**: the settings stored in `tracking_elements.config`. If it's
+  the same as an existing element, you can copy that interface.
+- **Value shape**: what a session records, stored in `element_values.value`.
+
+If the config/value match an existing element (e.g. a tap counter is just a
+counter: `{ target? }` config, `{ count }` value), reuse the same shapes and
+the existing config editors — you only need a new session component + preview.
+
+## 1. Central type list — `src/shared/tracking-elements/types/element-types.ts`
+
+- Add the id to `ELEMENT_TYPES`.
+- Add it to the right group in `ELEMENT_CATEGORIES`.
+- Add a label to `ELEMENT_LABELS` (shown in the picker and cards).
+- Add a one-line `ELEMENT_DESCRIPTIONS` entry.
+- Update the "N element types" count in the header comment.
+
+## 2. Config type — `src/shared/tracking-elements/types/element-configs.ts`
+
+- Add an interface for the config (or reuse an existing one).
+- Add a member to the `ElementConfig` discriminated union. *(compiler-forced)*
+
+## 3. Value type — `src/shared/tracking-elements/types/element-values.ts`
+
+- Add an interface for the value.
+- Add a member to the `ElementValue` union. *(compiler-forced)*
+
+## 4. Validation + defaults — `src/shared/tracking-elements/validation.ts`
+
+- `getDefaultValue`: add a `case`. *(compiler-forced — no default)*
+- `getDefaultConfig`: add a `case`. *(compiler-forced — no default)*
+- `validateElementConfig`: add a `case`. *(silent — has a default)*
+- `isTargetMet`: add a `case`. *(silent — has a default)*
+- `hasConfiguredTarget`: add a `case`. *(silent — has a default)*
+
+## 5. Picker thumbnail — `…/activity-builder/components/elements/previews/`
+
+- Write a small preview component (see `CounterPreviews.tsx` for the scale).
+- Register it in `element-previews.tsx` `ELEMENT_PREVIEWS`. *(compiler-forced —
+  it's a full `Record<ElementType, …>`)*
+
+## 6. Session component — `…/session-logging/components/elements/`
+
+- Build the interactive element (`{ value, onValueChange, config, elementId? }`).
+- Add a `case` to `ElementRenderer.tsx`. *(compiler-forced — exhaustive switch)*
+
+## 7. Config editors — `…/activity-builder/components/elements/`
+
+- `ElementConfigRouter.tsx`: add a `case` (reuse an editor or `NoConfig`).
+  *(compiler-forced — exhaustive switch)*
+- `add-configs/ElementAddConfigRouter.tsx`: add a `case` so it can be configured
+  in the add-modal, or rely on the default (no add-time form). *(silent)*
+
+## 8. Stats display — `…/stats/screens/SessionDetailScreen.tsx`
+
+- `parseElementValue`: add a `case` so recorded values render in session detail.
+  *(silent — has a default; without it the value shows as raw JSON)*
+
+## 9. Database constraint *(only if it will sync to Supabase)*
+
+`tracking_elements.type` has a `CHECK (type IN (…))` constraint in Postgres.
+The local SQLite mirror does **not** constrain it, so the element works offline
+immediately — but syncing to Supabase is rejected until the constraint includes
+the new id.
+
+Add a migration under `supabase/migrations/` that drops and re-adds it:
+
+```sql
+ALTER TABLE tracking_elements DROP CONSTRAINT tracking_elements_type_check;
+ALTER TABLE tracking_elements ADD CONSTRAINT tracking_elements_type_check
+  CHECK (type IN ( … all ids including the new one … ));
+```
+
+Apply with `npx supabase db push`.
+
+## 10. Keep docs in sync
+
+- `docs/architecture/05-database-schema.md`: bump the element count, add the
+  type to the identifier list and a value-shape row.
+- `docs/feature-specs/activity-builder.md`: add the element if it lists them.
+
+## 11. Verify
+
+- `bun run typecheck` (clean — confirms every required registry was updated).
+- Bump `APP_VERSION_LABEL` in `src/shared/appVersion.ts`.
+- Reload: the new element appears in the "Add tracking element" picker.
+- Add one to a drill, run a session, confirm it records and shows in stats.

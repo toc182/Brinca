@@ -11,6 +11,7 @@ export function validateElementConfig(type: ElementType, config: unknown): strin
 
   switch (type) {
     case 'counter':
+    case 'tap_counter':
     case 'combined_counter':
       return null; // No required fields
 
@@ -75,6 +76,7 @@ export function validateElementConfig(type: ElementType, config: unknown): strin
 export function getDefaultValue(type: ElementType): Record<string, unknown> {
   switch (type) {
     case 'counter': return { count: 0 };
+    case 'tap_counter': return { count: 0 };
     case 'combined_counter': return { count: 0 };
     case 'split_counter': return { left: 0, right: 0 };
     case 'multistep_counter': return { reps: 0 };
@@ -102,6 +104,7 @@ export function getDefaultValue(type: ElementType): Record<string, unknown> {
 export function isTargetMet(type: ElementType, config: Record<string, unknown>, value: Record<string, unknown>): boolean {
   switch (type) {
     case 'counter':
+    case 'tap_counter':
     case 'combined_counter':
       return config.target != null && (value.count as number) >= (config.target as number);
     case 'split_counter': {
@@ -161,6 +164,7 @@ export function isTargetMet(type: ElementType, config: Record<string, unknown>, 
 export function hasConfiguredTarget(type: ElementType, config: Record<string, unknown>): boolean {
   switch (type) {
     case 'counter':
+    case 'tap_counter':
     case 'combined_counter':
       return config.target != null;
     case 'split_counter':
@@ -201,6 +205,7 @@ export function hasConfiguredTarget(type: ElementType, config: Record<string, un
 export function getDefaultConfig(type: ElementType): Record<string, unknown> {
   switch (type) {
     case 'counter': return {};
+    case 'tap_counter': return {};
     case 'combined_counter': return {};
     case 'split_counter': return { leftLabel: 'Left', rightLabel: 'Right' };
     case 'multistep_counter': return { substeps: ['Step 1'] };

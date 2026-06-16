@@ -218,7 +218,7 @@ A configurable input widget on a drill (e.g. a counter, a timer, a checklist). O
 |---|---|---|
 | `id` | UUID | |
 | `drill_id` | UUID, FK → drills | |
-| `type` | text | One of the 18 element type identifiers (see below) |
+| `type` | text | One of the 19 element type identifiers (see below) |
 | `label` | text, required | User-facing label |
 | `config` | JSONB | Type-specific configuration: target values, options, durations, substep names, etc. Shape depends on `type`. |
 | `display_order` | integer | Reorderable via long-press drag in builder |
@@ -226,8 +226,10 @@ A configurable input widget on a drill (e.g. a counter, a timer, a checklist). O
 | `created_at` | timestamp | |
 | `updated_at` | timestamp | |
 
-**Element type identifiers (18):**
-`counter`, `combined_counter`, `split_counter`, `multistep_counter`, `stopwatch`, `countdown_timer`, `lap_timer`, `interval_timer`, `checklist`, `single_select`, `multi_select`, `yes_no`, `rating_scale`, `emoji_face_scale`, `number_input`, `multi_number_input`, `free_text_note`, `voice_note`
+**Element type identifiers (19):**
+`counter`, `tap_counter`, `combined_counter`, `split_counter`, `multistep_counter`, `stopwatch`, `countdown_timer`, `lap_timer`, `interval_timer`, `checklist`, `single_select`, `multi_select`, `yes_no`, `rating_scale`, `emoji_face_scale`, `number_input`, `multi_number_input`, `free_text_note`, `voice_note`
+
+`tap_counter` shares the counter's config (`{ target? }`) and value (`{ count }`); the difference is only the session UI (tap the card to add, hold to remove).
 
 **Written by:** activity-builder.
 **Read by:** session-logging (renders interactive widgets), activity-builder (edit), stats (display-only rendering).
@@ -418,6 +420,7 @@ One row per tracking element recorded within a drill result. Stores the actual v
 | Element type | JSONB shape |
 |---|---|
 | `counter` | `{ "count": 64 }` |
+| `tap_counter` | `{ "count": 64 }` |
 | `combined_counter` | `{ "count": 64 }` |
 | `split_counter` | `{ "left": 12, "right": 8 }` |
 | `multistep_counter` | `{ "reps": 10 }` |

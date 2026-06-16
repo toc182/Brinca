@@ -1,5 +1,9 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Minus, Plus } from 'phosphor-react-native';
+
+import { IconButton } from '@/shared/components/IconButton';
+import { colors, typography, spacing } from '@/shared/theme';
 import type { CounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { CounterValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -9,88 +13,59 @@ interface CounterElementProps {
   config: CounterConfig;
 }
 
+/** Light tick when adding, a firmer tap when removing, so they feel distinct. */
+function bumpHaptic(direction: 1 | -1) {
+  void Haptics.impactAsync(
+    direction > 0 ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
+  );
+}
+
+/** Counter — bold minus / number / plus row, built on the shared IconButton. */
 export function CounterElement({ value, onValueChange, config }: CounterElementProps) {
   const count = value.count;
   const hasTarget = config.target != null;
   const isAtTarget = hasTarget && count >= config.target!;
 
-  const decrement = () => {
-    if (count > 0) onValueChange({ count: count - 1 });
-  };
-
-  const increment = () => {
-    onValueChange({ count: count + 1 });
-  };
-
-  const handleReset = () => {
-    Alert.alert('Reset counter', 'Reset counter to zero?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset', style: 'destructive', onPress: () => onValueChange({ count: 0 }) },
-    ]);
-  };
-
   return (
-    <View style={styles.container}>
-      <View style={styles.counterRow}>
-        <Pressable
-          onPress={decrement}
-          style={({ pressed }) => [
-            styles.button, styles.buttonMinus,
-            pressed && styles.buttonPressed,
-            count === 0 && styles.buttonDisabled,
-          ]}
-          disabled={count === 0}
-        >
-          <Text style={[styles.buttonText, count === 0 && styles.buttonTextDisabled]}>-</Text>
-        </Pressable>
-
-        <View style={styles.countContainer}>
-          <Text style={[styles.count, isAtTarget && styles.countAtTarget]}>{count}</Text>
-          {hasTarget && <Text style={styles.target}>/ {config.target}</Text>}
-        </View>
-
-        <Pressable
-          onPress={increment}
-          style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
-        >
-          <Text style={styles.buttonText}>+</Text>
-        </Pressable>
+    <View style={styles.row}>
+      <IconButton
+        icon={Minus}
+        variant="outline"
+        disabled={count === 0}
+        onPress={() => {
+          if (count > 0) {
+            bumpHaptic(-1);
+            onValueChange({ count: count - 1 });
+          }
+        }}
+        accessibilityLabel="Remove one"
+      />
+      <View style={styles.numWrap}>
+        <Text style={[styles.bigNum, isAtTarget && styles.atTarget]}>{count}</Text>
+        {hasTarget && <Text style={styles.sub}>of {config.target}</Text>}
       </View>
-
-      {count > 0 && (
-        <Pressable onPress={handleReset} style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.resetText}>Reset</Text>
-        </Pressable>
-      )}
+      <IconButton
+        icon={Plus}
+        variant="filled"
+        onPress={() => {
+          bumpHaptic(1);
+          onValueChange({ count: count + 1 });
+        }}
+        accessibilityLabel="Add one"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: spacing.sm },
-  counterRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.lg,
   },
-  button: {
-    width: touchTargets.kid,
-    height: touchTargets.kid,
-    borderRadius: radii.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonMinus: { backgroundColor: colors.primary50 },
-  buttonPlus: { backgroundColor: colors.primary500 },
-  buttonPressed: { opacity: 0.7 },
-  buttonDisabled: { backgroundColor: colors.surfaceDisabled },
-  buttonText: { ...typography.titleMedium, color: colors.primary700 },
-  buttonTextDisabled: { color: colors.textDisabled },
-  countContainer: { alignItems: 'center', minWidth: 80 },
-  count: { ...typography.counter, color: colors.textPrimary },
-  countAtTarget: { color: colors.success500 },
-  target: { ...typography.caption, color: colors.textSecondary },
-  resetButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  resetText: { ...typography.caption, color: colors.error500 },
+  numWrap: { alignItems: 'center', minWidth: 80 },
+  bigNum: { ...typography.counter, color: colors.textPrimary },
+  atTarget: { color: colors.success500 },
+  sub: { ...typography.caption, color: colors.textSecondary },
 });

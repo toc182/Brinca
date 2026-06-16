@@ -211,6 +211,7 @@ function parseElementValue(type: string, rawValue: string): string {
     const val = JSON.parse(rawValue);
     switch (type) {
       case 'counter':
+      case 'tap_counter':
       case 'combined_counter':
       case 'number_input':
       case 'rating_scale':

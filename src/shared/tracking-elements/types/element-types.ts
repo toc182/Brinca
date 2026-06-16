@@ -1,10 +1,11 @@
 /**
- * Union type of all 18 tracking element type identifiers.
+ * Union type of all 19 tracking element type identifiers.
  * Shared contract between activity-builder (config), session-logging (interactive), and stats (display).
  */
 
 export const ELEMENT_TYPES = [
   'counter',
+  'tap_counter',
   'combined_counter',
   'split_counter',
   'multistep_counter',
@@ -27,7 +28,7 @@ export const ELEMENT_TYPES = [
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
 export const ELEMENT_CATEGORIES = {
-  counters: ['counter', 'combined_counter', 'split_counter', 'multistep_counter'] as const,
+  counters: ['counter', 'tap_counter', 'combined_counter', 'split_counter', 'multistep_counter'] as const,
   timers: ['stopwatch', 'countdown_timer', 'lap_timer', 'interval_timer'] as const,
   selection: ['checklist', 'single_select', 'multi_select', 'yes_no', 'rating_scale', 'emoji_face_scale'] as const,
   input: ['number_input', 'multi_number_input', 'free_text_note', 'voice_note'] as const,
@@ -37,6 +38,7 @@ export type ElementCategory = keyof typeof ELEMENT_CATEGORIES;
 
 export const ELEMENT_LABELS: Record<ElementType, string> = {
   counter: 'Counter',
+  tap_counter: 'Tap Counter',
   combined_counter: 'Combined Counter',
   split_counter: 'Split Counter',
   multistep_counter: 'Multistep Counter',
@@ -58,6 +60,7 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
 
 export const ELEMENT_DESCRIPTIONS: Record<ElementType, string> = {
   counter: 'Tap + or − to count up.',
+  tap_counter: 'Tap the card to count up; press and hold to remove one.',
   combined_counter: 'Tap + or − to count up and down, or type the number directly.',
   split_counter: 'Two counters side by side, like left/right.',
   multistep_counter: 'Step through a sequence to log one rep.',

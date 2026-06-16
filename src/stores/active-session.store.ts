@@ -5,6 +5,10 @@ import { createMMKV } from 'react-native-mmkv';
 
 const storage = createMMKV({ id: 'active-session' });
 const timerStorage = createMMKV({ id: 'session-timer' });
+// Per-element timer state (stopwatch/countdown/lap/interval start times), keyed
+// only by element id. Cleared when a session ends so a timer left running can't
+// auto-resume in the next session — see clearSession.
+const elementTimerStorage = createMMKV({ id: 'element-timers' });
 
 const mmkvStorage = {
   getItem: (name: string) => storage.getString(name) ?? null,
@@ -42,13 +46,18 @@ export const useActiveSessionStore = create<ActiveSessionState>()(
         set((state) => {
           state.status = status;
         }),
-      clearSession: () =>
+      clearSession: () => {
+        // Stop every element timer when the session ends (finish or abandon).
+        // Timer start times are keyed by element id and reused across sessions,
+        // so without this a running stopwatch resumes in the next session.
+        elementTimerStorage.clearAll();
         set((state) => {
           state.status = 'idle';
           state.sessionId = null;
           state.activityId = null;
           state.activityName = null;
-        }),
+        });
+      },
     })),
     {
       name: 'active-session-storage',

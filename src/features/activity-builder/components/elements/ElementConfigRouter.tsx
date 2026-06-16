@@ -30,6 +30,7 @@ export function ElementConfigRouter({ elementId, drillId, type, config }: Elemen
 
   switch (type) {
     case 'counter':
+    case 'tap_counter':
     case 'combined_counter':
       return <CounterConfig {...props} />;
     case 'split_counter':

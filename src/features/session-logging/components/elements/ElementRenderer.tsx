@@ -4,6 +4,7 @@ import type { ElementType } from '@/shared/tracking-elements/types/element-types
 import type { ValueForType } from '@/shared/tracking-elements/types/element-values';
 import type { ConfigForType } from '@/shared/tracking-elements/types/element-configs';
 import { CounterElement } from './CounterElement';
+import { TapCounterElement } from './TapCounterElement';
 import { CombinedCounterElement } from './CombinedCounterElement';
 import { SplitCounterElement } from './SplitCounterElement';
 import { MultistepCounterElement } from './MultistepCounterElement';
@@ -48,6 +49,15 @@ export function ElementRenderer({ type, value, onValueChange, config, elementId 
           value={value as unknown as ValueForType<'counter'>}
           onValueChange={cb as (v: ValueForType<'counter'>) => void}
           config={config as unknown as ConfigForType<'counter'>}
+        />
+      );
+
+    case 'tap_counter':
+      return (
+        <TapCounterElement
+          value={value as unknown as ValueForType<'tap_counter'>}
+          onValueChange={cb as (v: ValueForType<'tap_counter'>) => void}
+          config={config as unknown as ConfigForType<'tap_counter'>}
         />
       );
 

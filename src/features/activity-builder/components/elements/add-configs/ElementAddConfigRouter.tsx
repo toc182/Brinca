@@ -31,6 +31,7 @@ interface ElementAddConfigRouterProps {
 export function ElementAddConfigRouter({ type, value, onChange }: ElementAddConfigRouterProps) {
   switch (type) {
     case 'counter':
+    case 'tap_counter':
     case 'combined_counter':
       return <CounterAddConfig value={value} onChange={onChange} />;
     case 'split_counter':
