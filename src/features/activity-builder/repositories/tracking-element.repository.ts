@@ -1,5 +1,6 @@
 import { getDatabase } from '@/lib/sqlite/db';
 import { appendToQueue } from '@/lib/sync/queue';
+import type { ElementWidth } from '@/shared/tracking-elements/types/element-types';
 import type { UUID } from '@/types/domain.types';
 
 interface TrackingElementRow {
@@ -8,6 +9,7 @@ interface TrackingElementRow {
   type: string;
   label: string;
   config: string;
+  width: string;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -21,7 +23,14 @@ export async function getElementsByDrill(drillId: UUID): Promise<TrackingElement
   );
 }
 
-export async function insertElement(id: UUID, drillId: UUID, type: string, label: string, config: Record<string, unknown>) {
+export async function insertElement(
+  id: UUID,
+  drillId: UUID,
+  type: string,
+  label: string,
+  config: Record<string, unknown>,
+  width: ElementWidth = 'full',
+) {
   const db = await getDatabase();
   const maxOrder = await db.getFirstAsync<{ m: number }>(
     `SELECT COALESCE(MAX(display_order), -1) as m FROM tracking_elements WHERE drill_id = ?`, drillId
@@ -29,26 +38,28 @@ export async function insertElement(id: UUID, drillId: UUID, type: string, label
   const displayOrder = (maxOrder?.m ?? -1) + 1;
   const configJson = JSON.stringify(config);
   await db.runAsync(
-    `INSERT INTO tracking_elements (id, drill_id, type, label, config, display_order) VALUES (?, ?, ?, ?, ?, ?)`,
-    id, drillId, type, label, configJson, displayOrder
+    `INSERT INTO tracking_elements (id, drill_id, type, label, config, width, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    id, drillId, type, label, configJson, width, displayOrder
   );
   // Sync payload carries the parsed object — Supabase's JSONB column expects
   // a JSON value, not a JSON-as-string. Local SQLite still stores the string.
-  await appendToQueue('INSERT', 'tracking_elements', { id, drill_id: drillId, type, label, config, display_order: displayOrder });
+  await appendToQueue('INSERT', 'tracking_elements', { id, drill_id: drillId, type, label, config, width, display_order: displayOrder });
 }
 
-export async function updateElement(id: UUID, fields: { label?: string; config?: Record<string, unknown> }) {
+export async function updateElement(id: UUID, fields: { label?: string; config?: Record<string, unknown>; width?: ElementWidth }) {
   const db = await getDatabase();
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
   if (fields.label !== undefined) { sets.push('label = ?'); values.push(fields.label); }
   if (fields.config !== undefined) { sets.push('config = ?'); values.push(JSON.stringify(fields.config)); }
+  if (fields.width !== undefined) { sets.push('width = ?'); values.push(fields.width); }
   if (sets.length === 0) return;
   values.push(id);
   await db.runAsync(`UPDATE tracking_elements SET ${sets.join(', ')} WHERE id = ?`, ...values);
   const payload: Record<string, unknown> = { id };
   if (fields.label !== undefined) payload.label = fields.label;
   if (fields.config !== undefined) payload.config = fields.config;
+  if (fields.width !== undefined) payload.width = fields.width;
   await appendToQueue('UPDATE', 'tracking_elements', payload);
 }
 

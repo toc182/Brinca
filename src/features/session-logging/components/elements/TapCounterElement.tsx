@@ -43,7 +43,7 @@ export function TapCounterElement({ value, onValueChange, config }: TapCounterEl
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       accessibilityLabel="Tap to add one, hold to remove one"
     >
-      <Text style={[styles.bigNum, isAtTarget && styles.atTarget]}>{count}</Text>
+      <Text style={[styles.bigNum, isAtTarget && styles.atTarget]} numberOfLines={1} adjustsFontSizeToFit>{count}</Text>
       {hasTarget && <Text style={styles.sub}>of {config.target}</Text>}
       <Text style={styles.hint}>tap +1 · hold −1</Text>
     </Pressable>

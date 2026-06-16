@@ -221,6 +221,7 @@ A configurable input widget on a drill (e.g. a counter, a timer, a checklist). O
 | `type` | text | One of the 19 element type identifiers (see below) |
 | `label` | text, required | User-facing label |
 | `config` | JSONB | Type-specific configuration: target values, options, durations, substep names, etc. Shape depends on `type`. |
+| `width` | text | Layout width in a drill: `full` (default) or `half`. Cross-cutting display setting, not in `config`. Only offered for types in `ELEMENT_SUPPORTS_HALF_WIDTH`. |
 | `display_order` | integer | Reorderable via long-press drag in builder |
 | `deleted_at` | timestamptz, nullable | Soft delete — same rationale and query rules as `activities.deleted_at` (element_values FK here with no ON DELETE rule). |
 | `created_at` | timestamp | |

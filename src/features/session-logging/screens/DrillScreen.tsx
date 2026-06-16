@@ -32,7 +32,7 @@ import {
 import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteMutation';
 import { ElementRenderer } from '../components/elements/ElementRenderer';
 import { sessionKeys } from '../queries/keys';
-import type { ElementType } from '@/shared/tracking-elements/types/element-types';
+import { ELEMENT_SUPPORTS_HALF_WIDTH, type ElementType } from '@/shared/tracking-elements/types/element-types';
 import { getDefaultValue, hasConfiguredTarget, isTargetMet } from '@/shared/tracking-elements/validation';
 
 // Header geometry — mirrors SessionHeader so blur looks consistent across the
@@ -284,8 +284,11 @@ export function DrillScreen() {
           const elConfig = JSON.parse(el.config);
           const elValue = values[el.id] ?? getDefaultValue(el.type as ElementType);
           const targetMet = isTargetMet(el.type as ElementType, elConfig, elValue);
+          // Half only when the element type actually supports it — a stored
+          // 'half' on an unsupported type falls back to full.
+          const isHalf = el.width === 'half' && ELEMENT_SUPPORTS_HALF_WIDTH[el.type as ElementType];
           return (
-            <View key={el.id} style={styles.elementContainer}>
+            <View key={el.id} style={[styles.elementContainer, isHalf ? styles.halfCard : styles.fullCard]}>
               <View style={styles.elementHeader}>
                 <Text style={styles.elementLabel}>{el.label}</Text>
                 {targetMet && (
@@ -429,11 +432,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
     padding: spacing.md,
-    flexGrow: 1,
-    flexBasis: '45%',
     minWidth: 0,
     ...shadows.sm,
   },
+  // Full elements take their own row; half elements stay half (a lone half
+  // does not grow to fill the row).
+  fullCard: { flexBasis: '100%' },
+  halfCard: { flexBasis: '47%' },
   elementHeader: { marginBottom: spacing.sm, alignItems: 'center', justifyContent: 'center' },
   elementLabel: { ...typography.titleSmall, color: colors.textPrimary, textAlign: 'center' },
   targetBadge: {

@@ -7,6 +7,7 @@ import { migration as sessionPhotos } from './0004_session_photos';
 import { migration as drillDescription } from './0005_drill_description';
 import { migration as softDelete } from './0006_soft_delete';
 import { migration as softDeleteElements } from './0007_soft_delete_elements';
+import { migration as elementWidth } from './0008_element_width';
 
 /**
  * A migration is either a raw SQL string (declarative) or an async runner
@@ -32,4 +33,5 @@ export const migrations: Migration[] = [
   drillDescription,
   softDelete,
   softDeleteElements,
+  elementWidth,
 ];

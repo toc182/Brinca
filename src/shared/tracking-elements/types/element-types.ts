@@ -58,6 +58,38 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
   voice_note: 'Voice Note',
 };
 
+/** Layout width of an element within a drill. */
+export type ElementWidth = 'full' | 'half';
+
+/**
+ * Which element types render correctly at half width (two per row). The
+ * Full/Half toggle is only offered for types marked true, and the layout
+ * clamps a stored `half` on a false type back to full — so the option can
+ * never produce a broken layout. Flip a type to true once its session
+ * component handles a narrow container.
+ */
+export const ELEMENT_SUPPORTS_HALF_WIDTH: Record<ElementType, boolean> = {
+  counter: true,
+  tap_counter: true,
+  combined_counter: false,
+  split_counter: false,
+  multistep_counter: false,
+  stopwatch: false,
+  countdown_timer: false,
+  lap_timer: false,
+  interval_timer: false,
+  checklist: false,
+  single_select: false,
+  multi_select: false,
+  yes_no: false,
+  rating_scale: false,
+  emoji_face_scale: false,
+  number_input: false,
+  multi_number_input: false,
+  free_text_note: false,
+  voice_note: false,
+};
+
 export const ELEMENT_DESCRIPTIONS: Record<ElementType, string> = {
   counter: 'Tap + or − to count up.',
   tap_counter: 'Tap the card to count up; press and hold to remove one.',

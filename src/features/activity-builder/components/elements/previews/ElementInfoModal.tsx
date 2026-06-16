@@ -19,16 +19,19 @@ import { colors, radii, shadows, spacing, touchTargets, typography } from '@/sha
 import {
   ELEMENT_DESCRIPTIONS,
   ELEMENT_LABELS,
+  ELEMENT_SUPPORTS_HALF_WIDTH,
   type ElementType,
+  type ElementWidth,
 } from '@/shared/tracking-elements/types/element-types';
 import { getDefaultConfig } from '@/shared/tracking-elements/validation';
+import { ElementWidthToggle } from '../../ElementWidthToggle';
 import { ElementAddConfigRouter } from '../add-configs/ElementAddConfigRouter';
 import { ElementPreview } from './element-previews';
 
 interface ElementInfoModalProps {
   type: ElementType | null;
   onDismiss: () => void;
-  onAdd: (type: ElementType, label: string, config: Record<string, unknown>) => void;
+  onAdd: (type: ElementType, label: string, config: Record<string, unknown>, width: ElementWidth) => void;
   /**
    * Stable identity for the thing being configured. Reset fires when this
    * changes, so editing two elements of the same type reseeds correctly.
@@ -39,6 +42,8 @@ interface ElementInfoModalProps {
   initialLabel?: string;
   /** Seed the config (edit mode). Falls back to the type's default config. */
   initialConfig?: Record<string, unknown>;
+  /** Seed the width (edit mode). Defaults to 'full'. */
+  initialWidth?: ElementWidth;
   /** Submit button text. Defaults to "Add to drill". */
   submitLabel?: string;
 }
@@ -50,31 +55,36 @@ export function ElementInfoModal({
   seedKey,
   initialLabel,
   initialConfig,
+  initialWidth,
   submitLabel = 'Add to drill',
 }: ElementInfoModalProps) {
   // Reset whenever the modal opens for a different thing (seedKey, or the type
   // when no seedKey) so leftover values from a prior open don't bleed in.
   const [label, setLabel] = useState('');
   const [config, setConfig] = useState<Record<string, unknown>>({});
+  const [width, setWidth] = useState<ElementWidth>('full');
   const resetKey = seedKey ?? type;
 
   useEffect(() => {
     if (!type) {
       setLabel('');
       setConfig({});
+      setWidth('full');
       return;
     }
     setLabel(initialLabel ?? ELEMENT_LABELS[type]);
     setConfig(initialConfig ?? getDefaultConfig(type));
-    // initialLabel/initialConfig are seeds tied to resetKey; intentionally not
-    // deps (their identity changes each render and would wipe live edits).
+    setWidth(initialWidth ?? 'full');
+    // initialLabel/initialConfig/initialWidth are seeds tied to resetKey;
+    // intentionally not deps (their identity changes each render and would
+    // wipe live edits).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   const handleAdd = () => {
     if (!type) return;
     const finalLabel = label.trim() || ELEMENT_LABELS[type];
-    onAdd(type, finalLabel, config);
+    onAdd(type, finalLabel, config, ELEMENT_SUPPORTS_HALF_WIDTH[type] ? width : 'full');
   };
 
   // Tapping outside while typing should put the keyboard away, not throw the
@@ -128,6 +138,9 @@ export function ElementInfoModal({
                 maxLength={50}
               />
               <ElementAddConfigRouter type={type} value={config} onChange={setConfig} />
+              {ELEMENT_SUPPORTS_HALF_WIDTH[type] && (
+                <ElementWidthToggle value={width} onChange={setWidth} />
+              )}
               <Button title={submitLabel} onPress={handleAdd} />
             </ScrollView>
           )}

@@ -27,10 +27,14 @@ import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 import {
   ELEMENT_CATEGORIES,
   ELEMENT_LABELS,
+  ELEMENT_SUPPORTS_HALF_WIDTH,
   type ElementCategory,
   type ElementType,
+  type ElementWidth,
 } from '@/shared/tracking-elements/types/element-types';
 import { getDefaultConfig } from '@/shared/tracking-elements/validation';
+import { ElementWidthToggle } from '../components/ElementWidthToggle';
+import { useUpdateElementMutation } from '../mutations/useUpdateElementMutation';
 import { getDrillById, updateDrill, deleteDrill } from '../repositories/drill.repository';
 import {
   getElementsByDrill,
@@ -241,6 +245,7 @@ export function DrillEditScreen() {
   // Derived data
   // -------------------------------------------------------------------------
 
+  const updateElementMutation = useUpdateElementMutation();
   const editingElement = elements?.find((e) => e.id === editingElementId);
   const conditionItems: ConditionItem[] = (elements ?? []).map((e) => ({
     id: e.id,
@@ -499,6 +504,18 @@ export function DrillEditScreen() {
               type={editingElement.type as ElementType}
               config={JSON.parse(editingElement.config)}
             />
+            {ELEMENT_SUPPORTS_HALF_WIDTH[editingElement.type as ElementType] && (
+              <ElementWidthToggle
+                value={(editingElement.width as ElementWidth) ?? 'full'}
+                onChange={(width) =>
+                  updateElementMutation.mutate({
+                    elementId: editingElement.id,
+                    drillId: drillId!,
+                    fields: { width },
+                  })
+                }
+              />
+            )}
             <Button
               title="Done"
               onPress={() => {

@@ -25,8 +25,10 @@ import { DrillDescriptionEditor } from '../components/DrillDescriptionEditor';
 import {
   ELEMENT_LABELS,
   ELEMENT_CATEGORIES,
+  ELEMENT_SUPPORTS_HALF_WIDTH,
   type ElementType,
   type ElementCategory,
+  type ElementWidth,
 } from '@/shared/tracking-elements/types/element-types';
 import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
 import { ElementPreview } from '../components/elements/previews/element-previews';
@@ -58,6 +60,7 @@ interface PendingElement {
   type: ElementType;
   label: string;
   config: Record<string, unknown>;
+  width: ElementWidth;
 }
 
 export function CreateDrillScreen() {
@@ -83,13 +86,13 @@ export function CreateDrillScreen() {
   const isValid = name.trim().length >= 1 && name.trim().length <= 50;
   const hasInstructions = description.trim().length > 0 || descriptionPhotoUris.length > 0;
 
-  const handleSubmitElement = (type: ElementType, label: string, config: Record<string, unknown>) => {
+  const handleSubmitElement = (type: ElementType, label: string, config: Record<string, unknown>, width: ElementWidth) => {
     if (editingLocalId) {
       setElements((prev) =>
-        prev.map((e) => (e.localId === editingLocalId ? { ...e, label, config } : e)),
+        prev.map((e) => (e.localId === editingLocalId ? { ...e, label, config, width } : e)),
       );
     } else {
-      setElements((prev) => [...prev, { localId: randomUUID(), type, label, config }]);
+      setElements((prev) => [...prev, { localId: randomUUID(), type, label, config, width }]);
     }
     setInfoElement(null);
     setEditingLocalId(null);
@@ -134,7 +137,7 @@ export function CreateDrillScreen() {
 
       for (let i = 0; i < elements.length; i++) {
         const el = elements[i];
-        await insertElement(randomUUID(), drillId, el.type, el.label, el.config);
+        await insertElement(randomUUID(), drillId, el.type, el.label, el.config, el.width);
       }
 
       // Materialize draft description photos: insert pending rows pointing
@@ -247,29 +250,39 @@ export function CreateDrillScreen() {
         </Pressable>
       )}
 
-      {/* Tracking element cards — tap to edit, Remove to delete */}
-      {elements.map((el) => (
-        <Pressable
-          key={el.localId}
-          onPress={() => handleEditElement(el.localId)}
-          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          accessibilityLabel={`Edit ${el.label}`}
-        >
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.elementLabel} numberOfLines={1}>{el.label}</Text>
+      {/* Tracking element cards — tap to edit, Remove to delete. Laid out by
+          width: full takes its own row, half stays half and pairs up. */}
+      <View style={styles.canvasGrid}>
+        {elements.map((el) => {
+          const isHalf = el.width === 'half' && ELEMENT_SUPPORTS_HALF_WIDTH[el.type];
+          return (
             <Pressable
-              onPress={() => handleRemoveElement(el.localId)}
-              hitSlop={spacing.sm}
-              accessibilityLabel={`Remove ${el.label}`}
+              key={el.localId}
+              onPress={() => handleEditElement(el.localId)}
+              style={({ pressed }) => [
+                styles.card,
+                isHalf ? styles.cardHalf : styles.cardFull,
+                pressed && styles.cardPressed,
+              ]}
+              accessibilityLabel={`Edit ${el.label}`}
             >
-              <Text style={styles.removeText}>Remove</Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.elementLabel} numberOfLines={1}>{el.label}</Text>
+                <Pressable
+                  onPress={() => handleRemoveElement(el.localId)}
+                  hitSlop={spacing.sm}
+                  accessibilityLabel={`Remove ${el.label}`}
+                >
+                  <Text style={styles.removeText}>Remove</Text>
+                </Pressable>
+              </View>
+              <View style={styles.elementPreviewBox}>
+                <ElementStaticPreview type={el.type} config={el.config} />
+              </View>
             </Pressable>
-          </View>
-          <View style={styles.elementPreviewBox}>
-            <ElementStaticPreview type={el.type} config={el.config} />
-          </View>
-        </Pressable>
-      ))}
+          );
+        })}
+      </View>
 
       {/* Add tracking tile */}
       <Pressable
@@ -328,6 +341,7 @@ export function CreateDrillScreen() {
       seedKey={editingLocalId ?? (infoElement ? `add:${infoElement}` : undefined)}
       initialLabel={editingElement?.label}
       initialConfig={editingElement?.config}
+      initialWidth={editingElement?.width}
       submitLabel={editingLocalId ? 'Save' : 'Add to drill'}
       onDismiss={() => {
         setInfoElement(null);
@@ -366,14 +380,22 @@ const styles = StyleSheet.create({
   nameSpacer: { height: spacing.lg },
 
   // Shared canvas card (instructions, elements)
+  canvasGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.primary100,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    minWidth: 0,
   },
+  cardFull: { flexBasis: '100%' },
+  cardHalf: { flexBasis: '47%' },
   cardPressed: { backgroundColor: colors.primary50 },
   cardHeaderRow: {
     flexDirection: 'row',

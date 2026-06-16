@@ -104,6 +104,7 @@ export const TABLE_DEFINITIONS = {
       type TEXT NOT NULL,
       label TEXT NOT NULL,
       config TEXT NOT NULL DEFAULT '{}',
+      width TEXT NOT NULL DEFAULT 'full',
       display_order INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),

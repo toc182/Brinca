@@ -28,6 +28,9 @@ the existing config editors — you only need a new session component + preview.
 - Add it to the right group in `ELEMENT_CATEGORIES`.
 - Add a label to `ELEMENT_LABELS` (shown in the picker and cards).
 - Add a one-line `ELEMENT_DESCRIPTIONS` entry.
+- Add an `ELEMENT_SUPPORTS_HALF_WIDTH` entry — `true` only if the session
+  component renders correctly in a narrow (half-width) container; otherwise
+  `false`. *(compiler-forced — it's a full `Record<ElementType, boolean>`)*
 - Update the "N element types" count in the header comment.
 
 ## 2. Config type — `src/shared/tracking-elements/types/element-configs.ts`
