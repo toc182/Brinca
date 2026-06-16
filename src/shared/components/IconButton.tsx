@@ -18,10 +18,9 @@ interface IconButtonProps {
 }
 
 /**
- * Circular icon-only button built on a real Phosphor icon (no text glyphs).
- * Shared primitive for element controls (counter +/-, etc.) so size, color,
- * and pressed/disabled states live in one place instead of being re-styled
- * per element.
+ * Circular icon button: a brand-colored circle (the button) with a real
+ * Phosphor icon inside (the symbol). One place for size, color, and
+ * pressed/disabled states so element controls don't re-style circles by hand.
  */
 export function IconButton({
   icon: IconCmp,
@@ -36,7 +35,7 @@ export function IconButton({
     ? colors.textDisabled
     : variant === 'filled'
       ? colors.textOnPrimary
-      : colors.primary700;
+      : colors.primary500;
 
   return (
     <Pressable
@@ -53,7 +52,7 @@ export function IconButton({
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <IconCmp size={Math.round(size * 0.42)} color={iconColor} weight="bold" />
+      <IconCmp size={Math.round(size * 0.5)} color={iconColor} weight="bold" />
     </Pressable>
   );
 }
@@ -64,7 +63,7 @@ function variantStyle(variant: IconButtonVariant, disabled: boolean): ViewStyle 
     case 'filled':
       return { backgroundColor: colors.primary500 };
     case 'outline':
-      return { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary500 };
+      return { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary500 };
     case 'subtle':
       return { backgroundColor: colors.primary50 };
   }

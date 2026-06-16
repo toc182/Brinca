@@ -10,7 +10,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { GradientBlurBackground } from '@/shared/components/GradientBlurBackground';
 import { Screen } from '@/shared/components/Screen';
-import { colors, typography, spacing, radii } from '@/shared/theme';
+import { colors, typography, spacing, radii, shadows } from '@/shared/theme';
 import { CompletionCircle } from '../components/CompletionCircle';
 import { DrillPhotosNotes } from '../components/DrillPhotosNotes';
 import { DrillDescriptionSheet } from '../components/DrillDescriptionSheet';
@@ -279,6 +279,7 @@ export function DrillScreen() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.elementGrid}>
         {elements?.map((el) => {
           const elConfig = JSON.parse(el.config);
           const elValue = values[el.id] ?? getDefaultValue(el.type as ElementType);
@@ -303,6 +304,7 @@ export function DrillScreen() {
             </View>
           );
         })}
+        </View>
 
         {/* The one completion control. Elementless drills: big centered circle
             as the screen's main content. Tracked drills: compact labeled row
@@ -415,10 +417,30 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  elementContainer: { marginBottom: spacing.lg },
-  elementHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
-  elementLabel: { ...typography.titleSmall, color: colors.textPrimary, flex: 1 },
+  elementGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  elementContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    padding: spacing.md,
+    flexGrow: 1,
+    flexBasis: '45%',
+    minWidth: 0,
+    ...shadows.sm,
+  },
+  elementHeader: { marginBottom: spacing.sm, alignItems: 'center', justifyContent: 'center' },
+  elementLabel: { ...typography.titleSmall, color: colors.textPrimary, textAlign: 'center' },
   targetBadge: {
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+    transform: [{ translateY: -11 }],
     width: 22,
     height: 22,
     borderRadius: radii.full,
