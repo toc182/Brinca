@@ -133,6 +133,8 @@ Tap a drill → Drill edit screen
 - Each element is tappable to edit its configuration
 - Swipe left to remove an element (native iOS alert: "Remove this element?")
 - Elements reorderable via long-press drag
+- Each element shows a **live preview** of how it will look in a session — the real element rendered inert (shared `ElementCard`), in both the configure modal and on the builder canvas, so "what you configure is what you'll see."
+- **Full / half width:** counter-type elements show a round toggle on the card to switch between full width (own row) and half width (two per row). Only types flagged in `ELEMENT_SUPPORTS_HALF_WIDTH` offer it; the choice is stored in `tracking_elements.width` (`full` default / `half`). See `docs/architecture/adding-a-tracking-element.md` → Half-width layout.
 
 **Drill-level rewards**
 - Section header: "Drill Rewards"
@@ -365,7 +367,6 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 
 - [ ] Should there be a way to duplicate a drill (copy all tracking elements and rewards to a new drill)?
 - [ ] Should there be a way to duplicate an activity (copy all drills and configuration)?
-- [ ] Should tracking element configuration show a preview of what it looks like during a session?
 - [ ] Can the parent set a default category for new activities, or is it always selected manually?
 - [ ] Should the drill list show reward amounts per drill, or just tracking info?
 - [ ] What happens to tier rewards if the parent removes a tracking element that a tier condition references — delete the condition, show a warning, or block removal?

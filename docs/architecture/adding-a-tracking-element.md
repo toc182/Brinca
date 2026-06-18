@@ -30,7 +30,8 @@ the existing config editors — you only need a new session component + preview.
 - Add a one-line `ELEMENT_DESCRIPTIONS` entry.
 - Add an `ELEMENT_SUPPORTS_HALF_WIDTH` entry — `true` only if the session
   component renders correctly in a narrow (half-width) container; otherwise
-  `false`. *(compiler-forced — it's a full `Record<ElementType, boolean>`)*
+  `false`. *(compiler-forced — it's a full `Record<ElementType, boolean>`)* Read
+  **Half-width layout** at the bottom before flipping it to `true`.
 - Update the "N element types" count in the header comment.
 
 ## 2. Config type — `src/shared/tracking-elements/types/element-configs.ts`
@@ -103,3 +104,41 @@ Apply with `npx supabase db push`.
 - Bump `APP_VERSION_LABEL` in `src/shared/appVersion.ts`.
 - Reload: the new element appears in the "Add tracking element" picker.
 - Add one to a drill, run a session, confirm it records and shows in stats.
+
+## Half-width layout
+
+`ELEMENT_SUPPORTS_HALF_WIDTH[type] === true` lets a parent shrink the element to
+half a row (two per line) via the round toggle on the builder canvas. Only flip
+it to `true` once the session component renders correctly in a ~150–170pt-wide
+container. Three things make it work:
+
+1. **The element must adapt to its own width.** The session component measures
+   its container with `onLayout` and switches to a compact layout below a
+   threshold — see `CounterElement.tsx` (`FULL_WIDTH_MIN = 240`: a wide centered
+   cluster above, smaller buttons below).
+
+2. **It must be a fixed height in both layouts**, so toggling width never changes
+   height and two half cards line up. `CounterElement` centers both layouts
+   inside `COUNTER_MIN_HEIGHT`.
+
+3. **The slot is sized in explicit pixels, not `flexBasis: '%'`.**
+   ⚠️ GOTCHA: on this build (RN New Architecture / Fabric) a `flexBasis`
+   percentage that **changes at runtime** does not re-resolve — the view keeps
+   its old width even though state updated (confirmed by on-device `onLayout`
+   measurement). So the canvas (`CreateDrillScreen`) measures the grid with
+   `onLayout` and gives each slot an explicit pixel width (`full = gridW`,
+   `half = (gridW - gap) / 2`), animated with a Reanimated shared value +
+   `withTiming` (see `CanvasCardSlot`). `LayoutAnimation` and Reanimated
+   `LinearTransition` did **not** apply/animate the change here. The live session
+   (`DrillScreen`) is fine setting `flexBasis: '47%'` once at mount — the bug
+   only bites *runtime* changes.
+
+The element is wrapped in the shared `ElementCard` (label + surface card) in both
+the session and the builder preview, so it looks identical everywhere — see
+`docs/design-system/components/element-card.md`. On the canvas the card is also
+wrapped in `SwipeToDeleteRow` in rounded-card mode (pass `borderRadius`) — see
+`docs/design-system/components/swipe-to-delete-row.md`.
+
+A residual: the wide↔compact swap is a discrete layout change, so it "pops"
+mid-resize. No animation tweak smooths it — only collapsing the two layouts into
+one that scales continuously would.

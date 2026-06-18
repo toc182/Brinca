@@ -53,6 +53,8 @@ Values live in `src/shared/theme.ts`. Never hardcode hex / size values anywhere 
 | [progress.md](components/progress.md) | Linear bar, circular, streak counter |
 | [dividers.md](components/dividers.md) | List and section dividers |
 | [completion-circle.md](components/completion-circle.md) | Tap-to-complete circle + UndoBar pattern |
+| [element-card.md](components/element-card.md) | `<ElementCard>` — shared label + surface card around a tracking element (session + builder preview) |
+| [swipe-to-delete-row.md](components/swipe-to-delete-row.md) | Swipe-left-to-delete row — list-row + rounded-card modes |
 
 ---
 
