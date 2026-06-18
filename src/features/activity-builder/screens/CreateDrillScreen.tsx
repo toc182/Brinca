@@ -1,25 +1,14 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Pressable as GHPressable } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { randomUUID } from 'expo-crypto';
-import {
-  ArrowsInSimple,
-  ArrowsOutSimple,
-  Info,
-  NotePencil,
-  Plus,
-  WarningCircle,
-} from 'phosphor-react-native';
-import * as Haptics from 'expo-haptics';
+import { Info, NotePencil, Plus, WarningCircle } from 'phosphor-react-native';
 
-import { BottomSheet } from '@/shared/components/BottomSheet';
 import { Screen } from '@/shared/components/Screen';
 import { MODAL_HEADER_CONTENT_BOTTOM, ModalHeader } from '@/shared/components/ModalHeader';
 import { colors, typography, spacing, radii } from '@/shared/theme';
@@ -30,38 +19,17 @@ import { insertLocalPhoto } from '../repositories/drill-photo.repository';
 import { insertElement } from '../repositories/tracking-element.repository';
 import { activityBuilderKeys } from '../queries/keys';
 import { DrillDescriptionEditor } from '../components/DrillDescriptionEditor';
-import {
-  ELEMENT_LABELS,
-  ELEMENT_CATEGORIES,
-  ELEMENT_SUPPORTS_HALF_WIDTH,
-  type ElementType,
-  type ElementCategory,
-  type ElementWidth,
-} from '@/shared/tracking-elements/types/element-types';
-import { ElementInfoModal } from '../components/elements/previews/ElementInfoModal';
-import { ElementPreview } from '../components/elements/previews/element-previews';
-import { ElementStaticPreview } from '../components/ElementStaticPreview';
-import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
-
-const CATEGORY_LABELS: Record<ElementCategory, string> = {
-  counters: 'Counters',
-  timers: 'Timers',
-  selection: 'Selection',
-  input: 'Input',
-};
+import { DrillElementCanvas } from '../components/DrillElementCanvas';
+import type { ElementType, ElementWidth } from '@/shared/tracking-elements/types/element-types';
 
 // ---------------------------------------------------------------------------
 // Live-canvas drill builder (Concept A). You assemble the actual screen your
-// kid will use: name it, optionally add an instructions card and tracking
-// elements, and the always-present pieces (session photos/notes, mark
-// complete) are shown ghosted so the full drill is visible at a glance.
+// kid will use: name it, optionally add an instructions card, and add tracking
+// elements via the shared DrillElementCanvas (also used by the edit screen).
 //
-// Tracking elements are added via a bottom-sheet picker → ElementInfoModal
-// (configure) → appended to the canvas. Phase 1: add + remove + reorder-less
-// cards. Tap-to-reconfigure and drag-reorder come next.
-//
-// The screen keeps the "color wash" look (tinted page, purple accents) as a
-// one-screen trial; not applied app-wide yet.
+// Create builds a draft in local state and inserts everything on Save; the edit
+// screen wires the same canvas to live mutations. The screen keeps the "color
+// wash" look (tinted page, purple accents).
 // ---------------------------------------------------------------------------
 
 interface PendingElement {
@@ -82,52 +50,13 @@ export function CreateDrillScreen() {
   const [descriptionPhotoUris, setDescriptionPhotoUris] = useState<string[]>([]);
   const [elements, setElements] = useState<PendingElement[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [infoElement, setInfoElement] = useState<ElementType | null>(null);
-  const [editingLocalId, setEditingLocalId] = useState<string | null>(null);
-  const [showTrackingPicker, setShowTrackingPicker] = useState(false);
   const [instructionsExpanded, setInstructionsExpanded] = useState(false);
 
-  // TEMP debug: measured width at each layer, keyed by element localId.
-  const [gridW, setGridW] = useState(0);
-
-  const editingElement = elements.find((e) => e.localId === editingLocalId) ?? null;
   const nameInputRef = useRef<TextInput>(null);
   const [nameError, setNameError] = useState(false);
 
   const isValid = name.trim().length >= 1 && name.trim().length <= 50;
   const hasInstructions = description.trim().length > 0 || descriptionPhotoUris.length > 0;
-
-  const handleSubmitElement = (type: ElementType, label: string, config: Record<string, unknown>) => {
-    if (editingLocalId) {
-      // Width is set by dragging the card on the canvas, not here — preserve it.
-      setElements((prev) =>
-        prev.map((e) => (e.localId === editingLocalId ? { ...e, label, config } : e)),
-      );
-    } else {
-      setElements((prev) => [...prev, { localId: randomUUID(), type, label, config, width: 'full' }]);
-    }
-    setInfoElement(null);
-    setEditingLocalId(null);
-  };
-
-  const toggleWidth = (localId: string, width: ElementWidth) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TEMP: LayoutAnimation removed to test whether it was swallowing the
-    // resize on the New Architecture (Fabric). No animation while testing.
-    setElements((prev) => prev.map((e) => (e.localId === localId ? { ...e, width } : e)));
-  };
-
-  const handleEditElement = (localId: string) => {
-    const el = elements.find((e) => e.localId === localId);
-    if (!el) return;
-    setEditingLocalId(localId);
-    setInfoElement(el.type);
-  };
-
-  // The swipe row owns the delete confirmation, so this just removes.
-  const handleRemoveElement = (localId: string) => {
-    setElements((prev) => prev.filter((e) => e.localId !== localId));
-  };
 
   const handleSave = async () => {
     if (!activityId) return;
@@ -174,7 +103,10 @@ export function CreateDrillScreen() {
   };
 
   return (
-    <>
+    // This screen is presented as a native modal, so the (settings) provider
+    // sits behind it — the element picker's BottomSheetModal needs its own
+    // provider here or it presents behind the screen (invisible).
+    <BottomSheetModalProvider>
     <ModalHeader
       title="New drill"
       leftAction={{ icon: 'close', onPress: () => router.back(), accessibilityLabel: 'Cancel' }}
@@ -265,154 +197,41 @@ export function CreateDrillScreen() {
         </Pressable>
       )}
 
-      {/* Tracking element cards — tap to edit, swipe left to remove. Laid out
-          by width: full takes its own row, half stays half and pairs up. */}
-      <View
-        style={styles.canvasGrid}
-        onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
-      >
-        {elements.map((el) => {
-          const supportsHalf = ELEMENT_SUPPORTS_HALF_WIDTH[el.type];
-          const isHalf = el.width === 'half' && supportsHalf;
-          const WidthIcon = isHalf ? ArrowsOutSimple : ArrowsInSimple;
-          // A percentage flexBasis does not re-apply at runtime on this build
-          // (Fabric), so size each slot with an explicit pixel width derived
-          // from the measured grid: full = whole row, half = (row − gap) / 2.
-          const slotW =
-            gridW > 0 ? (isHalf ? Math.floor((gridW - spacing.sm) / 2) : gridW) : undefined;
-          return (
-            <CanvasCardSlot key={el.localId} targetWidth={slotW}>
-              <SwipeToDeleteRow
-                borderRadius={radii.lg}
-                onDelete={() => handleRemoveElement(el.localId)}
-                confirmTitle="Remove element"
-                confirmMessage={`Remove ${el.label}?`}
-              >
-                <GHPressable
-                  onPress={() => handleEditElement(el.localId)}
-                  style={styles.card}
-                  accessibilityLabel={`Edit ${el.label}`}
-                >
-                  {supportsHalf && (
-                    <GHPressable
-                      onPress={() => toggleWidth(el.localId, isHalf ? 'full' : 'half')}
-                      hitSlop={spacing.sm}
-                      style={styles.widthButton}
-                      accessibilityLabel={isHalf ? `Expand ${el.label} to full width` : `Reduce ${el.label} to half width`}
-                    >
-                      <WidthIcon size={18} color={colors.primary700} weight="bold" />
-                    </GHPressable>
-                  )}
-                  <Text style={styles.elementLabel} numberOfLines={1}>{el.label}</Text>
-                  <View style={styles.elementPreviewBox}>
-                    <ElementStaticPreview type={el.type} config={el.config} />
-                  </View>
-                </GHPressable>
-              </SwipeToDeleteRow>
-            </CanvasCardSlot>
-          );
-        })}
-      </View>
-
-      {/* Add tracking tile */}
-      <Pressable
-        onPress={() => {
-          Keyboard.dismiss();
-          setShowTrackingPicker(true);
+      {/* Tracking elements (shared canvas; create wires draft-state callbacks) */}
+      <DrillElementCanvas
+        elements={elements.map((e) => ({
+          id: e.localId,
+          type: e.type,
+          label: e.label,
+          config: e.config,
+          width: e.width,
+        }))}
+        onSubmitElement={(editingId, type, label, config) => {
+          if (editingId) {
+            // Width is owned by the canvas toggle, not the modal — preserve it.
+            setElements((prev) =>
+              prev.map((e) => (e.localId === editingId ? { ...e, label, config } : e)),
+            );
+          } else {
+            setElements((prev) => [...prev, { localId: randomUUID(), type, label, config, width: 'full' }]);
+          }
         }}
-        style={({ pressed }) => [styles.addTile, pressed && styles.addTilePressed]}
-        accessibilityLabel="Add tracking element"
-      >
-        <Plus size={16} color={colors.primary500} weight="bold" />
-        <Text style={styles.addTileText}>Add tracking element</Text>
-      </Pressable>
-
+        onToggleWidth={(id, width) =>
+          setElements((prev) => prev.map((e) => (e.localId === id ? { ...e, width } : e)))
+        }
+        onDelete={(id) => setElements((prev) => prev.filter((e) => e.localId !== id))}
+        onReorder={(ids) =>
+          setElements((prev) => {
+            const byId = new Map(prev.map((e) => [e.localId, e]));
+            return ids.map((id) => byId.get(id)).filter((e): e is PendingElement => e != null);
+          })
+        }
+      />
     </KeyboardAwareScrollView>
     </Screen>
     <AppKeyboardToolbar />
-
-    {showTrackingPicker && (
-      <BottomSheet
-        snapPoints={['75%']}
-        onDismiss={() => setShowTrackingPicker(false)}
-        enableContentPanningGesture={false}
-      >
-        <BottomSheetScrollView contentContainerStyle={styles.pickerContent}>
-          <Text style={styles.pickerTitle}>What do you want to track?</Text>
-          {(Object.entries(ELEMENT_CATEGORIES) as [ElementCategory, readonly ElementType[]][]).map(
-            ([category, types]) => (
-              <View key={category} style={styles.categorySection}>
-                <Text style={styles.categoryLabel}>{CATEGORY_LABELS[category]}</Text>
-                <View style={styles.previewGrid}>
-                  {types.map((type) => (
-                    <Pressable
-                      key={type}
-                      onPress={() => {
-                        setShowTrackingPicker(false);
-                        setInfoElement(type);
-                      }}
-                      style={({ pressed }) => [styles.previewCard, pressed && styles.previewCardPressed]}
-                      accessibilityLabel={`Add ${ELEMENT_LABELS[type]}`}
-                    >
-                      <View style={styles.previewBox}><ElementPreview type={type} /></View>
-                      <Text style={styles.previewLabel}>{ELEMENT_LABELS[type]}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            )
-          )}
-        </BottomSheetScrollView>
-      </BottomSheet>
-    )}
-
-    <ElementInfoModal
-      type={infoElement}
-      seedKey={editingLocalId ?? (infoElement ? `add:${infoElement}` : undefined)}
-      initialLabel={editingElement?.label}
-      initialConfig={editingElement?.config}
-      submitLabel={editingLocalId ? 'Save' : 'Add to drill'}
-      onDismiss={() => {
-        setInfoElement(null);
-        setEditingLocalId(null);
-      }}
-      onAdd={handleSubmitElement}
-    />
-    </>
+    </BottomSheetModalProvider>
   );
-}
-
-/**
- * Animated grid slot. A percentage flexBasis won't re-apply at runtime on this
- * build (Fabric), so each slot is sized with an explicit pixel width, and that
- * width is animated with Reanimated when the full/half toggle changes it.
- * Animating the real width (not a transform) lets the card's content and its
- * neighbour reflow smoothly along with it.
- */
-function CanvasCardSlot({
-  targetWidth,
-  children,
-}: {
-  targetWidth: number | undefined;
-  children: ReactNode;
-}) {
-  const width = useSharedValue<number | undefined>(targetWidth);
-  const initialized = useRef(false);
-
-  useEffect(() => {
-    if (targetWidth == null) return;
-    if (initialized.current) {
-      width.value = withTiming(targetWidth, { duration: 220 });
-    } else {
-      // First known width (grid just measured): adopt it without animating.
-      width.value = targetWidth;
-      initialized.current = true;
-    }
-  }, [targetWidth, width]);
-
-  const animatedStyle = useAnimatedStyle(() => ({ width: width.value }));
-
-  return <Animated.View style={[styles.cardSlot, animatedStyle]}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({
@@ -441,13 +260,7 @@ const styles = StyleSheet.create({
   },
   nameSpacer: { height: spacing.lg },
 
-  // Shared canvas card (instructions, elements)
-  canvasGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
+  // Instructions card
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
@@ -456,20 +269,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     minWidth: 0,
   },
-  cardSlot: { minWidth: 0 },
   cardPressed: { opacity: 0.6 },
-  widthButton: {
-    position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
-    zIndex: 1,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.primary50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -486,20 +286,7 @@ const styles = StyleSheet.create({
   instructionsSummary: { ...typography.bodySmall, color: colors.textPrimary },
   instructionsPhotoCount: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
 
-  elementLabel: {
-    ...typography.titleSmall,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xs,
-  },
-  removeText: { ...typography.caption, color: colors.error600 },
-  elementPreviewBox: {
-    minHeight: 56,
-    paddingTop: spacing.xs,
-  },
-
-  // Dashed add tiles
+  // Dashed add tile (instructions)
   addTile: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -515,31 +302,4 @@ const styles = StyleSheet.create({
   },
   addTilePressed: { backgroundColor: colors.primary100 },
   addTileText: { ...typography.bodySmall, color: colors.primary700, fontWeight: '600' },
-
-  // Tracking picker sheet
-  pickerContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
-  pickerTitle: { ...typography.titleSmall, color: colors.textPrimary, marginBottom: spacing.md },
-  categorySection: { marginBottom: spacing.md },
-  categoryLabel: {
-    ...typography.caption,
-    color: colors.primary700,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  previewCard: {
-    flexBasis: '48%',
-    flexGrow: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 1.5,
-    borderColor: colors.primary100,
-    padding: spacing.sm,
-    gap: spacing.xs,
-    alignItems: 'center',
-  },
-  previewCardPressed: { backgroundColor: colors.primary50, borderColor: colors.primary500 },
-  previewBox: { width: '100%', height: 72, alignItems: 'center', justifyContent: 'center' },
-  previewLabel: { ...typography.caption, color: colors.textPrimary, textAlign: 'center' },
 });
