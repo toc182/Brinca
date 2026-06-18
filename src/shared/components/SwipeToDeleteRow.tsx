@@ -10,6 +10,14 @@ interface SwipeToDeleteRowProps {
   onDelete: () => void;
   confirmTitle: string;
   confirmMessage: string;
+  /**
+   * Rounded-card mode. Pass the child card's corner radius when the child is a
+   * rounded card on a tinted page (not an edge-to-edge list row): the white row
+   * backing is dropped (the card brings its own) and the container is rounded to
+   * this radius and painted red, so the red delete shows flush through the
+   * card's own rounded corners as it slides — no square corner clash, no notch.
+   */
+  borderRadius?: number;
 }
 
 /**
@@ -31,6 +39,7 @@ export function SwipeToDeleteRow({
   onDelete,
   confirmTitle,
   confirmMessage,
+  borderRadius,
 }: SwipeToDeleteRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
   const [revealed, setRevealed] = useState(false);
@@ -62,10 +71,15 @@ export function SwipeToDeleteRow({
       renderRightActions={renderRightActions}
       rightThreshold={40}
       overshootRight={false}
+      containerStyle={[
+        styles.swipeContainer,
+        borderRadius != null && [styles.swipeContainerCard, { borderRadius }],
+      ]}
+      childrenContainerStyle={styles.childrenContainer}
       onSwipeableWillOpen={() => setRevealed(true)}
       onSwipeableClose={() => setRevealed(false)}
     >
-      <View style={styles.row}>
+      <View style={[styles.row, borderRadius != null && styles.rowTransparent]}>
         {children}
         {revealed && (
           <Pressable
@@ -80,8 +94,33 @@ export function SwipeToDeleteRow({
 }
 
 const styles = StyleSheet.create({
+  // Let the swipeable inherit its slot's width (e.g. a half-width grid cell)
+  // instead of sizing to the content's intrinsic width.
+  swipeContainer: {
+    alignSelf: 'stretch',
+    minWidth: 0,
+  },
+  // Rounded-card mode: round the container (it already clips its children) and
+  // paint it red, so when the card slides the red shows through the card's own
+  // rounded corners — flush, no notch — while the card keeps its full rounding.
+  swipeContainerCard: {
+    backgroundColor: colors.error500,
+    overflow: 'hidden',
+  },
+  childrenContainer: {
+    width: '100%',
+    minWidth: 0,
+  },
   row: {
+    width: '100%',
+    minWidth: 0,
     backgroundColor: colors.surface,
+  },
+  // In rounded mode the child card brings its own background; drop the white
+  // backing so the red delete action shows through the card's rounded corners
+  // instead of a white sliver.
+  rowTransparent: {
+    backgroundColor: 'transparent',
   },
   deleteAction: {
     backgroundColor: colors.error500,

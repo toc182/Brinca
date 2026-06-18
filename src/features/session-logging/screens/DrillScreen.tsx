@@ -10,7 +10,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
 import { GradientBlurBackground } from '@/shared/components/GradientBlurBackground';
 import { Screen } from '@/shared/components/Screen';
-import { colors, typography, spacing, radii, shadows } from '@/shared/theme';
+import { colors, typography, spacing, radii } from '@/shared/theme';
 import { CompletionCircle } from '../components/CompletionCircle';
 import { DrillPhotosNotes } from '../components/DrillPhotosNotes';
 import { DrillDescriptionSheet } from '../components/DrillDescriptionSheet';
@@ -30,6 +30,7 @@ import {
   upsertElementValue,
 } from '../repositories/drill-result.repository';
 import { useMarkDrillCompleteMutation } from '../mutations/useMarkDrillCompleteMutation';
+import { ElementCard } from '@/shared/components/ElementCard';
 import { ElementRenderer } from '../components/elements/ElementRenderer';
 import { sessionKeys } from '../queries/keys';
 import { ELEMENT_SUPPORTS_HALF_WIDTH, type ElementType } from '@/shared/tracking-elements/types/element-types';
@@ -288,15 +289,12 @@ export function DrillScreen() {
           // 'half' on an unsupported type falls back to full.
           const isHalf = el.width === 'half' && ELEMENT_SUPPORTS_HALF_WIDTH[el.type as ElementType];
           return (
-            <View key={el.id} style={[styles.elementContainer, isHalf ? styles.halfCard : styles.fullCard]}>
-              <View style={styles.elementHeader}>
-                <Text style={styles.elementLabel}>{el.label}</Text>
-                {targetMet && (
-                  <View style={styles.targetBadge}>
-                    <Text style={styles.targetBadgeText}>✓</Text>
-                  </View>
-                )}
-              </View>
+            <ElementCard
+              key={el.id}
+              label={el.label}
+              targetMet={targetMet}
+              style={isHalf ? styles.halfCard : styles.fullCard}
+            >
               <ElementRenderer
                 type={el.type as ElementType}
                 config={elConfig}
@@ -304,7 +302,7 @@ export function DrillScreen() {
                 onValueChange={(v) => handleValueChange(el.id, v)}
                 elementId={el.id}
               />
-            </View>
+            </ElementCard>
           );
         })}
         </View>
@@ -426,34 +424,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  elementContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    padding: spacing.md,
-    minWidth: 0,
-    ...shadows.sm,
-  },
   // Full elements take their own row; half elements stay half (a lone half
-  // does not grow to fill the row).
+  // does not grow to fill the row). The card chrome lives in ElementCard.
   fullCard: { flexBasis: '100%' },
   halfCard: { flexBasis: '47%' },
-  elementHeader: { marginBottom: spacing.sm, alignItems: 'center', justifyContent: 'center' },
-  elementLabel: { ...typography.titleSmall, color: colors.textPrimary, textAlign: 'center' },
-  targetBadge: {
-    position: 'absolute',
-    right: 0,
-    top: '50%',
-    transform: [{ translateY: -11 }],
-    width: 22,
-    height: 22,
-    borderRadius: radii.full,
-    backgroundColor: colors.success500,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  targetBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   headerButtonSpacer: { width: 50, height: 50 },
 
   // Completion control. Elementless drills: roomy centered circle as the

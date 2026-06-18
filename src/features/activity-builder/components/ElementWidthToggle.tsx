@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Columns, Square, type Icon } from 'phosphor-react-native';
 
 import { colors, radii, spacing, typography } from '@/shared/theme';
 import type { ElementWidth } from '@/shared/tracking-elements/types/element-types';
@@ -8,32 +9,35 @@ interface ElementWidthToggleProps {
   onChange: (width: ElementWidth) => void;
 }
 
-const OPTIONS: { value: ElementWidth; label: string }[] = [
-  { value: 'full', label: 'Full width' },
-  { value: 'half', label: 'Half width' },
+const OPTIONS: { value: ElementWidth; label: string; icon: Icon }[] = [
+  { value: 'full', label: 'Full', icon: Square },
+  { value: 'half', label: 'Half', icon: Columns },
 ];
 
-/** Segmented Full / Half control. Only rendered for element types that support
- * half width (gated by the caller via ELEMENT_SUPPORTS_HALF_WIDTH). */
+/** Compact Full / Half picker — two icon tiles (a single block vs two columns).
+ * Only rendered for element types that support half width (gated by caller). */
 export function ElementWidthToggle({ value, onChange }: ElementWidthToggleProps) {
   return (
-    <View style={styles.container}>
+    <View style={styles.row}>
       <Text style={styles.label}>Width</Text>
-      <View style={styles.segments}>
-        {OPTIONS.map((opt) => {
-          const selected = opt.value === value;
+      <View style={styles.tiles}>
+        {OPTIONS.map(({ value: optValue, label, icon: IconCmp }) => {
+          const selected = optValue === value;
           return (
             <Pressable
-              key={opt.value}
-              onPress={() => onChange(opt.value)}
-              style={[styles.segment, selected && styles.segmentSelected]}
+              key={optValue}
+              onPress={() => onChange(optValue)}
+              style={[styles.tile, selected && styles.tileSelected]}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={opt.label}
+              accessibilityLabel={`${label} width`}
             >
-              <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                {opt.label}
-              </Text>
+              <IconCmp
+                size={20}
+                weight={selected ? 'fill' : 'regular'}
+                color={selected ? colors.primary500 : colors.textSecondary}
+              />
+              <Text style={[styles.tileLabel, selected && styles.tileLabelSelected]}>{label}</Text>
             </Pressable>
           );
         })}
@@ -43,23 +47,20 @@ export function ElementWidthToggle({ value, onChange }: ElementWidthToggleProps)
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.xs },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { ...typography.caption, color: colors.textSecondary },
-  segments: {
+  tiles: { flexDirection: 'row', gap: spacing.xs },
+  tile: {
     flexDirection: 'row',
-    backgroundColor: colors.primary50,
-    borderRadius: radii.md,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  segment: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radii.sm,
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.borderSubtle,
   },
-  segmentSelected: { backgroundColor: colors.primary500 },
-  segmentText: { ...typography.bodySmall, color: colors.primary700 },
-  segmentTextSelected: { color: colors.textOnPrimary },
+  tileSelected: { borderColor: colors.primary500, backgroundColor: colors.primary50 },
+  tileLabel: { ...typography.bodySmall, color: colors.textSecondary },
+  tileLabelSelected: { color: colors.primary700 },
 });

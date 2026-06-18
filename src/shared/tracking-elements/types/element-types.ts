@@ -91,7 +91,7 @@ export const ELEMENT_SUPPORTS_HALF_WIDTH: Record<ElementType, boolean> = {
 };
 
 export const ELEMENT_DESCRIPTIONS: Record<ElementType, string> = {
-  counter: 'Tap + or − to count up.',
+  counter: 'Tap + or − to count up or down.',
   tap_counter: 'Tap the card to count up; press and hold to remove one.',
   combined_counter: 'Tap + or − to count up and down, or type the number directly.',
   split_counter: 'Two counters side by side, like left/right.',

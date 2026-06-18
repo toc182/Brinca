@@ -19,19 +19,17 @@ import { colors, radii, shadows, spacing, touchTargets, typography } from '@/sha
 import {
   ELEMENT_DESCRIPTIONS,
   ELEMENT_LABELS,
-  ELEMENT_SUPPORTS_HALF_WIDTH,
   type ElementType,
-  type ElementWidth,
 } from '@/shared/tracking-elements/types/element-types';
 import { getDefaultConfig } from '@/shared/tracking-elements/validation';
-import { ElementWidthToggle } from '../../ElementWidthToggle';
+import { ElementCard } from '@/shared/components/ElementCard';
+import { ElementStaticPreview } from '../../ElementStaticPreview';
 import { ElementAddConfigRouter } from '../add-configs/ElementAddConfigRouter';
-import { ElementPreview } from './element-previews';
 
 interface ElementInfoModalProps {
   type: ElementType | null;
   onDismiss: () => void;
-  onAdd: (type: ElementType, label: string, config: Record<string, unknown>, width: ElementWidth) => void;
+  onAdd: (type: ElementType, label: string, config: Record<string, unknown>) => void;
   /**
    * Stable identity for the thing being configured. Reset fires when this
    * changes, so editing two elements of the same type reseeds correctly.
@@ -42,8 +40,6 @@ interface ElementInfoModalProps {
   initialLabel?: string;
   /** Seed the config (edit mode). Falls back to the type's default config. */
   initialConfig?: Record<string, unknown>;
-  /** Seed the width (edit mode). Defaults to 'full'. */
-  initialWidth?: ElementWidth;
   /** Submit button text. Defaults to "Add to drill". */
   submitLabel?: string;
 }
@@ -55,36 +51,31 @@ export function ElementInfoModal({
   seedKey,
   initialLabel,
   initialConfig,
-  initialWidth,
   submitLabel = 'Add to drill',
 }: ElementInfoModalProps) {
   // Reset whenever the modal opens for a different thing (seedKey, or the type
   // when no seedKey) so leftover values from a prior open don't bleed in.
   const [label, setLabel] = useState('');
   const [config, setConfig] = useState<Record<string, unknown>>({});
-  const [width, setWidth] = useState<ElementWidth>('full');
   const resetKey = seedKey ?? type;
 
   useEffect(() => {
     if (!type) {
       setLabel('');
       setConfig({});
-      setWidth('full');
       return;
     }
     setLabel(initialLabel ?? ELEMENT_LABELS[type]);
     setConfig(initialConfig ?? getDefaultConfig(type));
-    setWidth(initialWidth ?? 'full');
-    // initialLabel/initialConfig/initialWidth are seeds tied to resetKey;
-    // intentionally not deps (their identity changes each render and would
-    // wipe live edits).
+    // initialLabel/initialConfig are seeds tied to resetKey; intentionally not
+    // deps (their identity changes each render and would wipe live edits).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
   const handleAdd = () => {
     if (!type) return;
     const finalLabel = label.trim() || ELEMENT_LABELS[type];
-    onAdd(type, finalLabel, config, ELEMENT_SUPPORTS_HALF_WIDTH[type] ? width : 'full');
+    onAdd(type, finalLabel, config);
   };
 
   // Tapping outside while typing should put the keyboard away, not throw the
@@ -111,38 +102,43 @@ export function ElementInfoModal({
       >
       <Pressable style={styles.scrim} onPress={handleScrimPress}>
         <Pressable style={styles.card} onPress={Keyboard.dismiss}>
-          <Pressable
-            onPress={onDismiss}
-            style={styles.closeButton}
-            hitSlop={spacing.sm}
-            accessibilityLabel="Close"
-          >
-            <View style={styles.closeCircle}>
-              <X size={20} color={colors.textPrimary} weight="bold" />
-            </View>
-          </Pressable>
           {type && (
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.previewWrap}><ElementPreview type={type} /></View>
-              <Text style={styles.title}>{ELEMENT_LABELS[type]}</Text>
-              <Text style={styles.description}>{ELEMENT_DESCRIPTIONS[type]}</Text>
-              <Input
-                label="Name"
-                value={label}
-                onChangeText={setLabel}
-                placeholder={ELEMENT_LABELS[type]}
-                maxLength={50}
-              />
-              <ElementAddConfigRouter type={type} value={config} onChange={setConfig} />
-              {ELEMENT_SUPPORTS_HALF_WIDTH[type] && (
-                <ElementWidthToggle value={width} onChange={setWidth} />
-              )}
-              <Button title={submitLabel} onPress={handleAdd} />
-            </ScrollView>
+            <>
+              <View style={styles.header}>
+                <Text style={styles.title} numberOfLines={1}>{ELEMENT_LABELS[type]}</Text>
+                <Pressable
+                  onPress={onDismiss}
+                  style={styles.closeButton}
+                  hitSlop={spacing.sm}
+                  accessibilityLabel="Close"
+                >
+                  <View style={styles.closeCircle}>
+                    <X size={18} color={colors.textPrimary} weight="bold" />
+                  </View>
+                </Pressable>
+              </View>
+              <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.description}>{ELEMENT_DESCRIPTIONS[type]}</Text>
+                <View style={styles.previewWrap}>
+                  <ElementCard label={label.trim() || ELEMENT_LABELS[type]}>
+                    <ElementStaticPreview type={type} config={config} />
+                  </ElementCard>
+                </View>
+                <Input
+                  label="Name"
+                  value={label}
+                  onChangeText={setLabel}
+                  placeholder={ELEMENT_LABELS[type]}
+                  maxLength={50}
+                />
+                <ElementAddConfigRouter type={type} value={config} onChange={setConfig} />
+                <Button title={submitLabel} onPress={handleAdd} />
+              </ScrollView>
+            </>
           )}
         </Pressable>
       </Pressable>
@@ -170,40 +166,42 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     ...shadows.lg,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xxs,
+  },
   closeButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
     minWidth: touchTargets.min,
     minHeight: touchTargets.min,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1,
   },
   closeCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.borderDefault,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingTop: 62 + spacing.xs, // clear the 50pt close circle (top: spacing.sm + 50)
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    gap: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.xs,
     alignItems: 'stretch',
   },
   previewWrap: {
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: spacing.xxs,
   },
   title: {
     ...typography.titleMedium,
     color: colors.textPrimary,
-    textAlign: 'center',
+    flex: 1,
   },
   description: {
     ...typography.bodySmall,

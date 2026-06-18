@@ -18,6 +18,12 @@ interface CounterElementProps {
 // below it, the separate compact layout. The two share no styling.
 const FULL_WIDTH_MIN = 240;
 
+// Both layouts are vertically centered inside this fixed height so the card is
+// the same height at full and half width — toggling width never changes height,
+// and two half cards in a row match. Sized for the tallest full-width case:
+// 64pt buttons, or a 48pt number stacked over an "of N" caption (~70pt).
+const COUNTER_MIN_HEIGHT = 72;
+
 /** Light tick when adding, a firmer tap when removing, so they feel distinct. */
 function bumpHaptic(direction: 1 | -1) {
   void Haptics.impactAsync(
@@ -35,11 +41,15 @@ export function CounterElement(props: CounterElementProps) {
   const useCompact = width > 0 && width < FULL_WIDTH_MIN;
 
   return (
-    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    <View style={layout.wrap} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {useCompact ? <CounterCompact {...props} width={width} /> : <CounterWide {...props} />}
     </View>
   );
 }
+
+const layout = StyleSheet.create({
+  wrap: { minHeight: COUNTER_MIN_HEIGHT, justifyContent: 'center' },
+});
 
 // --- Full-width layout: centered cluster, big fixed buttons ------------------
 
