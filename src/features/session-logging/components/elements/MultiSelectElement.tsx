@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Check } from 'phosphor-react-native';
+
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { MultiSelectConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { MultiSelectValue } from '@/shared/tracking-elements/types/element-values';
@@ -10,9 +12,6 @@ interface MultiSelectElementProps {
 }
 
 export function MultiSelectElement({ value, onValueChange, config }: MultiSelectElementProps) {
-  const hasTarget = config.targetSelected != null;
-  const isAtTarget = hasTarget && value.selected.length >= config.targetSelected!;
-
   const toggle = (optionId: string) => {
     const isSelected = value.selected.includes(optionId);
     const newSelected = isSelected
@@ -23,12 +22,6 @@ export function MultiSelectElement({ value, onValueChange, config }: MultiSelect
 
   return (
     <View style={styles.container}>
-      {hasTarget && (
-        <Text style={[styles.progress, isAtTarget && styles.progressDone]}>
-          {value.selected.length} / {config.targetSelected} selected
-        </Text>
-      )}
-
       {config.options.map((option) => {
         const isSelected = value.selected.includes(option.id);
         return (
@@ -42,7 +35,7 @@ export function MultiSelectElement({ value, onValueChange, config }: MultiSelect
             ]}
           >
             <View style={[styles.checkbox, isSelected && styles.checkboxChecked]}>
-              {isSelected && <Text style={styles.checkmark}>&#10003;</Text>}
+              {isSelected && <Check size={16} color={colors.textOnPrimary} weight="bold" />}
             </View>
             <Text style={[styles.label, isSelected && styles.labelSelected]}>
               {option.name}
@@ -57,15 +50,6 @@ export function MultiSelectElement({ value, onValueChange, config }: MultiSelect
 const styles = StyleSheet.create({
   container: {
     gap: spacing.xs,
-  },
-  progress: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  progressDone: {
-    color: colors.success500,
   },
   row: {
     flexDirection: 'row',
@@ -98,11 +82,6 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: colors.primary500,
     borderColor: colors.primary500,
-  },
-  checkmark: {
-    ...typography.caption,
-    color: colors.textOnPrimary,
-    marginTop: -1,
   },
   label: {
     ...typography.body,

@@ -52,24 +52,23 @@ export interface IntervalTimerConfig {
 }
 
 // -- Selection --
+// Selection elements have no configurable targets: they are "complete" when
+// the user records a value (checklist: all items checked).
 
 export interface ChecklistConfig {
   items: { id: string; name: string }[];
-  targetItemsCompleted?: number;
 }
 
 export interface SingleSelectConfig {
   options: { id: string; name: string }[];
-  targetOptionId?: string;
 }
 
 export interface MultiSelectConfig {
   options: { id: string; name: string }[];
-  targetSelected?: number;
 }
 
 export interface YesNoConfig {
-  targetAnswer?: 'yes' | 'no';
+  // No configuration.
 }
 
 export interface RatingScaleConfig {
@@ -77,12 +76,10 @@ export interface RatingScaleConfig {
   maxValue: number;
   lowLabel?: string;
   highLabel?: string;
-  targetValue?: number;
 }
 
 export interface EmojiFaceScaleConfig {
   faceCount: 3 | 5;
-  targetValue?: number;
 }
 
 // -- Input --

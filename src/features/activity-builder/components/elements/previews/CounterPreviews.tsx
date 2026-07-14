@@ -35,9 +35,8 @@ export function CombinedCounterPreview() {
       <View style={[s.pill, s.pillMinus]}>
         <Text style={s.pillText}>−</Text>
       </View>
-      <View style={s.editableContainer}>
+      <View style={s.editableField}>
         <Text style={s.count}>12</Text>
-        <View style={s.editableUnderline} />
       </View>
       <View style={[s.pill, s.pillPlus]}>
         <Text style={s.pillTextOnPrimary}>+</Text>
@@ -135,16 +134,14 @@ const s = StyleSheet.create({
     color: colors.textSecondary,
   },
 
-  // Combined counter — count is editable
-  editableContainer: {
-    alignItems: 'center',
-  },
-  editableUnderline: {
-    width: 24,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: colors.primary500,
-    marginTop: 2,
+  // Editable counter — count sits in a tappable bordered field
+  editableField: {
+    borderWidth: 1,
+    borderColor: colors.primary100,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 1,
   },
 
   // Split counter — two side-by-side mini counters

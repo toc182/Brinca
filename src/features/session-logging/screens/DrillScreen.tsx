@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CaretLeft, Info } from 'phosphor-react-native';
+import * as Haptics from 'expo-haptics';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { AppKeyboardToolbar } from '@/shared/components/AppKeyboardToolbar';
@@ -34,7 +35,14 @@ import { ElementCard } from '@/shared/components/ElementCard';
 import { ElementRenderer } from '../components/elements/ElementRenderer';
 import { sessionKeys } from '../queries/keys';
 import { ELEMENT_SUPPORTS_HALF_WIDTH, type ElementType } from '@/shared/tracking-elements/types/element-types';
-import { getDefaultValue, hasConfiguredTarget, isTargetMet } from '@/shared/tracking-elements/validation';
+import { getDefaultValue, isTargetMet } from '@/shared/tracking-elements/validation';
+
+/** Light tick when adding, a firmer tap when removing, so they feel distinct. */
+function bumpHaptic(direction: 1 | -1) {
+  void Haptics.impactAsync(
+    direction > 0 ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
+  );
+}
 
 // Header geometry — mirrors SessionHeader so blur looks consistent across the
 // session-logging surfaces. Top buffer + content row + fade-zone below.
@@ -89,22 +97,6 @@ export function DrillScreen() {
   const [values, setValues] = useState<Record<string, Record<string, unknown>>>({});
   const [note, setNote] = useState('');
 
-  // "All targets met" nudge: when every element that has a target (explicit
-  // or inherent) reports met, the Mark-as-complete row lights up green.
-  // Elements with no target notion are ignored; if none has one, no nudge.
-  const allTargetsMet = useMemo(() => {
-    if (!elements || elements.length === 0) return false;
-    let candidates = 0;
-    for (const el of elements) {
-      const type = el.type as ElementType;
-      const elConfig = JSON.parse(el.config) as Record<string, unknown>;
-      if (!hasConfiguredTarget(type, elConfig)) continue;
-      candidates += 1;
-      const elValue = values[el.id] ?? getDefaultValue(type);
-      if (!isTargetMet(type, elConfig, elValue)) return false;
-    }
-    return candidates > 0;
-  }, [elements, values]);
 
   // Debounce timer for SQLite writes (avoids writing every 100ms during timer ticks)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,21 +274,49 @@ export function DrillScreen() {
       >
         <View style={styles.elementGrid}>
         {elements?.map((el) => {
+          const elType = el.type as ElementType;
           const elConfig = JSON.parse(el.config);
-          const elValue = values[el.id] ?? getDefaultValue(el.type as ElementType);
-          const targetMet = isTargetMet(el.type as ElementType, elConfig, elValue);
+          const elValue = values[el.id] ?? getDefaultValue(elType);
+          const targetMet = isTargetMet(elType, elConfig, elValue);
           // Half only when the element type actually supports it — a stored
           // 'half' on an unsupported type falls back to full.
-          const isHalf = el.width === 'half' && ELEMENT_SUPPORTS_HALF_WIDTH[el.type as ElementType];
+          const isHalf = el.width === 'half' && ELEMENT_SUPPORTS_HALF_WIDTH[elType];
+          // Tap counter has no inner buttons: the whole card is the tap target
+          // (+1 on tap, −1 on press-and-hold). Wire those onto the card so the
+          // element itself stays a pure display.
+          const isTapCounter = elType === 'tap_counter';
+          const tapCount = isTapCounter ? Number(elValue.count ?? 0) : 0;
           return (
             <ElementCard
               key={el.id}
               label={el.label}
               targetMet={targetMet}
               style={isHalf ? styles.halfCard : styles.fullCard}
+              onPress={
+                isTapCounter
+                  ? () => {
+                      bumpHaptic(1);
+                      handleValueChange(el.id, { count: tapCount + 1 });
+                    }
+                  : undefined
+              }
+              onLongPress={
+                isTapCounter
+                  ? () => {
+                      if (tapCount > 0) {
+                        bumpHaptic(-1);
+                        handleValueChange(el.id, { count: tapCount - 1 });
+                      }
+                    }
+                  : undefined
+              }
+              delayLongPress={isTapCounter ? 350 : undefined}
+              pressAccessibilityLabel={
+                isTapCounter ? `${el.label}: tap to add one, hold to remove one` : undefined
+              }
             >
               <ElementRenderer
-                type={el.type as ElementType}
+                type={elType}
                 config={elConfig}
                 value={elValue}
                 onValueChange={(v) => handleValueChange(el.id, v)}
@@ -314,20 +334,11 @@ export function DrillScreen() {
         {hasElements ? (
           <CompletionCircle
             size="small"
-            label={
-              isComplete
-                ? 'Completed'
-                : allTargetsMet
-                  ? 'All targets met — mark complete'
-                  : 'Mark as complete'
-            }
+            label={isComplete ? 'Completed' : 'Mark as complete'}
             complete={isComplete}
             onToggle={handleToggleComplete}
             accessibilityLabel={isComplete ? 'Mark drill as not done' : 'Mark drill as done'}
-            style={[
-              styles.completeRowCard,
-              allTargetsMet && !isComplete && styles.completeRowCardReady,
-            ]}
+            style={styles.completeRowCard}
           />
         ) : (
           <View style={styles.completeSection}>
@@ -449,10 +460,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     minHeight: 56,
     marginBottom: spacing.md,
-  },
-  completeRowCardReady: {
-    backgroundColor: colors.success50,
-    borderWidth: 1.5,
-    borderColor: colors.success500,
   },
 });

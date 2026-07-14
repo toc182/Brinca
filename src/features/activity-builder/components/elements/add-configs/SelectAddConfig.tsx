@@ -5,10 +5,8 @@ import { randomUUID } from 'expo-crypto';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
 import { colors, radii, spacing } from '@/shared/theme';
-import type { ElementType } from '@/shared/tracking-elements/types/element-types';
 
 interface Props {
-  type: ElementType;
   value: Record<string, unknown>;
   onChange: (config: Record<string, unknown>) => void;
 }
@@ -19,54 +17,35 @@ interface Option {
 }
 
 /** Shared add-config for single_select and multi_select. */
-export function SelectAddConfig({ type, value, onChange }: Props) {
+export function SelectAddConfig({ value, onChange }: Props) {
   const [options, setOptions] = useState<Option[]>(
     Array.isArray(value.options) && (value.options as Option[]).length >= 2
       ? (value.options as Option[])
       : [{ id: '1', name: 'Option 1' }, { id: '2', name: 'Option 2' }],
   );
-  const [targetOption, setTargetOption] = useState(String(value.targetOption ?? ''));
-  const [targetCount, setTargetCount] = useState(value.targetCount != null ? String(value.targetCount) : '');
-
-  const emit = (nextOptions: Option[], nextTargetOption: string, nextTargetCount: string) => {
+  const emit = (nextOptions: Option[]) => {
     const cleaned = nextOptions.map((o, i) => ({ ...o, name: o.name.trim() || `Option ${i + 1}` }));
-    const parsedCount = nextTargetCount.trim() ? parseInt(nextTargetCount, 10) : NaN;
-    onChange({
-      ...value,
-      options: cleaned,
-      targetOption: type === 'single_select' ? (nextTargetOption.trim() || undefined) : undefined,
-      targetCount: type === 'multi_select' && !isNaN(parsedCount) ? parsedCount : undefined,
-    });
+    onChange({ ...value, options: cleaned });
   };
 
   const updateOption = (index: number, name: string) => {
     const updated = [...options];
     updated[index] = { ...updated[index], name };
     setOptions(updated);
-    emit(updated, targetOption, targetCount);
+    emit(updated);
   };
 
   const addOption = () => {
     const updated = [...options, { id: randomUUID(), name: `Option ${options.length + 1}` }];
     setOptions(updated);
-    emit(updated, targetOption, targetCount);
+    emit(updated);
   };
 
   const removeOption = (index: number) => {
     if (options.length <= 2) return;
     const updated = options.filter((_, i) => i !== index);
     setOptions(updated);
-    emit(updated, targetOption, targetCount);
-  };
-
-  const handleTargetOption = (text: string) => {
-    setTargetOption(text);
-    emit(options, text, targetCount);
-  };
-
-  const handleTargetCount = (text: string) => {
-    setTargetCount(text);
-    emit(options, targetOption, text);
+    emit(updated);
   };
 
   return (
@@ -87,22 +66,6 @@ export function SelectAddConfig({ type, value, onChange }: Props) {
         </View>
       ))}
       <Button title="Add option" onPress={addOption} variant="text" size="small" />
-      {type === 'single_select' && (
-        <Input
-          label="Target option (optional)"
-          value={targetOption}
-          onChangeText={handleTargetOption}
-          placeholder="e.g. Option 1"
-        />
-      )}
-      {type === 'multi_select' && (
-        <Input
-          label="Target number selected (optional)"
-          value={targetCount}
-          onChangeText={handleTargetCount}
-          keyboardType="number-pad"
-        />
-      )}
     </View>
   );
 }

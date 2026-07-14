@@ -14,22 +14,17 @@ export function RatingScaleAddConfig({ value, onChange }: Props) {
   const [maxValue, setMaxValue] = useState(String(value.maxValue ?? 5));
   const [lowLabel, setLowLabel] = useState(String(value.lowLabel ?? ''));
   const [highLabel, setHighLabel] = useState(String(value.highLabel ?? ''));
-  const [targetValue, setTargetValue] = useState(value.targetValue != null ? String(value.targetValue) : '');
 
   const emit = (next: {
     minValue?: string;
     maxValue?: string;
     lowLabel?: string;
     highLabel?: string;
-    targetValue?: string;
   }) => {
     const min = parseInt(next.minValue ?? minValue, 10);
     const max = parseInt(next.maxValue ?? maxValue, 10);
     // Only emit when min/max satisfy edit-config validation (min < max, max in 3..10).
     if (isNaN(min) || isNaN(max) || min >= max || max < 3 || max > 10) return;
-
-    const targetRaw = next.targetValue ?? targetValue;
-    const parsedTarget = targetRaw.trim() ? parseInt(targetRaw, 10) : NaN;
 
     onChange({
       ...value,
@@ -37,7 +32,6 @@ export function RatingScaleAddConfig({ value, onChange }: Props) {
       maxValue: max,
       lowLabel: (next.lowLabel ?? lowLabel).trim() || undefined,
       highLabel: (next.highLabel ?? highLabel).trim() || undefined,
-      targetValue: isNaN(parsedTarget) ? undefined : parsedTarget,
     });
   };
 
@@ -67,12 +61,6 @@ export function RatingScaleAddConfig({ value, onChange }: Props) {
         value={highLabel}
         onChangeText={(v) => { setHighLabel(v); emit({ highLabel: v }); }}
         placeholder="e.g. Excellent"
-      />
-      <Input
-        label="Target value (optional)"
-        value={targetValue}
-        onChangeText={(v) => { setTargetValue(v); emit({ targetValue: v }); }}
-        keyboardType="number-pad"
       />
     </View>
   );

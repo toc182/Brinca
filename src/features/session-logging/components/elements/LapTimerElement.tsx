@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
-import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { ArrowCounterClockwise, Flag, Pause, Play } from 'phosphor-react-native';
+
+import { IconButton } from '@/shared/components/IconButton';
+import { colors, fontFamilies, typography, spacing, radii } from '@/shared/theme';
 import { SwipeToDeleteRow } from '@/shared/components/SwipeToDeleteRow';
 import { formatTimerWithCentiseconds } from '@/shared/utils/formatTimer';
 import type { LapTimerConfig } from '@/shared/tracking-elements/types/element-configs';
@@ -32,6 +35,11 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
   );
   const lastLapElapsedRef = useRef(value.laps.reduce((sum, l) => sum + l, 0));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Latest value so the running tick preserves laps added mid-run. Without this
+  // the tick spreads a stale `value` closure and overwrites a just-added lap on
+  // the next 33ms tick (the lap "pops and disappears").
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const hasLapTarget = config.targetLaps != null;
   const isAtLapTarget = hasLapTarget && value.laps.length >= config.targetLaps!;
@@ -51,7 +59,7 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
     intervalRef.current = setInterval(() => {
       if (startTimeRef.current != null) {
         const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
-        onValueChange({ ...value, total_elapsed: elapsed });
+        onValueChange({ ...valueRef.current, total_elapsed: elapsed });
       }
     }, TICK_INTERVAL_MS);
   };
@@ -63,7 +71,7 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
     if (startTimeRef.current != null) {
       const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
       baseElapsedRef.current = elapsed;
-      onValueChange({ ...value, total_elapsed: elapsed });
+      onValueChange({ ...valueRef.current, total_elapsed: elapsed });
       startTimeRef.current = null;
     }
   };
@@ -109,53 +117,71 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
 
   return (
     <View style={styles.container}>
-      <Text style={styles.time}>{formatTimerWithCentiseconds(value.total_elapsed)}</Text>
+      {/* Horizontal layout matching the interval timer: info on the left,
+          stacked circular controls on the right. */}
+      <View style={styles.row}>
+        <View style={styles.info}>
+          <Text style={styles.time} numberOfLines={1} adjustsFontSizeToFit>
+            {formatTimerWithCentiseconds(value.total_elapsed)}
+          </Text>
 
-      {isRunning && (
-        <Text style={styles.lapTime}>Lap {value.laps.length + 1}: {formatTimerWithCentiseconds(Math.max(0, currentLapTime))}</Text>
-      )}
-
-      {hasLapTarget && (
-        <Text style={[styles.target, isAtLapTarget && styles.targetReached]}>
-          {value.laps.length} / {config.targetLaps} laps
-        </Text>
-      )}
-
-      <View style={styles.buttonRow}>
-        {!isRunning ? (
-          <Pressable
-            onPress={start}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {value.total_elapsed > 0 ? 'Resume' : 'Start'}
+          {isRunning && (
+            <Text style={styles.lapTime}>
+              Lap {value.laps.length + 1}:{' '}
+              <Text style={styles.lapTimeValue}>{formatTimerWithCentiseconds(Math.max(0, currentLapTime))}</Text>
             </Text>
-          </Pressable>
-        ) : (
-          <>
-            <Pressable
-              onPress={lap}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.secondaryButtonText}>Lap</Text>
-            </Pressable>
-            <Pressable
-              onPress={pause}
-              style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.warningButtonText}>Pause</Text>
-            </Pressable>
-          </>
-        )}
+          )}
 
-        {value.total_elapsed > 0 && !isRunning && (
-          <Pressable
-            onPress={handleReset}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.secondaryButtonText}>Reset</Text>
-          </Pressable>
-        )}
+          {hasLapTarget && (
+            <Text style={[styles.target, isAtLapTarget && styles.targetReached]}>
+              {value.laps.length} / {config.targetLaps} laps
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.controls}>
+          {isRunning ? (
+            <>
+              <Pressable
+                onPress={pause}
+                accessibilityRole="button"
+                accessibilityLabel="Pause"
+                style={({ pressed }) => [styles.primaryCircle, pressed && styles.buttonPressed]}
+              >
+                <Pause size={24} color={colors.textOnPrimary} weight="fill" />
+              </Pressable>
+              <Pressable
+                onPress={lap}
+                accessibilityRole="button"
+                accessibilityLabel="Record lap"
+                style={({ pressed }) => [styles.labeledCircle, pressed && styles.buttonPressed]}
+              >
+                <Flag size={16} color={colors.primary500} weight="bold" />
+                <Text style={styles.labeledCircleText}>Lap</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable
+                onPress={start}
+                accessibilityRole="button"
+                accessibilityLabel={value.total_elapsed > 0 ? 'Resume' : 'Start'}
+                style={({ pressed }) => [styles.primaryCircle, pressed && styles.buttonPressed]}
+              >
+                <Play size={24} color={colors.textOnPrimary} weight="fill" />
+              </Pressable>
+              {value.total_elapsed > 0 && (
+                <IconButton
+                  icon={ArrowCounterClockwise}
+                  variant="outline"
+                  size={52}
+                  onPress={handleReset}
+                  accessibilityLabel="Reset"
+                />
+              )}
+            </>
+          )}
+        </View>
       </View>
 
       {/* Lap list with swipe-to-delete */}
@@ -186,39 +212,49 @@ export function LapTimerElement({ value, onValueChange, config, elementId }: Lap
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: spacing.md },
+  container: { gap: spacing.md },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  info: { flex: 1, minWidth: 0, gap: spacing.xs },
   time: { ...typography.timer, color: colors.textPrimary },
   lapTime: { ...typography.bodySmall, color: colors.textSecondary },
+  // Monospace for the running lap time so the line doesn't jitter as the
+  // centiseconds tick — Lexend's digits are proportional and tabular-nums
+  // has no effect on it.
+  lapTimeValue: { fontFamily: fontFamilies.timer },
   target: { ...typography.caption, color: colors.textSecondary },
   targetReached: { color: colors.success500 },
-  buttonRow: { flexDirection: 'row', gap: spacing.sm },
-  primaryButton: {
+  controls: { alignItems: 'center', gap: spacing.sm },
+  primaryCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: colors.primary500,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
-  warningButton: {
-    backgroundColor: colors.warning500,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
+  // Round like every other control; the tiny label inside keeps it unambiguous.
+  labeledCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: colors.primary500,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  warningButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
-  secondaryButton: {
-    backgroundColor: colors.primary50,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
-    justifyContent: 'center',
+  labeledCircleText: {
+    ...typography.captionSmall,
+    color: colors.primary500,
+    lineHeight: 13,
+    marginTop: 1,
   },
-  secondaryButtonText: { ...typography.buttonLarge, color: colors.primary700 },
   buttonPressed: { opacity: 0.7 },
   lapList: { width: '100%' },
   lapRow: {

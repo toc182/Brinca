@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AudioModule, RecordingPresets, useAudioRecorder, useAudioPlayer } from 'expo-audio';
+import { Pause, Play } from 'phosphor-react-native';
+
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import { showToast } from '@/shared/utils/toast';
 import type { VoiceNoteConfig } from '@/shared/tracking-elements/types/element-configs';
@@ -231,9 +233,15 @@ export function VoiceNoteElement({ value, onValueChange, config }: VoiceNoteElem
         <View style={styles.playbackArea}>
           <Pressable
             onPress={handlePlay}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             style={({ pressed }) => [styles.playButton, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+            {isPlaying ? (
+              <Pause size={22} color={colors.textOnPrimary} weight="fill" />
+            ) : (
+              <Play size={22} color={colors.textOnPrimary} weight="fill" />
+            )}
           </Pressable>
 
           <View style={styles.playbackInfo}>
@@ -314,7 +322,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playIcon: { ...typography.buttonSmall, color: colors.textOnPrimary },
   playbackInfo: { flex: 1, gap: spacing.xxs },
   waveformPlaceholder: {
     height: 24,

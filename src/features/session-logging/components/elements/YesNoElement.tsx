@@ -68,12 +68,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   buttonYesActive: {
-    backgroundColor: colors.accent500,
-    borderColor: colors.accent500,
+    backgroundColor: colors.primary500,
+    borderColor: colors.primary500,
   },
   buttonNoActive: {
-    backgroundColor: colors.accent500,
-    borderColor: colors.accent500,
+    backgroundColor: colors.primary500,
+    borderColor: colors.primary500,
   },
   buttonPressed: {
     opacity: 0.7,
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   buttonTextActive: {
-    color: colors.textPrimary,
+    color: colors.textOnPrimary,
   },
 });

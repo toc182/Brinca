@@ -10,7 +10,6 @@ import { MultistepCounterAddConfig } from './MultistepCounterAddConfig';
 import { RatingScaleAddConfig } from './RatingScaleAddConfig';
 import { SelectAddConfig } from './SelectAddConfig';
 import { SplitCounterAddConfig } from './SplitCounterAddConfig';
-import { YesNoAddConfig } from './YesNoAddConfig';
 
 interface ElementAddConfigRouterProps {
   type: ElementType;
@@ -48,9 +47,8 @@ export function ElementAddConfigRouter({ type, value, onChange }: ElementAddConf
       return <ChecklistAddConfig value={value} onChange={onChange} />;
     case 'single_select':
     case 'multi_select':
-      return <SelectAddConfig type={type} value={value} onChange={onChange} />;
-    case 'yes_no':
-      return <YesNoAddConfig value={value} onChange={onChange} />;
+      return <SelectAddConfig value={value} onChange={onChange} />;
+    // yes_no needs no configuration.
     case 'rating_scale':
       return <RatingScaleAddConfig value={value} onChange={onChange} />;
     case 'emoji_face_scale':

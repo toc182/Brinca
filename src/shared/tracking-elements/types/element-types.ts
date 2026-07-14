@@ -28,7 +28,10 @@ export const ELEMENT_TYPES = [
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
 export const ELEMENT_CATEGORIES = {
-  counters: ['counter', 'tap_counter', 'combined_counter', 'split_counter', 'multistep_counter'] as const,
+  // multistep_counter is intentionally omitted — temporarily hidden from the
+  // picker pending a redesign. The type/component still exist so any drill that
+  // already uses one keeps working; re-add it here to bring it back.
+  counters: ['counter', 'tap_counter', 'combined_counter', 'split_counter'] as const,
   timers: ['stopwatch', 'countdown_timer', 'lap_timer', 'interval_timer'] as const,
   selection: ['checklist', 'single_select', 'multi_select', 'yes_no', 'rating_scale', 'emoji_face_scale'] as const,
   input: ['number_input', 'multi_number_input', 'free_text_note', 'voice_note'] as const,
@@ -39,7 +42,7 @@ export type ElementCategory = keyof typeof ELEMENT_CATEGORIES;
 export const ELEMENT_LABELS: Record<ElementType, string> = {
   counter: 'Counter',
   tap_counter: 'Tap Counter',
-  combined_counter: 'Combined Counter',
+  combined_counter: 'Editable Counter',
   split_counter: 'Split Counter',
   multistep_counter: 'Multistep Counter',
   stopwatch: 'Stopwatch',
@@ -74,8 +77,8 @@ export const ELEMENT_SUPPORTS_HALF_WIDTH: Record<ElementType, boolean> = {
   combined_counter: false,
   split_counter: false,
   multistep_counter: false,
-  stopwatch: false,
-  countdown_timer: false,
+  stopwatch: true,
+  countdown_timer: true,
   lap_timer: false,
   interval_timer: false,
   checklist: false,

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
+import { ArrowCounterClockwise, Pause, Play } from 'phosphor-react-native';
+
+import { IconButton } from '@/shared/components/IconButton';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import { formatTimerWithCentiseconds } from '@/shared/utils/formatTimer';
 import type { StopwatchConfig } from '@/shared/tracking-elements/types/element-configs';
@@ -15,6 +18,11 @@ const STALE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 // Centisecond display requires a sub-100ms tick so the trailing two digits
 // animate smoothly rather than chunking by 10.
 const TICK_INTERVAL_MS = 33;
+
+// Below this measured width the stopwatch renders its compact (half-width)
+// layout: a smaller clock that auto-shrinks, and circular icon controls
+// instead of the full-width text buttons.
+const FULL_WIDTH_MIN = 240;
 
 interface StopwatchElementProps {
   value: StopwatchValue;
@@ -44,6 +52,10 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
 
   const hasTarget = config.targetSeconds != null;
   const isAtTarget = hasTarget && value.elapsed_seconds >= config.targetSeconds!;
+
+  // Compact (icon) controls when the card is narrow (half width).
+  const [width, setWidth] = useState(0);
+  const useCompact = width > 0 && width < FULL_WIDTH_MIN;
 
   useEffect(() => {
     if (isStaleStart) {
@@ -108,8 +120,12 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.time, isAtTarget && styles.timeAtTarget]}>
+    <View style={styles.container} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <Text
+        style={[styles.time, isAtTarget && styles.timeAtTarget]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {formatTimerWithCentiseconds(value.elapsed_seconds)}
       </Text>
 
@@ -117,34 +133,62 @@ export function StopwatchElement({ value, onValueChange, config, elementId }: St
         <Text style={styles.target}>Target: {formatTimerWithCentiseconds(config.targetSeconds!)}</Text>
       )}
 
-      <View style={styles.buttonRow}>
-        {!isRunning ? (
+      {useCompact ? (
+        // Half width: circular icon controls — solid play/pause, outline reset.
+        <View style={styles.compactRow}>
           <Pressable
-            onPress={start}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            onPress={isRunning ? pause : start}
+            accessibilityRole="button"
+            accessibilityLabel={isRunning ? 'Pause' : value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
+            style={({ pressed }) => [styles.compactPrimary, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.primaryButtonText}>
-              {value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
-            </Text>
+            {isRunning ? (
+              <Pause size={24} color={colors.textOnPrimary} weight="fill" />
+            ) : (
+              <Play size={24} color={colors.textOnPrimary} weight="fill" />
+            )}
           </Pressable>
-        ) : (
-          <Pressable
-            onPress={pause}
-            style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.warningButtonText}>Pause</Text>
-          </Pressable>
-        )}
 
-        {value.elapsed_seconds > 0 && !isRunning && (
-          <Pressable
-            onPress={reset}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.secondaryButtonText}>Reset</Text>
-          </Pressable>
-        )}
-      </View>
+          {value.elapsed_seconds > 0 && !isRunning && (
+            <IconButton
+              icon={ArrowCounterClockwise}
+              variant="outline"
+              size={52}
+              onPress={reset}
+              accessibilityLabel="Reset"
+            />
+          )}
+        </View>
+      ) : (
+        <View style={styles.buttonRow}>
+          {!isRunning ? (
+            <Pressable
+              onPress={start}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={pause}
+              style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
+            >
+              <Text style={styles.warningButtonText}>Pause</Text>
+            </Pressable>
+          )}
+
+          {value.elapsed_seconds > 0 && !isRunning && (
+            <Pressable
+              onPress={reset}
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+            >
+              <Text style={styles.secondaryButtonText}>Reset</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -157,9 +201,27 @@ const styles = StyleSheet.create({
   time: {
     ...typography.timer,
     color: colors.textPrimary,
+    // Stretch + center so adjustsFontSizeToFit shrinks the clock to the card
+    // width at half width (it stays full size at full width).
+    alignSelf: 'stretch',
+    textAlign: 'center',
   },
   timeAtTarget: {
     color: colors.success500,
+  },
+  compactRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactPrimary: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary500,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   target: {
     ...typography.caption,

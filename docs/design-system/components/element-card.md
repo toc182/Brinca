@@ -1,7 +1,7 @@
 # ElementCard
 
 The contained presentation of a tracking element: a surface card with a centered
-label above the element and an optional green target-met badge. Lives in
+label above the element and an optional green target-met corner ribbon. Lives in
 `src/shared/components/ElementCard.tsx`.
 
 Shared so an element looks identical everywhere it appears:
@@ -18,8 +18,9 @@ Shared so an element looks identical everywhere it appears:
 |---|---|
 | `label` | Centered element name, single line. |
 | `children` | The element — interactive in a session, static in a preview. |
-| `targetMet?` | Shows the green ✓ badge in the corner. |
+| `targetMet?` | When true, pops a green check ribbon into the card's bottom-right corner (`TargetMetRibbon`). |
 | `style?` | Extra container style — this is where the layout passes the full/half **width** (see below). |
+| `onPress?` / `onLongPress?` / `delayLongPress?` / `pressAccessibilityLabel?` | Make the **whole card** one tap target (used by the tap counter, which has no inner buttons). Omit for normal elements — the card renders an inert `View`. With `onPress`, the card tints `primary50` while pressed. |
 
 ---
 
@@ -27,8 +28,14 @@ Shared so an element looks identical everywhere it appears:
 
 - `surface` background, `radii.lg`, 1pt `borderSubtle` border, `spacing.md`
   padding, `shadows.sm`, `minWidth: 0` (so it can shrink to half width).
-- Header: centered label (`titleSmall`), `spacing.sm` below.
-- Badge: `success500` circle with a white check, vertically centered at the right edge.
+- Header: centered label (`titleSmall`), `spacing.sm` below. The label gets the
+  full card width — nothing overlays it.
+- Target-met ribbon: a `success500` triangle filling the bottom-right corner
+  (outer corner rounded to `radii.lg` to match the card), with a centered
+  round-capped white check. It pops out of the corner on the not-met→met
+  transition and snaps away when no longer met — `TargetMetRibbon`, sharing the
+  fixed-duration motion language of `completion-circle.md`. `pointerEvents:
+  'none'` so it never intercepts taps on a pressable card.
 
 ---
 

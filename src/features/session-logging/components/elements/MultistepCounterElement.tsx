@@ -12,7 +12,10 @@ interface MultistepCounterElementProps {
 
 export function MultistepCounterElement({ value, onValueChange, config }: MultistepCounterElementProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const totalSteps = config.substeps.length;
+  // Guard a missing/empty substeps list so a malformed config renders empty
+  // instead of crashing.
+  const substeps = config.substeps ?? [];
+  const totalSteps = substeps.length;
   const hasTarget = config.targetReps != null;
   const isAtTarget = hasTarget && value.reps >= config.targetReps!;
 
@@ -74,7 +77,7 @@ export function MultistepCounterElement({ value, onValueChange, config }: Multis
       {/* Substep chips — tap current chip to advance */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
         <View style={styles.chipRow}>
-          {config.substeps.map((step, index) => {
+          {substeps.map((step, index) => {
             const isCompleted = index < currentStep;
             const isCurrent = index === currentStep;
             return (

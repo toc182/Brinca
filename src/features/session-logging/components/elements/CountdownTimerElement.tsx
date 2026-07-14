@@ -1,12 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { createMMKV } from 'react-native-mmkv';
+import { useAudioPlayer } from 'expo-audio';
+import { ArrowCounterClockwise, Pause, Play } from 'phosphor-react-native';
+
+import { IconButton } from '@/shared/components/IconButton';
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { CountdownTimerConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { CountdownTimerValue } from '@/shared/tracking-elements/types/element-values';
 
 const elementTimerStorage = createMMKV({ id: 'element-timers' });
+
+// Below this measured width the countdown renders its compact (half-width)
+// layout: an auto-shrinking clock and circular icon controls.
+const FULL_WIDTH_MIN = 240;
 
 interface CountdownTimerElementProps {
   value: CountdownTimerValue;
@@ -36,8 +44,26 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flashAnim = useRef(new Animated.Value(1)).current;
   const flashLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  // Progress bar fill, driven as a continuous scaleX animation so it flows
+  // smoothly instead of stepping once per 100ms tick.
+  const progressAnim = useRef(
+    new Animated.Value(config.durationSeconds > 0 ? value.elapsed_seconds / config.durationSeconds : 0),
+  ).current;
 
-  const isFinished = value.remaining_seconds <= 0;
+  const [width, setWidth] = useState(0);
+  const useCompact = width > 0 && width < FULL_WIDTH_MIN;
+
+  // Completion chime, played when the countdown reaches zero (alongside the
+  // haptic). Plays with the default audio mode, so it respects the ringer.
+  const alertPlayer = useAudioPlayer(require('../../../../../assets/sounds/countdown-complete.wav'));
+
+  // A fresh countdown has the default value { elapsed: 0, remaining: 0 }. That
+  // 0 remaining means "not started yet", NOT "finished" — so show the full
+  // configured duration and let it start. It's only finished once it has
+  // actually run (elapsed > 0) and reached zero.
+  const hasStarted = value.elapsed_seconds > 0;
+  const remainingSeconds = hasStarted ? value.remaining_seconds : config.durationSeconds;
+  const isFinished = hasStarted && value.remaining_seconds <= 0;
 
   useEffect(() => {
     return () => {
@@ -80,7 +106,9 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
 
     if (remaining <= 0) {
       stopTicking();
-      // Haptic alert feedback (plays system sound equivalent)
+      progressAnim.setValue(1);
+      void alertPlayer.seekTo(0);
+      alertPlayer.play();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setIsAlerting(true);
     }
@@ -94,9 +122,21 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
     if (mmkvKey) elementTimerStorage.set(mmkvKey, now);
     setIsRunning(true);
     intervalRef.current = setInterval(tick, 100);
+
+    // Drive the bar smoothly from the current progress to full over exactly the
+    // time remaining.
+    const remainingMs = Math.max(0, config.durationSeconds - value.elapsed_seconds) * 1000;
+    progressAnim.setValue(config.durationSeconds > 0 ? value.elapsed_seconds / config.durationSeconds : 0);
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: remainingMs,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
   };
 
   const pause = () => {
+    progressAnim.stopAnimation();
     if (startTimeRef.current != null) {
       const elapsed = baseElapsedRef.current + (Date.now() - startTimeRef.current) / 1000;
       const remaining = Math.max(0, config.durationSeconds - elapsed);
@@ -108,6 +148,8 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
 
   const reset = () => {
     stopTicking();
+    progressAnim.stopAnimation();
+    progressAnim.setValue(0);
     setIsAlerting(false);
     baseElapsedRef.current = 0;
     onValueChange({ elapsed_seconds: 0, remaining_seconds: config.durationSeconds });
@@ -118,19 +160,22 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
     setIsAlerting(false);
   };
 
-  const progress = 1 - value.remaining_seconds / config.durationSeconds;
-
   return (
     <Pressable
       onPress={isAlerting ? handleSilence : undefined}
       style={styles.container}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
-      <Animated.Text style={[styles.time, isFinished && styles.timeFinished, { opacity: isAlerting ? flashAnim : 1 }]}>
-        {formatTime(value.remaining_seconds)}
+      <Animated.Text
+        style={[styles.time, isFinished && styles.timeFinished, { opacity: isAlerting ? flashAnim : 1 }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {formatTime(remainingSeconds)}
       </Animated.Text>
 
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.min(100, progress * 100)}%` }]} />
+        <Animated.View style={[styles.progressFill, { transform: [{ scaleX: progressAnim }] }]} />
       </View>
 
       {isFinished && (
@@ -139,43 +184,84 @@ export function CountdownTimerElement({ value, onValueChange, config, elementId 
         </Text>
       )}
 
-      {!isAlerting && (
-        <View style={styles.buttonRow}>
-          {!isRunning && !isFinished ? (
-            <Pressable
-              onPress={start}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.primaryButtonText}>
-                {value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
-              </Text>
-            </Pressable>
-          ) : isRunning ? (
-            <Pressable
-              onPress={pause}
-              style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.warningButtonText}>Pause</Text>
-            </Pressable>
-          ) : null}
+      {!isAlerting &&
+        (useCompact ? (
+          // Half width: circular icon controls — solid play/pause, outline reset.
+          <View style={styles.compactRow}>
+            {!isRunning && !isFinished ? (
+              <Pressable
+                onPress={start}
+                accessibilityRole="button"
+                accessibilityLabel={value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
+                style={({ pressed }) => [styles.compactPrimary, pressed && styles.buttonPressed]}
+              >
+                <Play size={24} color={colors.textOnPrimary} weight="fill" />
+              </Pressable>
+            ) : isRunning ? (
+              <Pressable
+                onPress={pause}
+                accessibilityRole="button"
+                accessibilityLabel="Pause"
+                style={({ pressed }) => [styles.compactPrimary, pressed && styles.buttonPressed]}
+              >
+                <Pause size={24} color={colors.textOnPrimary} weight="fill" />
+              </Pressable>
+            ) : null}
 
-          {(value.elapsed_seconds > 0 && !isRunning) && (
-            <Pressable
-              onPress={reset}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-            >
-              <Text style={styles.secondaryButtonText}>Reset</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
+            {value.elapsed_seconds > 0 && !isRunning && (
+              <IconButton
+                icon={ArrowCounterClockwise}
+                variant="outline"
+                size={52}
+                onPress={reset}
+                accessibilityLabel="Reset"
+              />
+            )}
+          </View>
+        ) : (
+          <View style={styles.buttonRow}>
+            {!isRunning && !isFinished ? (
+              <Pressable
+                onPress={start}
+                style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {value.elapsed_seconds > 0 ? 'Resume' : 'Start'}
+                </Text>
+              </Pressable>
+            ) : isRunning ? (
+              <Pressable
+                onPress={pause}
+                style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
+              >
+                <Text style={styles.warningButtonText}>Pause</Text>
+              </Pressable>
+            ) : null}
+
+            {(value.elapsed_seconds > 0 && !isRunning) && (
+              <Pressable
+                onPress={reset}
+                style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+              >
+                <Text style={styles.secondaryButtonText}>Reset</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', gap: spacing.md },
-  time: { ...typography.timer, color: colors.textPrimary },
+  time: {
+    ...typography.timer,
+    color: colors.textPrimary,
+    // Stretch + center so adjustsFontSizeToFit shrinks the clock to the card
+    // width at half width (it stays full size at full width).
+    alignSelf: 'stretch',
+    textAlign: 'center',
+  },
   timeFinished: { color: colors.success500 },
   progressTrack: {
     width: '100%',
@@ -184,9 +270,23 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     overflow: 'hidden',
   },
-  progressFill: { height: '100%', backgroundColor: colors.primary500, borderRadius: radii.full },
+  progressFill: { height: '100%', width: '100%', backgroundColor: colors.primary500, transformOrigin: 'left' },
   finishedLabel: { ...typography.buttonSmall, color: colors.success500 },
   buttonRow: { flexDirection: 'row', gap: spacing.sm },
+  compactRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactPrimary: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary500,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   primaryButton: {
     backgroundColor: colors.primary500,
     paddingHorizontal: spacing.lg,

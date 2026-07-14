@@ -788,6 +788,7 @@ export type Database = {
           label: string
           type: string
           updated_at: string
+          width: string
         }
         Insert: {
           config?: Json
@@ -798,6 +799,7 @@ export type Database = {
           label: string
           type: string
           updated_at?: string
+          width?: string
         }
         Update: {
           config?: Json
@@ -808,6 +810,7 @@ export type Database = {
           label?: string
           type?: string
           updated_at?: string
+          width?: string
         }
         Relationships: [
           {

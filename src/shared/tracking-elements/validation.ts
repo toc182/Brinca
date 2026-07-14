@@ -117,28 +117,30 @@ export function isTargetMet(type: ElementType, config: Record<string, unknown>, 
     case 'stopwatch':
       return config.targetSeconds != null && (value.elapsed_seconds as number) >= (config.targetSeconds as number);
     case 'countdown_timer':
-      return (value.remaining_seconds as number) <= 0;
+      // Only "met" once it has actually run (elapsed > 0) and reached zero — a
+      // fresh countdown has remaining 0 but is not finished.
+      return (value.elapsed_seconds as number) > 0 && (value.remaining_seconds as number) <= 0;
     case 'lap_timer':
       return config.targetLaps != null && ((value.laps as unknown[]).length) >= (config.targetLaps as number);
     case 'interval_timer':
       return (value.completed_cycles as number) >= (config.cycles as number);
+    // Selection elements have no configurable targets — they are "met" when a
+    // value has been recorded (checklist: every item checked).
     case 'checklist': {
       const items = value.items as Array<{ checked?: boolean }> ?? [];
-      const checkedCount = items.filter((i) => i.checked).length;
-      return config.targetItems != null ? checkedCount >= (config.targetItems as number) : checkedCount > 0;
+      return items.length > 0 && items.every((i) => i.checked);
     }
     case 'single_select':
-      return config.targetOptionId != null && value.selected === config.targetOptionId;
+      return value.selected != null;
     case 'multi_select': {
       const sel = value.selected as string[] ?? [];
-      return config.targetCount != null ? sel.length >= (config.targetCount as number) : sel.length > 0;
+      return sel.length > 0;
     }
     case 'yes_no':
-      return config.targetAnswer != null && value.answer === config.targetAnswer;
+      return value.answer != null;
     case 'rating_scale':
-      return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
     case 'emoji_face_scale':
-      return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
+      return value.value != null;
     case 'number_input':
       return config.targetValue != null && value.value != null && (value.value as number) >= (config.targetValue as number);
     case 'multi_number_input': {
@@ -179,16 +181,14 @@ export function hasConfiguredTarget(type: ElementType, config: Record<string, un
       return config.targetLaps != null;
     case 'interval_timer':
       return true;
+    // Selection elements always have an inherent completion notion.
     case 'checklist':
-      return true;
     case 'single_select':
-      return config.targetOptionId != null;
     case 'multi_select':
-      return true;
     case 'yes_no':
-      return config.targetAnswer != null;
     case 'rating_scale':
     case 'emoji_face_scale':
+      return true;
     case 'number_input':
       return config.targetValue != null;
     case 'multi_number_input':

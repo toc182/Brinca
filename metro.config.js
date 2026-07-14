@@ -19,4 +19,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return (defaultResolveRequest ?? context.resolveRequest)(context, moduleName, platform);
 };
 
+// Bundle .wav audio assets (e.g. the countdown completion chime). Harmless if
+// already in the default asset list.
+config.resolver.assetExts = Array.from(new Set([...config.resolver.assetExts, 'wav']));
+
 module.exports = config;

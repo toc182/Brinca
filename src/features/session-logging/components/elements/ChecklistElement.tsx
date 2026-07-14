@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Check } from 'phosphor-react-native';
+
 import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
 import type { ChecklistConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { ChecklistValue } from '@/shared/tracking-elements/types/element-values';
@@ -10,10 +12,6 @@ interface ChecklistElementProps {
 }
 
 export function ChecklistElement({ value, onValueChange, config }: ChecklistElementProps) {
-  const checkedCount = value.items.filter((i) => i.checked).length;
-  const hasTarget = config.targetItemsCompleted != null;
-  const isAtTarget = hasTarget && checkedCount >= config.targetItemsCompleted!;
-
   const toggle = (itemId: string) => {
     const newItems = value.items.map((item) =>
       item.item_id === itemId ? { ...item, checked: !item.checked } : item,
@@ -23,12 +21,6 @@ export function ChecklistElement({ value, onValueChange, config }: ChecklistElem
 
   return (
     <View style={styles.container}>
-      {hasTarget && (
-        <Text style={[styles.progress, isAtTarget && styles.progressDone]}>
-          {checkedCount} / {config.targetItemsCompleted} completed
-        </Text>
-      )}
-
       {config.items.map((configItem) => {
         const itemValue = value.items.find((v) => v.item_id === configItem.id);
         const isChecked = itemValue?.checked ?? false;
@@ -39,7 +31,7 @@ export function ChecklistElement({ value, onValueChange, config }: ChecklistElem
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
           >
             <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
-              {isChecked && <Text style={styles.checkmark}>&#10003;</Text>}
+              {isChecked && <Check size={16} color={colors.textOnPrimary} weight="bold" />}
             </View>
             <Text style={[styles.label, isChecked && styles.labelChecked]}>
               {configItem.name}
@@ -55,15 +47,6 @@ const styles = StyleSheet.create({
   container: {
     gap: spacing.xs,
   },
-  progress: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  progressDone: {
-    color: colors.success500,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -71,6 +54,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radii.sm,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     minHeight: touchTargets.adult,
   },
   rowPressed: {
@@ -89,11 +74,6 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: colors.primary500,
     borderColor: colors.primary500,
-  },
-  checkmark: {
-    ...typography.caption,
-    color: colors.textOnPrimary,
-    marginTop: -1,
   },
   label: {
     ...typography.body,

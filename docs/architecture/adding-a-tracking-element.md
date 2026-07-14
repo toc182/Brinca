@@ -125,13 +125,17 @@ container. Three things make it work:
    ⚠️ GOTCHA: on this build (RN New Architecture / Fabric) a `flexBasis`
    percentage that **changes at runtime** does not re-resolve — the view keeps
    its old width even though state updated (confirmed by on-device `onLayout`
-   measurement). So the canvas (`CreateDrillScreen`) measures the grid with
-   `onLayout` and gives each slot an explicit pixel width (`full = gridW`,
-   `half = (gridW - gap) / 2`), animated with a Reanimated shared value +
-   `withTiming` (see `CanvasCardSlot`). `LayoutAnimation` and Reanimated
-   `LinearTransition` did **not** apply/animate the change here. The live session
-   (`DrillScreen`) is fine setting `flexBasis: '47%'` once at mount — the bug
-   only bites *runtime* changes.
+   measurement). So the shared canvas (`DrillElementCanvas`, used by both the
+   new-drill and edit-drill screens) measures the grid with `onLayout` (`gridW`)
+   and gives each slot a plain explicit pixel width (`full = gridW`,
+   `half = Math.floor((gridW - gap) / 2)`). The cards sit in a `Sortable.Flex`
+   (the `react-native-sortables` drag-reorder grid), which animates the width
+   change itself via `dimensionsAnimationType="worklet"` — so the slot just gets
+   a `width` number, no Reanimated wrapper. (An earlier Reanimated-animated width
+   wrapper broke `Sortable.Flex`'s child measurement and made the cards stack
+   instead of pair; `LayoutAnimation` and Reanimated `LinearTransition` didn't
+   apply the change at all.) The live session (`DrillScreen`) is fine setting
+   `flexBasis: '47%'` once at mount — the bug only bites *runtime* changes.
 
 The element is wrapped in the shared `ElementCard` (label + surface card) in both
 the session and the builder preview, so it looks identical everywhere — see

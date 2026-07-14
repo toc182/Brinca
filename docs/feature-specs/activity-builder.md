@@ -127,14 +127,15 @@ Tap a drill → Drill edit screen
 
 **Tracking elements**
 - There is no "mark complete" element type — completion is inherent (every drill gets a completion circle in a session), so tracking elements are framed as optional extras layered on top. The builder communicates this only when it's relevant: the section subtitle ("…Otherwise the drill just gets marked complete") and, on an elementless drill, the hint "No tracking elements added. This drill will just be marked complete." (A permanent "Mark as complete · DEFAULT" card shipped briefly and was removed as confusing.)
-- List of configured tracking elements, each showing: type icon, label, type-specific summary
-- "Add element" button → opens grouped picker (see tracking element types below)
+- The new-drill screen and this edit screen use the **same element canvas** (`DrillElementCanvas`), so adding and editing elements looks and behaves identically. The only difference is timing: the new-drill screen holds changes as a draft until Save, while the edit screen commits each change (add / edit / delete / resize / reorder) live.
+- The configured elements are shown as a grid of cards, not a list. Full-width elements take their own row; half-width ones pair two per row.
+- "Add tracking element" tile (dashed, below the grid) opens the picker — a bottom sheet titled "What do you want to track?" with the types grouped by category (see tracking element types below). Tap a type → its configure modal opens → "Add to drill" adds it.
 - Multiple elements per drill allowed, including multiple of the same type
 - Each element is tappable to edit its configuration
-- Swipe left to remove an element (native iOS alert: "Remove this element?")
+- Swipe left to remove an element (native iOS alert: "Remove element" / "Remove <label>?")
 - Elements reorderable via long-press drag
 - Each element shows a **live preview** of how it will look in a session — the real element rendered inert (shared `ElementCard`), in both the configure modal and on the builder canvas, so "what you configure is what you'll see."
-- **Full / half width:** counter-type elements show a round toggle on the card to switch between full width (own row) and half width (two per row). Only types flagged in `ELEMENT_SUPPORTS_HALF_WIDTH` offer it; the choice is stored in `tracking_elements.width` (`full` default / `half`). See `docs/architecture/adding-a-tracking-element.md` → Half-width layout.
+- **Full / half width:** elements whose session component renders in a narrow container show a round toggle on the card to switch between full width (own row) and half width (two per row) — currently the regular counter, tap counter, stopwatch, and countdown timer. Only types flagged in `ELEMENT_SUPPORTS_HALF_WIDTH` offer it; the choice is stored in `tracking_elements.width` (`full` default / `half`). See `docs/architecture/adding-a-tracking-element.md` → Half-width layout.
 
 **Drill-level rewards**
 - Section header: "Drill Rewards"
@@ -179,9 +180,9 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 | Type | Description | Configurable fields |
 |---|---|---|
 | Regular counter | + and - buttons to increment/decrement | Label, target value (optional) |
-| Combined counter | + and - buttons + tap number to type directly | Label, target value (optional) |
+| Editable counter | + and − buttons + tap the number field to type directly | Label, target value (optional) |
 | Split counter | Two counters side by side with configurable labels | Label, left counter label, right counter label, target values per side (optional) |
-| Multistep counter | Complete multiple substeps in sequence to count as one rep | Label, list of substep names, target reps (optional) |
+| Multistep counter _(temporarily hidden from the picker — pending redesign)_ | Complete multiple substeps in sequence to count as one rep | Label, list of substep names, target reps (optional) |
 
 ### Timers
 
@@ -196,12 +197,14 @@ Added via "Add element" → grouped picker (bottom sheet with categories).
 
 | Type | Description | Configurable fields |
 |---|---|---|
-| Checklist | List of items to check off one by one | Label, list of item names (reorderable), target items completed (optional) |
-| Single select | Configurable list of options, tap one to select | Label, list of option names, target option (optional) |
-| Multi-select | Configurable list of options, tap multiple to select | Label, list of option names, target number selected (optional) |
-| Yes/No toggle | Single binary button | Label, target answer (optional) |
-| Rating scale | Configurable 1–N scale, tap a value to record | Label, min value (default 1), max value, low/high end labels (optional), target value (optional) |
-| Emoji face scale | Rating scale with emoji faces instead of numbers | Label, number of faces (3 or 5), target face (optional) |
+| Checklist | List of items to check off one by one | Label, list of item names (reorderable) |
+| Single select | Configurable list of options, tap one to select | Label, list of option names |
+| Multi-select | Configurable list of options, tap multiple to select | Label, list of option names |
+| Yes/No toggle | Single binary button | Label only (no other configuration) |
+| Rating scale | Configurable 1–N scale, tap a value to record | Label, min value (default 1), max value, low/high end labels (optional) |
+| Emoji face scale | Rating scale with emoji faces instead of numbers | Label, number of faces (3 or 5) |
+
+Selection elements have no configurable targets — completion is recording a value (checklist: all items checked). Decided during the element polish pass; the target fields and their builder inputs were removed.
 
 ### Input
 

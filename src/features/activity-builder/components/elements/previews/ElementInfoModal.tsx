@@ -125,7 +125,11 @@ export function ElementInfoModal({
                 <Text style={styles.description}>{ELEMENT_DESCRIPTIONS[type]}</Text>
                 <View style={styles.previewWrap}>
                   <ElementCard label={label.trim() || ELEMENT_LABELS[type]}>
-                    <ElementStaticPreview type={type} config={config} />
+                    {/* Merge the type's defaults under the live config so the
+                        preview always has required keys (e.g. substeps/items/
+                        options) — the config state seeds a render later, and a
+                        list element would otherwise crash on that first frame. */}
+                    <ElementStaticPreview type={type} config={{ ...getDefaultConfig(type), ...config }} />
                   </ElementCard>
                 </View>
                 <Input

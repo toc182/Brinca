@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Minus, Plus } from 'phosphor-react-native';
-import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+
+import { IconButton } from '@/shared/components/IconButton';
+import { colors, typography, spacing, radii } from '@/shared/theme';
 import type { CombinedCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { CombinedCounterValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -11,6 +13,12 @@ interface CombinedCounterElementProps {
   config: CombinedCounterConfig;
 }
 
+/**
+ * Editable Counter — a counter with −/+ buttons whose number can also be tapped
+ * to type a value directly (handy for large counts). Buttons match the regular
+ * Counter (outline minus, filled plus); the number sits in a bordered field so
+ * it reads as tappable/editable rather than plain text.
+ */
 export function CombinedCounterElement({ value, onValueChange, config }: CombinedCounterElementProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -49,48 +57,56 @@ export function CombinedCounterElement({ value, onValueChange, config }: Combine
   return (
     <View style={styles.container}>
       <View style={styles.counterRow}>
-        <Pressable
-          onPress={decrement}
-          style={({ pressed }) => [
-            styles.button, styles.buttonMinus,
-            pressed && styles.buttonPressed,
-            count === 0 && styles.buttonDisabled,
-          ]}
+        <IconButton
+          icon={Minus}
+          variant="outline"
+          size={64}
           disabled={count === 0}
-        >
-          <Minus size={26} weight="bold" color={colors.textOnPrimary} />
-        </Pressable>
+          onPress={decrement}
+          accessibilityLabel="Remove one"
+        />
 
         <View style={styles.countContainer}>
           {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={editText}
-              onChangeText={setEditText}
-              onBlur={commitEdit}
-              onSubmitEditing={commitEdit}
-              keyboardType="number-pad"
-              autoFocus
-              selectTextOnFocus
-            />
+            <View style={styles.field}>
+              <TextInput
+                style={styles.input}
+                value={editText}
+                onChangeText={setEditText}
+                onBlur={commitEdit}
+                onSubmitEditing={commitEdit}
+                keyboardType="number-pad"
+                autoFocus
+                selectTextOnFocus
+              />
+            </View>
           ) : (
-            <Pressable onPress={startEditing}>
+            <Pressable
+              onPress={startEditing}
+              accessibilityRole="button"
+              accessibilityLabel="Tap to type a number"
+              style={({ pressed }) => [styles.field, pressed && styles.fieldPressed]}
+            >
               <Text style={[styles.count, isAtTarget && styles.countAtTarget]}>{count}</Text>
             </Pressable>
           )}
           {hasTarget && <Text style={styles.target}>/ {config.target}</Text>}
         </View>
 
-        <Pressable
+        <IconButton
+          icon={Plus}
+          variant="filled"
+          size={64}
           onPress={increment}
-          style={({ pressed }) => [styles.button, styles.buttonPlus, pressed && styles.buttonPressed]}
-        >
-          <Plus size={26} weight="bold" color={colors.textOnPrimary} />
-        </Pressable>
+          accessibilityLabel="Add one"
+        />
       </View>
 
       {count > 0 && (
-        <Pressable onPress={handleReset} style={({ pressed }) => [styles.resetButton, pressed && styles.buttonPressed]}>
+        <Pressable
+          onPress={handleReset}
+          style={({ pressed }) => [styles.resetButton, pressed && styles.resetPressed]}
+        >
           <Text style={styles.resetText}>Reset</Text>
         </Pressable>
       )}
@@ -106,30 +122,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.lg,
   },
-  button: {
-    width: touchTargets.kid,
-    height: touchTargets.kid,
-    borderRadius: radii.full,
+  countContainer: { alignItems: 'center', gap: spacing.xxs, minWidth: 96 },
+  // Bordered field so the number reads as a tappable/typeable input, not plain
+  // text — flanked by the −/+ buttons it looks like a number entry field.
+  field: {
+    borderWidth: 1.5,
+    borderColor: colors.primary100,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xxs,
+    minWidth: 88,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  buttonMinus: { backgroundColor: colors.error500 },
-  buttonPlus: { backgroundColor: colors.success500 },
-  buttonPressed: { opacity: 0.7 },
-  buttonDisabled: { opacity: 0.4 },
-  countContainer: { alignItems: 'center', minWidth: 80 },
-  count: { ...typography.counter, color: colors.textPrimary },
+  fieldPressed: { backgroundColor: colors.primary50 },
+  count: { ...typography.counter, color: colors.textPrimary, textAlign: 'center' },
   countAtTarget: { color: colors.success500 },
   input: {
     ...typography.counter,
     color: colors.textPrimary,
     textAlign: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary500,
-    minWidth: 80,
+    minWidth: 64,
     padding: 0,
   },
   target: { ...typography.caption, color: colors.textSecondary },
   resetButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  resetPressed: { opacity: 0.7 },
   resetText: { ...typography.caption, color: colors.error500 },
 });

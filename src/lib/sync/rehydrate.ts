@@ -309,12 +309,13 @@ export async function rehydrateActivities(
   const drillPlaceholders = drillIds.map(() => '?').join(',');
 
   // 3. Tracking elements — always re-sync to overwrite any locally-corrupted
-  // configs from a previous double-encoding bug. INSERT OR REPLACE updates
-  // existing rows in place.
+  // configs from a previous double-encoding bug. INSERT OR REPLACE rewrites the
+  // whole row, so EVERY synced column must be listed below — an omitted column
+  // (this bit `width`) silently resets to its SQLite default on every launch.
   {
     const { data, error } = await supabase
       .from('tracking_elements')
-      .select('id, drill_id, type, label, config, display_order, deleted_at, created_at, updated_at')
+      .select('id, drill_id, type, label, config, width, display_order, deleted_at, created_at, updated_at')
       .in('drill_id', drillIds)
       .order('display_order', { ascending: true });
     if (!error && data) {
@@ -325,10 +326,10 @@ export async function rehydrateActivities(
         const configStr =
           typeof e.config === 'string' ? e.config : JSON.stringify(e.config);
         await db.runAsync(
-          `INSERT OR REPLACE INTO tracking_elements (id, drill_id, type, label, config, display_order, deleted_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT OR REPLACE INTO tracking_elements (id, drill_id, type, label, config, width, display_order, deleted_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           e.id, e.drill_id, e.type, e.label, configStr,
-          e.display_order, e.deleted_at ?? null, e.created_at, e.updated_at,
+          e.width ?? 'full', e.display_order, e.deleted_at ?? null, e.created_at, e.updated_at,
         );
       }
     }

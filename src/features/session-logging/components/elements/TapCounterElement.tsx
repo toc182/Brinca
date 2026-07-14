@@ -1,7 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, typography, spacing, radii } from '@/shared/theme';
+import { colors, typography, spacing } from '@/shared/theme';
 import type { TapCounterConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { TapCounterValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -11,59 +10,41 @@ interface TapCounterElementProps {
   config: TapCounterConfig;
 }
 
-/** Light tick when adding, a firmer tap when removing, so they feel distinct. */
-function bumpHaptic(direction: 1 | -1) {
-  void Haptics.impactAsync(
-    direction > 0 ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium,
-  );
-}
-
 /**
- * Tap Counter — the whole card is one big +1 target; press-and-hold removes one.
- * No visible buttons, so it stays large and easy for a kid to hit mid-activity.
+ * Tap Counter — display only: the name (from ElementCard), the count, and the
+ * optional "of N" goal. The whole card is the tap target (tap = +1, hold = −1);
+ * that press logic lives on the ElementCard in DrillScreen, so there are no
+ * inner buttons or card here — one tappable surface, name + number.
  */
-export function TapCounterElement({ value, onValueChange, config }: TapCounterElementProps) {
+export function TapCounterElement({ value, config }: TapCounterElementProps) {
   const count = value.count;
   const hasTarget = config.target != null;
   const isAtTarget = hasTarget && count >= config.target!;
 
   return (
-    <Pressable
-      onPress={() => {
-        bumpHaptic(1);
-        onValueChange({ count: count + 1 });
-      }}
-      onLongPress={() => {
-        if (count > 0) {
-          bumpHaptic(-1);
-          onValueChange({ count: count - 1 });
-        }
-      }}
-      delayLongPress={350}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      accessibilityLabel="Tap to add one, hold to remove one"
-    >
-      <Text style={[styles.bigNum, isAtTarget && styles.atTarget]} numberOfLines={1} adjustsFontSizeToFit>{count}</Text>
-      {hasTarget && <Text style={styles.sub}>of {config.target}</Text>}
-      <Text style={styles.hint}>tap +1 · hold −1</Text>
-    </Pressable>
+    <View style={styles.body}>
+      <Text
+        style={[styles.num, isAtTarget && styles.atTarget]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.5}
+      >
+        {count}
+      </Text>
+      {hasTarget && (
+        <Text style={styles.sub} numberOfLines={1}>of {config.target}</Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary100,
-    borderRadius: radii.lg,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 124,
-  },
-  cardPressed: { backgroundColor: colors.primary50 },
-  bigNum: { ...typography.counter, color: colors.textPrimary },
+  // Centered in a fixed min height that matches the regular counter, so a half
+  // tap counter and a half counter line up in the same row with no blank space.
+  body: { minHeight: 72, alignItems: 'center', justifyContent: 'center' },
+  // alignSelf: 'stretch' gives the number the card's content width so
+  // adjustsFontSizeToFit can shrink a wide count at half width.
+  num: { ...typography.counter, color: colors.textPrimary, textAlign: 'center', alignSelf: 'stretch' },
   atTarget: { color: colors.success500 },
-  sub: { ...typography.caption, color: colors.textSecondary },
-  hint: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
+  sub: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xxxs },
 });

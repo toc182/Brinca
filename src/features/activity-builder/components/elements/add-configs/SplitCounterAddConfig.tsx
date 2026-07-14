@@ -34,34 +34,49 @@ export function SplitCounterAddConfig({ value, onChange }: Props) {
 
   return (
     <View style={styles.container}>
-      <Input
-        label="Left label"
-        value={leftLabel}
-        onChangeText={(v) => { setLeftLabel(v); emit({ leftLabel: v }); }}
-        required
-      />
-      <Input
-        label="Right label"
-        value={rightLabel}
-        onChangeText={(v) => { setRightLabel(v); emit({ rightLabel: v }); }}
-        required
-      />
-      <Input
-        label="Left target (optional)"
-        value={leftTarget}
-        onChangeText={(v) => { setLeftTarget(v); emit({ leftTarget: v }); }}
-        keyboardType="number-pad"
-      />
-      <Input
-        label="Right target (optional)"
-        value={rightTarget}
-        onChangeText={(v) => { setRightTarget(v); emit({ rightTarget: v }); }}
-        keyboardType="number-pad"
-      />
+      {/* Left/right paired side by side so the modal stays short. */}
+      <View style={styles.row}>
+        <View style={styles.col}>
+          <Input
+            label="Left label"
+            value={leftLabel}
+            onChangeText={(v) => { setLeftLabel(v); emit({ leftLabel: v }); }}
+            required
+          />
+        </View>
+        <View style={styles.col}>
+          <Input
+            label="Right label"
+            value={rightLabel}
+            onChangeText={(v) => { setRightLabel(v); emit({ rightLabel: v }); }}
+            required
+          />
+        </View>
+      </View>
+      <View style={styles.row}>
+        <View style={styles.col}>
+          <Input
+            label="Left target"
+            value={leftTarget}
+            onChangeText={(v) => { setLeftTarget(v); emit({ leftTarget: v }); }}
+            keyboardType="number-pad"
+          />
+        </View>
+        <View style={styles.col}>
+          <Input
+            label="Right target"
+            value={rightTarget}
+            onChangeText={(v) => { setRightTarget(v); emit({ rightTarget: v }); }}
+            keyboardType="number-pad"
+          />
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { gap: spacing.xs },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  col: { flex: 1 },
 });

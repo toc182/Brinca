@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { createMMKV } from 'react-native-mmkv';
-import { colors, typography, spacing, radii, touchTargets } from '@/shared/theme';
+import { ArrowCounterClockwise, Pause, Play, SkipForward } from 'phosphor-react-native';
+
+import { IconButton } from '@/shared/components/IconButton';
+import { colors, typography, spacing, radii } from '@/shared/theme';
 import type { IntervalTimerConfig } from '@/shared/tracking-elements/types/element-configs';
 import type { IntervalTimerValue } from '@/shared/tracking-elements/types/element-values';
 
@@ -28,7 +31,6 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<Phase>('work');
   const [phaseRemaining, setPhaseRemaining] = useState(config.workDurationSeconds);
-  const [phaseBanner, setPhaseBanner] = useState<string | null>(null);
 
   const mmkvKey = elementId ? `it_start_${elementId}` : null;
   const persistedStart = mmkvKey ? elementTimerStorage.getNumber(mmkvKey) : null;
@@ -46,8 +48,6 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
       : value.total_elapsed
   );
 
-  const bannerOpacity = useRef(new Animated.Value(0)).current;
-
   const isComplete = value.completed_cycles >= config.cycles;
 
   useEffect(() => {
@@ -56,18 +56,10 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
     };
   }, []);
 
-  const showPhaseBanner = (label: string) => {
-    setPhaseBanner(label);
-    bannerOpacity.setValue(1);
-    Animated.timing(bannerOpacity, { toValue: 0, duration: 2000, delay: 500, useNativeDriver: true }).start(() => {
-      setPhaseBanner(null);
-    });
-  };
-
-  const onPhaseTransition = (newPhase: Phase) => {
-    // Vibrate once and trigger haptic at each phase transition
+  // A single firm haptic on each work↔rest transition. The persistent colored
+  // band shows which phase you're in, so no transient pop-up banner is needed.
+  const onPhaseTransition = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    showPhaseBanner(newPhase === 'work' ? 'WORK' : 'REST');
   };
 
   const tick = () => {
@@ -99,19 +91,23 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
       setPhaseRemaining(config.restDurationSeconds);
       basePhaseDurationRef.current = 0;
       phaseStartRef.current = Date.now();
-      onPhaseTransition('rest');
+      onPhaseTransition();
     } else {
       const newCycles = cycleRef.current + 1;
       cycleRef.current = newCycles;
 
       if (newCycles >= config.cycles) {
-        // All complete — haptic for completion
+        // Capture elapsed BEFORE stop() (which nulls totalStartRef), then record
+        // the completion unconditionally. The old code read totalStartRef after
+        // stop() had already nulled it, so completed_cycles never reached the
+        // target — the timer looked unfinished and offered a phantom Resume.
+        const totalElapsed =
+          totalStartRef.current != null
+            ? baseTotalRef.current + (Date.now() - totalStartRef.current) / 1000
+            : value.total_elapsed;
         stop();
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        if (totalStartRef.current != null) {
-          const totalElapsed = baseTotalRef.current + (Date.now() - totalStartRef.current) / 1000;
-          onValueChange({ completed_cycles: newCycles, total_elapsed: totalElapsed, skipped_phases: skippedRef.current });
-        }
+        onValueChange({ completed_cycles: newCycles, total_elapsed: totalElapsed, skipped_phases: skippedRef.current });
         return;
       }
 
@@ -120,7 +116,7 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
       setPhaseRemaining(config.workDurationSeconds);
       basePhaseDurationRef.current = 0;
       phaseStartRef.current = Date.now();
-      onPhaseTransition('work');
+      onPhaseTransition();
     }
   };
 
@@ -181,60 +177,81 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Phase transition banner */}
-      {phaseBanner && (
-        <Animated.View style={[styles.phaseBannerContainer, { opacity: bannerOpacity }]}>
-          <Text style={styles.phaseBannerText}>{phaseBanner}</Text>
-        </Animated.View>
-      )}
+    <View style={styles.row}>
+      {/* Left column: phase chip + cycle count, then the time, then dots. */}
+      <View style={styles.info}>
+        <View style={styles.chipRow}>
+          {isComplete ? (
+            <Text style={styles.completeLabel}>Complete!</Text>
+          ) : (
+            <>
+              <View style={[styles.phaseChip, phase === 'work' ? styles.workChip : styles.restChip]}>
+                <Text style={styles.phaseChipText}>{phase === 'work' ? 'WORK' : 'REST'}</Text>
+              </View>
+              <Text style={styles.cycleInfo}>
+                {`Cycle ${Math.min(value.completed_cycles + 1, config.cycles)} / ${config.cycles}`}
+              </Text>
+            </>
+          )}
+        </View>
 
-      <View style={[styles.phaseBadge, phase === 'work' ? styles.workBadge : styles.restBadge]}>
-        <Text style={styles.phaseText}>{phase === 'work' ? 'WORK' : 'REST'}</Text>
+        <Text style={styles.time} numberOfLines={1} adjustsFontSizeToFit>
+          {formatTime(phaseRemaining)}
+        </Text>
+
+        <View style={styles.dotsRow}>
+          {Array.from({ length: config.cycles }).map((_, i) => {
+            const done = i < value.completed_cycles;
+            const current = i === value.completed_cycles && !isComplete;
+            return <View key={i} style={[styles.dot, done && styles.dotDone, current && styles.dotCurrent]} />;
+          })}
+        </View>
       </View>
 
-      <Text style={styles.time}>{formatTime(phaseRemaining)}</Text>
-
-      <Text style={styles.cycleInfo}>
-        Cycle {Math.min(value.completed_cycles + 1, config.cycles)} / {config.cycles}
-      </Text>
-
-      {isComplete && <Text style={styles.completeLabel}>Complete!</Text>}
-
-      <View style={styles.buttonRow}>
-        {!isRunning && !isComplete ? (
-          <Pressable
-            onPress={start}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.primaryButtonText}>
-              {value.total_elapsed > 0 ? 'Resume' : 'Start'}
-            </Text>
-          </Pressable>
-        ) : isRunning ? (
+      {/* Right column: stacked circular controls (same family as stopwatch). */}
+      <View style={styles.controls}>
+        {isRunning ? (
           <>
             <Pressable
-              onPress={skip}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+              onPress={pause}
+              accessibilityRole="button"
+              accessibilityLabel="Pause"
+              style={({ pressed }) => [styles.primaryCircle, pressed && styles.buttonPressed]}
             >
-              <Text style={styles.secondaryButtonText}>Skip</Text>
+              <Pause size={24} color={colors.textOnPrimary} weight="fill" />
             </Pressable>
             <Pressable
-              onPress={pause}
-              style={({ pressed }) => [styles.warningButton, pressed && styles.buttonPressed]}
+              onPress={skip}
+              accessibilityRole="button"
+              accessibilityLabel="Skip phase"
+              style={({ pressed }) => [styles.labeledCircle, pressed && styles.buttonPressed]}
             >
-              <Text style={styles.warningButtonText}>Pause</Text>
+              <SkipForward size={16} color={colors.primary500} weight="bold" />
+              <Text style={styles.labeledCircleText}>Skip</Text>
             </Pressable>
           </>
-        ) : null}
-
-        {value.total_elapsed > 0 && !isRunning && (
-          <Pressable
-            onPress={handleReset}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.secondaryButtonText}>Reset</Text>
-          </Pressable>
+        ) : (
+          <>
+            {!isComplete && (
+              <Pressable
+                onPress={start}
+                accessibilityRole="button"
+                accessibilityLabel={value.total_elapsed > 0 ? 'Resume' : 'Start'}
+                style={({ pressed }) => [styles.primaryCircle, pressed && styles.buttonPressed]}
+              >
+                <Play size={24} color={colors.textOnPrimary} weight="fill" />
+              </Pressable>
+            )}
+            {value.total_elapsed > 0 && (
+              <IconButton
+                icon={ArrowCounterClockwise}
+                variant="outline"
+                size={52}
+                onPress={handleReset}
+                accessibilityLabel="Reset"
+              />
+            )}
+          </>
         )}
       </View>
     </View>
@@ -242,51 +259,61 @@ export function IntervalTimerElement({ value, onValueChange, config, elementId }
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: 'center', gap: spacing.md },
-  phaseBannerContainer: {
-    position: 'absolute',
-    top: -20,
-    backgroundColor: colors.primary500,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs,
-    borderRadius: radii.md,
-    zIndex: 10,
+  // Horizontal layout: info column on the left, stacked controls on the right.
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.xs,
   },
-  phaseBannerText: { ...typography.buttonSmall, color: colors.textOnPrimary },
-  phaseBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.xxs, borderRadius: radii.full },
-  workBadge: { backgroundColor: colors.accent500 },
-  restBadge: { backgroundColor: colors.secondary500 },
-  phaseText: { ...typography.captionSmall, color: colors.textOnPrimary, textTransform: 'uppercase' },
-  time: { ...typography.timer, color: colors.textPrimary },
+  info: { flex: 1, minWidth: 0, gap: spacing.xs },
+  chipRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  phaseChip: {
+    borderRadius: radii.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxxs,
+  },
+  workChip: { backgroundColor: colors.accent500 },
+  restChip: { backgroundColor: colors.secondary500 },
+  phaseChipText: { ...typography.captionSmall, color: colors.textOnPrimary, letterSpacing: 0.6 },
   cycleInfo: { ...typography.bodySmall, color: colors.textSecondary },
-  completeLabel: { ...typography.buttonSmall, color: colors.success500 },
-  buttonRow: { flexDirection: 'row', gap: spacing.sm },
-  primaryButton: {
+  completeLabel: { ...typography.titleSmall, color: colors.success500 },
+  time: { ...typography.timer, color: colors.textPrimary },
+  dotsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  dot: { width: 9, height: 9, borderRadius: radii.full, backgroundColor: colors.primary100 },
+  dotDone: { backgroundColor: colors.primary500 },
+  dotCurrent: { width: 13, height: 13, borderRadius: radii.full, backgroundColor: colors.primary500 },
+  controls: { alignItems: 'center', gap: spacing.sm },
+  // Round like every other control; the tiny label inside keeps it unambiguous.
+  labeledCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: colors.primary500,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  labeledCircleText: {
+    ...typography.captionSmall,
+    color: colors.primary500,
+    lineHeight: 13,
+    marginTop: 1,
+  },
+  primaryCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: colors.primary500,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
-  warningButton: {
-    backgroundColor: colors.warning500,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
-    justifyContent: 'center',
-  },
-  warningButtonText: { ...typography.buttonLarge, color: colors.textOnPrimary },
-  secondaryButton: {
-    backgroundColor: colors.primary50,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    minHeight: touchTargets.adult,
-    justifyContent: 'center',
-  },
-  secondaryButtonText: { ...typography.buttonLarge, color: colors.primary700 },
   buttonPressed: { opacity: 0.7 },
 });
