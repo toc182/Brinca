@@ -102,16 +102,33 @@ export function HomeScreen() {
 
         {!data.hasAnySession && (
           <Card style={styles.section}>
-            <Text style={styles.emptyText}>
-              No drills yet. Add your first drill to start practicing.
-            </Text>
-            <Button
-              title="Add drill"
-              onPress={() => router.push('/(settings)/activities' as never)}
-              variant="primary"
-              size="small"
-              style={styles.ctaButton}
-            />
+            {data.hasDrills ? (
+              <>
+                <Text style={styles.emptyText}>
+                  No sessions yet. Start practicing and the days will fill in above.
+                </Text>
+                <Button
+                  title="Start a session"
+                  onPress={() => router.push('/(tabs)/activity' as never)}
+                  variant="primary"
+                  size="small"
+                  style={styles.ctaButton}
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.emptyText}>
+                  No drills yet. Add your first drill to start practicing.
+                </Text>
+                <Button
+                  title="Add drill"
+                  onPress={() => router.push('/(settings)/activities' as never)}
+                  variant="primary"
+                  size="small"
+                  style={styles.ctaButton}
+                />
+              </>
+            )}
           </Card>
         )}
       </Animated.ScrollView>

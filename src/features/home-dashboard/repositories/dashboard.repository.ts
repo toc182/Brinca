@@ -66,6 +66,17 @@ export async function getDashboardData(childId: UUID) {
 
   const hasAnySession = (totalSessions?.count ?? 0) > 0;
 
+  // Whether the child has any practice set up at all (a live drill under a live
+  // activity). Distinguishes "no sessions yet, go practice" from the true
+  // brand-new "add your first drill" state.
+  const drillCount = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM drills d
+       JOIN activities a ON a.id = d.activity_id
+      WHERE a.child_id = ? AND d.deleted_at IS NULL AND a.deleted_at IS NULL`,
+    childId
+  );
+  const hasDrills = (drillCount?.count ?? 0) > 0;
+
   return {
     childPhotoUrl: child?.avatar_url ?? null,
     balance: balance?.total ?? 0,
@@ -76,5 +87,6 @@ export async function getDashboardData(childId: UUID) {
     accolades,
     closestReward,
     hasAnySession,
+    hasDrills,
   };
 }
