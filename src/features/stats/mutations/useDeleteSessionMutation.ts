@@ -11,6 +11,11 @@ export function useDeleteSessionMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
       queryClient.invalidateQueries({ queryKey: ['session-list'] });
+      // The chart reads ['stats-chart']; without this it kept showing the
+      // deleted session. ['stats-activities'] drives the filter chips, which can
+      // also change when a session (and possibly an activity's only data) goes.
+      queryClient.invalidateQueries({ queryKey: ['stats-chart'] });
+      queryClient.invalidateQueries({ queryKey: ['stats-activities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
