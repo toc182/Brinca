@@ -108,6 +108,10 @@ export function isTargetMet(type: ElementType, config: Record<string, unknown>, 
     case 'combined_counter':
       return config.target != null && (value.count as number) >= (config.target as number);
     case 'split_counter': {
+      // With no target on either side there is nothing to meet, so it is never
+      // "met" — mirrors the plain counter. Without this guard both sides read as
+      // satisfied (null target ⇒ true) and the green ribbon shows at 0/0.
+      if (config.targetLeft == null && config.targetRight == null) return false;
       const leftOk = config.targetLeft == null || (value.left as number) >= (config.targetLeft as number);
       const rightOk = config.targetRight == null || (value.right as number) >= (config.targetRight as number);
       return leftOk && rightOk;
