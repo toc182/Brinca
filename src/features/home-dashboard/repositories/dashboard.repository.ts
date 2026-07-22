@@ -25,8 +25,19 @@ export async function getDashboardData(childId: UUID) {
     childId, startOfWeek.toISOString()
   );
 
-  const sessionDates = await db.getAllAsync<{ started_at: string }>(
-    `SELECT started_at FROM sessions WHERE child_id = ? AND is_complete = 1 ORDER BY started_at DESC`, childId
+  // Per-session rows for the activity calendar: each completed session with its
+  // activity and how many drills were completed in it. The calendar groups these
+  // by day and by activity to draw the per-day rings and the day-detail drawer.
+  const calendarSessions = await db.getAllAsync<{
+    started_at: string; activity_id: string; activity_name: string; drill_count: number;
+  }>(
+    `SELECT s.started_at, s.activity_id, a.name AS activity_name,
+            (SELECT COUNT(*) FROM drill_results dr WHERE dr.session_id = s.id AND dr.is_complete = 1) AS drill_count
+     FROM sessions s
+     JOIN activities a ON a.id = s.activity_id
+     WHERE s.child_id = ? AND s.is_complete = 1
+     ORDER BY s.started_at DESC`,
+    childId
   );
 
   const recentSessions = await db.getAllAsync<{
@@ -60,7 +71,7 @@ export async function getDashboardData(childId: UUID) {
     balance: balance?.total ?? 0,
     totalSessions: totalSessions?.count ?? 0,
     sessionsThisWeek: sessionsThisWeek?.count ?? 0,
-    sessionDates: sessionDates.map((r) => r.started_at),
+    calendarSessions,
     recentSessions: enriched,
     accolades,
     closestReward,

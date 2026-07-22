@@ -16,13 +16,10 @@ import { CollapsibleHeader, useCollapsibleHeaderHeight } from '@/shared/componen
 import { Button } from '@/shared/components/Button';
 import { colors, typography, spacing, radii } from '@/shared/theme';
 import { useActiveChildStore } from '@/stores/active-child.store';
+import { useUIPreferencesStore } from '@/stores/ui-preferences.store';
 import { useDashboardQuery } from '../queries/useDashboardQuery';
-import { LevelBadge } from '../components/LevelBadge';
-import { RewardProgress } from '../components/RewardProgress';
-import { CurrencyBalance } from '../components/CurrencyBalance';
-import { ConsistencyMetrics } from '../components/ConsistencyMetrics';
+import { ActivityCalendar } from '../components/ActivityCalendar';
 import { RecentSessions } from '../components/RecentSessions';
-import { AccoladeRow } from '../components/AccoladeRow';
 
 // Small version label + parent avatar for the header right slot. The version lets
 // the user confirm which OTA bundle is live (see src/shared/appVersion.ts).
@@ -47,6 +44,7 @@ export function HomeScreen() {
   });
   const childId = useActiveChildStore((s) => s.childId);
   const childName = useActiveChildStore((s) => s.childName);
+  const currencyName = useUIPreferencesStore((s) => s.currencyName);
   const { data, isLoading, isError, refetch } = useDashboardQuery(childId);
 
   // NativeTabs (UITabBarController) inflates the bottom safe area to include
@@ -77,9 +75,6 @@ export function HomeScreen() {
     );
   }
 
-  const showAccolades = data.hasAnySession && data.accolades.length > 0;
-  const noAccoladesYet = data.hasAnySession && data.accolades.length === 0;
-
   return (
     <View style={styles.container}>
       <CollapsibleHeader title={childName ?? 'Home'} scrollY={scrollY} rightContent={<HeaderRight />} />
@@ -92,48 +87,18 @@ export function HomeScreen() {
       >
         <OfflineBanner />
 
-        <Card style={styles.section}>
-          <LevelBadge sessionCount={data.totalSessions} />
-        </Card>
+        <View style={styles.coinsRow}>
+          <View style={styles.coin} />
+          <Text style={styles.coinsAmount}>{data.balance}</Text>
+          <Text style={styles.coinsLabel}>{currencyName} earned</Text>
+        </View>
 
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Reward goal</Text>
-          <RewardProgress
-            reward={data.closestReward}
-            balance={data.balance}
-            onAddReward={undefined}
-          />
-        </Card>
-
-        <Card style={styles.section}>
-          <CurrencyBalance balance={data.balance} />
-        </Card>
-
-        <ConsistencyMetrics
-          sessionsThisWeek={data.sessionsThisWeek}
-          totalSessions={data.totalSessions}
-        />
+        <ActivityCalendar sessions={data.calendarSessions} />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent sessions</Text>
           <RecentSessions sessions={data.recentSessions} />
         </View>
-
-        {showAccolades && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Accolades</Text>
-            <AccoladeRow accoladeIds={data.accolades.map((a) => a.accolade_id)} />
-          </View>
-        )}
-
-        {noAccoladesYet && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Accolades</Text>
-            <Text style={styles.emptyText}>
-              Keep practicing — accolades appear as you hit milestones!
-            </Text>
-          </View>
-        )}
 
         {!data.hasAnySession && (
           <Card style={styles.section}>
@@ -178,6 +143,18 @@ function HomeSkeleton({ headerHeight }: { headerHeight: number }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxxl },
+  coinsRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs, paddingHorizontal: spacing.xxs },
+  coin: {
+    width: 18,
+    height: 18,
+    borderRadius: radii.full,
+    backgroundColor: '#FFD23F',
+    borderWidth: 2,
+    borderColor: '#E6B800',
+    alignSelf: 'center',
+  },
+  coinsAmount: { fontFamily: 'Fredoka_600SemiBold', fontSize: 28, color: colors.textPrimary },
+  coinsLabel: { ...typography.bodySmall, color: colors.textSecondary },
   section: { gap: spacing.xs },
   sectionTitle: { ...typography.titleSmall, color: colors.textPrimary, marginBottom: spacing.xxs },
   emptyText: { ...typography.bodySmall, color: colors.textSecondary },
