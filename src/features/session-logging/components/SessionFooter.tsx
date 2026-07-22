@@ -1,10 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Pause, Play } from 'phosphor-react-native';
+import { Pause, Play, X } from 'phosphor-react-native';
 
 import { Button } from '@/shared/components/Button';
 import { GradientBlurBackground } from '@/shared/components/GradientBlurBackground';
-import { colors, spacing } from '@/shared/theme';
+import { colors, radii, spacing, touchTargets } from '@/shared/theme';
 
 const ROW_HEIGHT = 56;
 const ROW_TOP_PADDING = 16;
@@ -20,10 +20,11 @@ interface SessionFooterProps {
   isPaused: boolean;
   onTogglePause: () => void;
   onFinish: () => void;
+  onDiscard: () => void;
   finishDisabled: boolean;
 }
 
-export function SessionFooter({ isPaused, onTogglePause, onFinish, finishDisabled }: SessionFooterProps) {
+export function SessionFooter({ isPaused, onTogglePause, onFinish, onDiscard, finishDisabled }: SessionFooterProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.footer}>
@@ -33,6 +34,14 @@ export function SessionFooter({ isPaused, onTogglePause, onFinish, finishDisable
         fadeStart={0.55}
       />
       <View style={[styles.row, { paddingBottom: insets.bottom }]}>
+        <Pressable
+          onPress={onDiscard}
+          accessibilityRole="button"
+          accessibilityLabel="Discard session"
+          style={({ pressed }) => [styles.discardButton, pressed && styles.discardPressed]}
+        >
+          <X size={20} color={colors.error500} weight="bold" />
+        </Pressable>
         <Button
           title={isPaused ? 'Resume' : 'Pause'}
           onPress={onTogglePause}
@@ -71,6 +80,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: ROW_TOP_PADDING,
   },
+  discardButton: {
+    width: touchTargets.adult,
+    height: touchTargets.adult,
+    borderRadius: radii.md,
+    borderWidth: 2,
+    borderColor: colors.error500,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discardPressed: { opacity: 0.7 },
   pauseButton: { flex: 1 },
   finishButton: { flex: 2 },
 });

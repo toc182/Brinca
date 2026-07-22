@@ -15,7 +15,7 @@ interface TierRewardRow {
 export async function getTierRewards(parentType: string, parentId: UUID): Promise<TierRewardRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<TierRewardRow>(
-    `SELECT * FROM tier_rewards WHERE parent_type = ? AND parent_id = ? ORDER BY display_order ASC`,
+    `SELECT * FROM tier_rewards WHERE parent_type = ? AND parent_id = ? AND deleted_at IS NULL ORDER BY display_order ASC`,
     parentType, parentId
   );
 }
@@ -51,8 +51,14 @@ export async function updateTierReward(id: UUID, fields: { name?: string; condit
   await appendToQueue('UPDATE', 'tier_rewards', payload);
 }
 
+/**
+ * Soft delete: stamps deleted_at instead of removing the row, so the deletion
+ * is a change other devices can observe on their next pull. A hard DELETE
+ * leaves no trace on the server, and the row simply returns.
+ */
 export async function deleteTierReward(id: UUID) {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM tier_rewards WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'tier_rewards', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE tier_rewards SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'tier_rewards', { id, deleted_at: deletedAt });
 }

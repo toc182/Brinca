@@ -18,7 +18,7 @@ export async function getExternalActivitiesByChild(
 ): Promise<ExternalActivityRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<ExternalActivityRow>(
-    `SELECT * FROM external_activities WHERE child_id = ? ORDER BY created_at ASC`,
+    `SELECT * FROM external_activities WHERE child_id = ? AND deleted_at IS NULL ORDER BY created_at ASC`,
     childId
   );
 }
@@ -81,6 +81,8 @@ export async function updateExternalActivity(
 
 export async function deleteExternalActivity(id: UUID): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM external_activities WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'external_activities', { id });
+  // Soft delete — see deleteTierReward for why deletions must leave a trace.
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE external_activities SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'external_activities', { id, deleted_at: deletedAt });
 }

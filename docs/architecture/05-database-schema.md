@@ -556,6 +556,24 @@ The outbound sync queue. Per [`04-offline-sync.md`](04-offline-sync.md).
 | `last_error` | text, nullable | |
 | `created_at` | timestamp | |
 
+### 2.21 sync_state (SQLite only — not in Supabase)
+
+Per-table download watermark for the pull half of sync (§7.2 of [`04-offline-sync.md`](04-offline-sync.md)). Records the newest `updated_at` (or other delta column) this device has already pulled for each table, so the next pull fetches only newer rows. Kept in SQLite, not MMKV, so it is wiped together with the data it describes — a watermark that outlived its rows would skip the backfill that repopulates them.
+
+| Column | Type | Notes |
+|---|---|---|
+| `table_name` | text, PK | The synced table this watermark is for |
+| `last_pulled_at` | text, nullable | Newest delta-column value already pulled; null = never pulled (full download) |
+
+### Sync metadata columns (two-way sync)
+
+To support two-way sync, every user-mutable table carries a server-maintained `updated_at` (the pull's delta key) and every user-deletable table carries a nullable `deleted_at` tombstone (so a deletion is a change the other device observes, not a silent absence). Added in Supabase migrations `two_way_sync_metadata` / `two_way_sync_photo_updated_at` and SQLite migration `0009_two_way_sync`:
+
+- **Gained `updated_at` + `deleted_at`:** `element_values`, `rewards`, `drill_photos`, `session_photos`, `drill_result_photos`.
+- **Gained `deleted_at` only** (already had `updated_at`): `measurements`, `external_activities`, `tier_rewards`, `bonus_presets`.
+- **Already had both:** `activities`, `drills`, `tracking_elements`.
+- **Deliberately excluded** (append-only, immutable — delta by `created_at` / `unlocked_at`, no tombstone): `currency_ledger`, `accolade_unlocks`.
+
 ---
 
 ## 3. Row Level Security — policy intent
@@ -610,7 +628,7 @@ When a record is deleted, what else gets deleted automatically.
 
 | Location | Tables |
 |---|---|
-| **SQLite only** | `sync_queue` |
+| **SQLite only** | `sync_queue`, `sync_state` |
 | **Supabase only** | `auth.users` (managed by Supabase Auth) |
 | **Both (synced)** | All other 19 tables |
 

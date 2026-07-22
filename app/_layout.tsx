@@ -36,6 +36,7 @@ import { useActiveChildStore } from '@/stores/active-child.store';
 import { useOnboardingStore } from '@/stores/onboarding.store';
 import { useParentProfileStore } from '@/stores/parent-profile.store';
 import { rehydrateChildData, hydrateFamilyChildren } from '@/lib/sync/rehydrate';
+import { pullChildDataSafe } from '@/lib/sync/pull';
 import { prefetchProfile } from '@/features/accounts-center/hooks/useAccountsCenter';
 import { resolveAuthFromUser, ensureFKChainAndVerify } from '@/lib/supabase/auth-recovery';
 import { withTimeout } from '@/lib/async/withTimeout';
@@ -107,7 +108,10 @@ export default Sentry.wrap(function RootLayout() {
   useEffect(() => {
     const unsubscribe = useActiveChildStore.subscribe((state, prev) => {
       if (state.childId && state.childId !== prev.childId) {
+        // Bootstrap missing rows for a never-loaded child, then pull deltas so a
+        // sibling edited on another device is current on switch, not stale.
         rehydrateChildData(state.childId, queryClient).catch(console.error);
+        pullChildDataSafe(state.childId, queryClient);
       }
     });
     return unsubscribe;
@@ -185,6 +189,7 @@ export default Sentry.wrap(function RootLayout() {
           }
           setAuthState('authenticated');
           rehydrateChildData(activeChild.childId!, queryClient).catch(console.error);
+          pullChildDataSafe(activeChild.childId!, queryClient);
           hydrateFamilyChildren(activeChild.familyId!, queryClient).catch(console.error);
           return;
         }
@@ -202,6 +207,7 @@ export default Sentry.wrap(function RootLayout() {
           );
           setAuthState('authenticated');
           rehydrateChildData(result.childId, queryClient).catch(console.error);
+          pullChildDataSafe(result.childId, queryClient);
           hydrateFamilyChildren(result.familyId, queryClient).catch(console.error);
         } else {
           if (result.pendingFamilyId) {
@@ -283,6 +289,39 @@ export default Sentry.wrap(function RootLayout() {
     };
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
+  }, []);
+
+  // Download incoming changes from other devices on the same account. The pull
+  // is delta-based and cheap once warm, so we run it on every foreground and on
+  // a light interval while foregrounded — this is what makes a change made on
+  // one phone show up on the other without a reinstall. Guarded on authenticated
+  // + a known active child; fire-and-forget (never throws).
+  useEffect(() => {
+    const PULL_INTERVAL_MS = 60_000;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const pullNow = () => {
+      if (authStateRef.current !== 'authenticated') return;
+      const { childId } = useActiveChildStore.getState();
+      if (childId) pullChildDataSafe(childId, queryClient);
+    };
+
+    const startInterval = () => {
+      if (interval == null) interval = setInterval(pullNow, PULL_INTERVAL_MS);
+    };
+    const stopInterval = () => {
+      if (interval != null) { clearInterval(interval); interval = null; }
+    };
+
+    const handleChange = (next: AppStateStatus) => {
+      if (next === 'active') { pullNow(); startInterval(); }
+      else stopInterval();
+    };
+
+    // Cover the launch case (app is already 'active' when this mounts).
+    if (AppState.currentState === 'active') { pullNow(); startInterval(); }
+    const subscription = AppState.addEventListener('change', handleChange);
+    return () => { stopInterval(); subscription.remove(); };
   }, []);
 
   // Listen for auth changes

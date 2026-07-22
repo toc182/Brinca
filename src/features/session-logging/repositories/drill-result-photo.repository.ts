@@ -114,13 +114,15 @@ export async function deletePhoto(id: UUID): Promise<{ storagePath: string | nul
   );
   if (!row) return { storagePath: null };
 
-  await db.runAsync(`DELETE FROM drill_result_photos WHERE id = ?`, id);
-
-  // Only queue the Supabase DELETE if the row was actually synced (status =
-  // 'uploaded'). A row that never uploaded has no Supabase counterpart, so
-  // there's nothing to delete remotely.
+  // A synced row (status 'uploaded') is soft-deleted so the tombstone reaches
+  // other devices on their next pull; a row that never uploaded has no
+  // Supabase counterpart, so it's hard-deleted locally with nothing to sync.
   if (row.upload_status === 'uploaded') {
-    await appendToQueue('DELETE', 'drill_result_photos', { id });
+    const deletedAt = new Date().toISOString();
+    await db.runAsync(`UPDATE drill_result_photos SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+    await appendToQueue('UPDATE', 'drill_result_photos', { id, deleted_at: deletedAt });
+  } else {
+    await db.runAsync(`DELETE FROM drill_result_photos WHERE id = ?`, id);
   }
   return { storagePath: row.storage_path };
 }
@@ -129,7 +131,7 @@ export async function getPhotosByDrillResult(drillResultId: UUID): Promise<Drill
   const db = await getDatabase();
   return db.getAllAsync<DrillResultPhotoRow>(
     `SELECT * FROM drill_result_photos
-       WHERE drill_result_id = ?
+       WHERE drill_result_id = ? AND deleted_at IS NULL
      ORDER BY display_order ASC, created_at ASC`,
     drillResultId,
   );

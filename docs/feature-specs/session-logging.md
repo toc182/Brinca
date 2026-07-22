@@ -45,7 +45,7 @@ Tap "Done" → saves session notes and photo, lands on Home
 1. **Header** — activity name, child name + completion progress ("2 of 4 done"), session timer (stopwatch, counts up from 0), minimize button (top right)
 2. **Drill list** — all configured drills for this activity, each showing name, completion status, and a tappable completion circle on the right
 3. **Session notes + photos** — two-card row ("Add Photo" / "Add Note") with a horizontal thumbnail strip below for any photos added; always visible by scrolling to the bottom
-4. **"Finish Session" button** — always visible at the bottom
+4. **Footer** — always visible at the bottom: a red **discard (✕) button**, then **Pause / Resume**, then **Finish Session**. Discard asks "Discard this session? Nothing from this session will be saved." (Keep going / Discard); confirming hard-deletes the in-progress session — cascading to any drills, values, and photos logged so far — and returns the user to the previous screen. It's a true delete, not a soft-delete tombstone (the session never happened), and the removal syncs to Supabase.
 
 ### Drill list behavior
 - Drills can be logged in any order
@@ -212,6 +212,7 @@ Pushed in (stack navigation) when the user taps "Finish Session." Session is sav
 | Tap minimize button | Collapses session, returns to previous screen, mini player bar appears |
 | Tap mini player bar | Resumes full session screen |
 | Tap "Finish Session" | Session summary screen (pushes in) |
+| Tap discard (✕) button, confirm | In-progress session hard-deleted, returns to previous screen (no summary, nothing logged) |
 | Tap "Done" on summary screen | Home screen |
 
 ---

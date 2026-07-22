@@ -107,14 +107,22 @@ If upload fails, the local file persists and upload retries on the next WiFi con
 Reads always come from SQLite. TanStack Query hooks read from feature repositories, which query SQLite. The query cache is populated from local data, not from Supabase. Supabase is never queried directly for display purposes.
 
 ### 7.1 Initial data pull
-On first login (after onboarding), the app pulls the user's full dataset from Supabase into SQLite. This is the only time a bulk Supabase read happens. Subsequent reads are local-only; new data from other family members arrives via a lightweight poll or Supabase Realtime subscription (implementation TBD in Phase 4).
+On first login (after onboarding), the app pulls the user's full dataset from Supabase into SQLite. This is the first run of the delta pull (§7.2) with an empty watermark — there is no longer a separate "bootstrap only" read path. `rehydrateChildData` still runs first on the launch/switch paths as a proven foreign-key-safe bootstrap (INSERT OR IGNORE), then the pull reconciles authoritatively.
 
-### 7.2 Incoming changes from other family members
-When a second family member (e.g. a therapist) logs a session on their device, that data reaches Supabase but is not automatically on the first user's device. Two options for V1 (decide during Phase 4):
-- **Poll on foreground:** on each app foreground, pull new/updated rows since last sync timestamp.
-- **Supabase Realtime:** subscribe to changes on the family's tables.
+### 7.2 Incoming changes from other devices (implemented)
+Sync is **two-way**. The push half (`sync/engine.ts`) drains the outgoing queue to Supabase; the pull half (`sync/pull.ts`) downloads changes made on other devices. Without the pull, two devices on one account drift apart permanently and deletions made on one silently reappear on the other.
 
-Either way, incoming data is written to SQLite first and the UI refreshes from SQLite — the same one-way flow.
+**How the pull works** (`pullChildData`):
+- **Delta by watermark.** Each table stores the newest `updated_at` it has already seen in the local `sync_state` table. The pull asks Supabase for rows strictly newer than that watermark, parent tables first so foreign keys resolve, and advances the watermark to the newest row seen. A null watermark (fresh install, or first launch after this feature shipped) means a full download.
+- **Deletions propagate as tombstones.** Every user-deletable table carries `deleted_at`. Deleting stamps it instead of removing the row (a hard DELETE leaves nothing for the other device to observe, so the row reappears). List queries filter `deleted_at IS NULL`; the pull writes the tombstone so the other device hides the row too.
+- **Local unsent changes win.** A row whose id is in the outgoing queue is not overwritten by the server copy — the user's own not-yet-pushed edit is protected. After it pushes, the server `updated_at` bumps past the watermark and the reconciled row pulls normally.
+- **Never mid-session.** The pull is skipped while a session is `active` / `paused` / `minimized`, so live logging is never overwritten.
+
+**When it runs:** on login, on child switch, on every app foreground, and on a 60-second interval while foregrounded. All fire-and-forget (never throws).
+
+**Conflict resolution:** last-writer-wins by `updated_at`, except the local-unsent guard above.
+
+**Known limitation:** if the *same row* is edited on two devices while both are offline, the later push wins and the earlier edit is lost (no field-level merge). Acceptable for a two-parent / one-therapist household; revisit if simultaneous offline editing of the same record becomes common.
 
 ---
 
@@ -126,14 +134,17 @@ Either way, incoming data is written to SQLite first and the UI refreshes from S
 | Network drops mid-session | Session continues. Auto-save writes to SQLite. Queue accumulates. |
 | Network restored after hours offline | Sync engine drains the queue in order. User sees no interruption. |
 | App killed mid-sync | `in_flight` operation has no confirmation → stays `in_flight`. On next launch, engine resets `in_flight` to `pending` and retries. |
-| Device wiped / reinstalled | Local data lost. On login, initial data pull from Supabase restores everything that was synced. Unsynced data (queued but never pushed) is lost — this is the one data-loss scenario, and it requires both offline writes AND device wipe before the next sync. |
+| Device wiped / reinstalled | Local data lost. On login, the delta pull (empty watermark) restores everything that was synced. Unsynced data (queued but never pushed) is lost — this is the one data-loss scenario, and it requires both offline writes AND device wipe before the next sync. |
+| Same account on a second device | Both devices converge: each pushes its own changes and pulls the other's on foreground / 60s interval. Edits and deletions propagate both ways. |
+| Same row edited offline on two devices | Later push wins; earlier edit lost (no field-level merge). See §7.2 known limitation. |
 | Account deleted | Local SQLite, MMKV, and expo-secure-store are wiped. Supabase data deleted server-side per [`compliance/privacy-and-data.md`](../compliance/privacy-and-data.md). |
 
 ---
 
 ## 9. Open questions
 
-- [ ] Exact poll interval for the sync engine while foregrounded (suggested: 30 seconds).
-- [ ] Supabase Realtime vs poll for incoming changes from other family members — decide during Phase 4.
+- [x] ~~Exact poll interval for the sync engine while foregrounded~~ — pull runs on foreground + a 60s foreground interval (`app/_layout.tsx`).
+- [x] ~~Supabase Realtime vs poll for incoming changes~~ — chose foreground + interval poll (delta by watermark). Realtime can layer on later if near-instant propagation is needed.
 - [ ] Should the sync queue show a visible indicator somewhere in the UI (e.g. a small badge on the parent avatar showing "3 pending") or stay invisible? Current spec: invisible, with a toast only on persistent failure.
 - [ ] Maximum queue size before warning the user — relevant if someone uses the app offline for weeks.
+- [ ] Field-level merge for the same-row-offline-on-two-devices case (currently last-writer-wins; see §7.2).

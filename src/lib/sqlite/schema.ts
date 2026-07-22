@@ -122,7 +122,8 @@ export const TABLE_DEFINITIONS = {
       currency_amount INTEGER NOT NULL DEFAULT 0,
       display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
   `,
 
@@ -134,7 +135,8 @@ export const TABLE_DEFINITIONS = {
       amount INTEGER NOT NULL,
       display_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
   `,
 
@@ -146,7 +148,9 @@ export const TABLE_DEFINITIONS = {
       cost INTEGER NOT NULL,
       state TEXT NOT NULL DEFAULT 'saving',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      redeemed_at TEXT
+      redeemed_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
   `,
 
@@ -185,7 +189,9 @@ export const TABLE_DEFINITIONS = {
       drill_result_id TEXT NOT NULL REFERENCES drill_results(id) ON DELETE CASCADE,
       tracking_element_id TEXT NOT NULL REFERENCES tracking_elements(id),
       value TEXT NOT NULL DEFAULT '{}',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
   `,
 
@@ -198,7 +204,9 @@ export const TABLE_DEFINITIONS = {
       local_uri TEXT,
       upload_status TEXT NOT NULL DEFAULT 'pending',
       display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS drill_result_photos_drill_result_id_idx
       ON drill_result_photos(drill_result_id);
@@ -213,7 +221,9 @@ export const TABLE_DEFINITIONS = {
       local_uri TEXT,
       upload_status TEXT NOT NULL DEFAULT 'pending',
       display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS session_photos_session_id_idx
       ON session_photos(session_id);
@@ -228,7 +238,9 @@ export const TABLE_DEFINITIONS = {
       local_uri TEXT,
       upload_status TEXT NOT NULL DEFAULT 'pending',
       display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
     CREATE INDEX IF NOT EXISTS drill_photos_drill_id_idx
       ON drill_photos(drill_id);
@@ -263,7 +275,8 @@ export const TABLE_DEFINITIONS = {
       value REAL NOT NULL,
       date TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
     );
   `,
 
@@ -276,7 +289,20 @@ export const TABLE_DEFINITIONS = {
       location TEXT,
       notes TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      deleted_at TEXT
+    );
+  `,
+
+  // SQLite-only — not synced to Supabase.
+  // Per-table download watermark for the pull half of sync: the newest
+  // updated_at this device has already seen for each table. Lives in SQLite
+  // (not MMKV) so it is wiped together with the rows it describes — a
+  // watermark outliving its data would skip the backfill that restores it.
+  sync_state: `
+    CREATE TABLE IF NOT EXISTS sync_state (
+      table_name TEXT PRIMARY KEY,
+      last_pulled_at TEXT
     );
   `,
 

@@ -18,7 +18,7 @@ export async function getMeasurementsByChild(
 ): Promise<MeasurementRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<MeasurementRow>(
-    `SELECT * FROM measurements WHERE child_id = ? AND type = ? ORDER BY date DESC`,
+    `SELECT * FROM measurements WHERE child_id = ? AND type = ? AND deleted_at IS NULL ORDER BY date DESC`,
     childId,
     type
   );
@@ -64,8 +64,10 @@ export async function updateMeasurement(
   await appendToQueue('UPDATE', 'measurements', { id, value, date });
 }
 
+/** Soft delete — see deleteTierReward for why deletions must leave a trace. */
 export async function deleteMeasurement(id: UUID): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM measurements WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'measurements', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE measurements SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'measurements', { id, deleted_at: deletedAt });
 }

@@ -113,10 +113,15 @@ export async function deletePhoto(id: UUID): Promise<{ storagePath: string | nul
   );
   if (!row) return { storagePath: null };
 
-  await db.runAsync(`DELETE FROM drill_photos WHERE id = ?`, id);
-
   if (row.upload_status === 'uploaded') {
-    await appendToQueue('DELETE', 'drill_photos', { id });
+    // On the server → soft-delete so the tombstone reaches other devices.
+    const deletedAt = new Date().toISOString();
+    await db.runAsync(`UPDATE drill_photos SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+    await appendToQueue('UPDATE', 'drill_photos', { id, deleted_at: deletedAt });
+  } else {
+    // Never uploaded → the server never had it, so hard-delete locally with
+    // nothing to propagate.
+    await db.runAsync(`DELETE FROM drill_photos WHERE id = ?`, id);
   }
   return { storagePath: row.storage_path };
 }
@@ -129,7 +134,7 @@ export async function deletePhoto(id: UUID): Promise<{ storagePath: string | nul
 export async function getDrillIdsWithPhotos(): Promise<Set<string>> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ drill_id: string }>(
-    `SELECT DISTINCT drill_id FROM drill_photos`,
+    `SELECT DISTINCT drill_id FROM drill_photos WHERE deleted_at IS NULL`,
   );
   return new Set(rows.map((r) => r.drill_id));
 }
@@ -138,7 +143,7 @@ export async function getPhotosByDrill(drillId: UUID): Promise<DrillPhotoRow[]> 
   const db = await getDatabase();
   return db.getAllAsync<DrillPhotoRow>(
     `SELECT * FROM drill_photos
-       WHERE drill_id = ?
+       WHERE drill_id = ? AND deleted_at IS NULL
      ORDER BY display_order ASC, created_at ASC`,
     drillId,
   );

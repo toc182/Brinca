@@ -26,6 +26,8 @@ import { useUpdateSessionNoteMutation } from '../mutations/useUpdateSessionNoteM
 import { useDrillResultsQuery } from '../queries/useDrillResultsQuery';
 import { getDrillsByActivity } from '@/features/activity-builder/repositories/drill.repository';
 import { getDrillIdsWithPhotos } from '@/features/activity-builder/repositories/drill-photo.repository';
+import { discardSession } from '../repositories/session.repository';
+import { useDestructiveAlert } from '@/shared/hooks/useDestructiveAlert';
 
 const INACTIVITY_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -43,6 +45,7 @@ export function SessionScreen() {
   const markDrillComplete = useMarkDrillCompleteMutation();
   const unmarkDrillComplete = useUnmarkDrillCompleteMutation();
   const updateSessionNote = useUpdateSessionNoteMutation();
+  const { showDestructiveAlert } = useDestructiveAlert();
 
   const [note, setNote] = useState('');
   const [showInactivityBanner, setShowInactivityBanner] = useState(false);
@@ -167,6 +170,28 @@ export function SessionScreen() {
       timer.pause();
     }
   }, [timer]);
+
+  const handleDiscardSession = () => {
+    showDestructiveAlert({
+      title: 'Discard this session?',
+      message: 'Nothing from this session will be saved.',
+      destructiveLabel: 'Discard',
+      cancelLabel: 'Keep going',
+      onConfirm: async () => {
+        if (sessionId) {
+          try {
+            await discardSession(sessionId);
+          } catch {
+            // Best-effort — even if the delete fails, leave the session screen
+            // so the user isn't trapped; the row stays and can be finished later.
+          }
+        }
+        timer.reset();
+        useActiveSessionStore.getState().clearSession();
+        router.back();
+      },
+    });
+  };
 
   const handleFinishSession = async () => {
     if (!sessionId || !childId) return;
@@ -309,6 +334,7 @@ export function SessionScreen() {
         isPaused={timer.isPaused}
         onTogglePause={handleTogglePause}
         onFinish={handleFinishSession}
+        onDiscard={handleDiscardSession}
         finishDisabled={finishSession.isPending}
       />
 

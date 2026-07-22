@@ -37,6 +37,21 @@ export async function finishSession(id: UUID, endedAt: string, durationSeconds: 
   await appendToQueue('UPDATE', 'sessions', { id, ended_at: endedAt, duration_seconds: durationSeconds, is_complete: true });
 }
 
+/**
+ * Discard an in-progress session entirely — the session never happened, so
+ * this is a genuine hard delete, not a soft-delete tombstone. Deleting the
+ * session row cascades locally (drill_results → element_values, session_photos,
+ * drill_result_photos all FK with ON DELETE CASCADE), and a single queued
+ * DELETE cascades the same way on Supabase. Any INSERT/UPDATE queue entries for
+ * this session's rows that haven't drained yet replay harmlessly before the
+ * DELETE lands (server briefly creates, then removes).
+ */
+export async function discardSession(id: UUID) {
+  const db = await getDatabase();
+  await db.runAsync(`DELETE FROM sessions WHERE id = ?`, id);
+  await appendToQueue('DELETE', 'sessions', { id });
+}
+
 export async function updateSessionNote(id: UUID, note: string) {
   const db = await getDatabase();
   await db.runAsync(`UPDATE sessions SET note = ? WHERE id = ?`, note, id);

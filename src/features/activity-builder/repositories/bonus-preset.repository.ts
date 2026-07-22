@@ -13,7 +13,7 @@ interface BonusPresetRow {
 export async function getBonusPresets(parentType: string, parentId: UUID): Promise<BonusPresetRow[]> {
   const db = await getDatabase();
   return db.getAllAsync<BonusPresetRow>(
-    `SELECT * FROM bonus_presets WHERE parent_type = ? AND parent_id = ? ORDER BY display_order ASC`,
+    `SELECT * FROM bonus_presets WHERE parent_type = ? AND parent_id = ? AND deleted_at IS NULL ORDER BY display_order ASC`,
     parentType, parentId
   );
 }
@@ -37,8 +37,10 @@ export async function updateBonusPreset(id: UUID, amount: number) {
   await appendToQueue('UPDATE', 'bonus_presets', { id, amount });
 }
 
+/** Soft delete — see deleteTierReward for why deletions must leave a trace. */
 export async function deleteBonusPreset(id: UUID) {
   const db = await getDatabase();
-  await db.runAsync(`DELETE FROM bonus_presets WHERE id = ?`, id);
-  await appendToQueue('DELETE', 'bonus_presets', { id });
+  const deletedAt = new Date().toISOString();
+  await db.runAsync(`UPDATE bonus_presets SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+  await appendToQueue('UPDATE', 'bonus_presets', { id, deleted_at: deletedAt });
 }

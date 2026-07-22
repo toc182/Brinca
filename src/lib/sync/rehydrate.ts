@@ -309,9 +309,12 @@ export async function rehydrateActivities(
   const drillPlaceholders = drillIds.map(() => '?').join(',');
 
   // 3. Tracking elements — always re-sync to overwrite any locally-corrupted
-  // configs from a previous double-encoding bug. INSERT OR REPLACE rewrites the
-  // whole row, so EVERY synced column must be listed below — an omitted column
-  // (this bit `width`) silently resets to its SQLite default on every launch.
+  // configs from a previous double-encoding bug. Uses ON CONFLICT DO UPDATE, not
+  // INSERT OR REPLACE: REPLACE deletes the existing row first, and that delete is
+  // blocked with "error 19: FOREIGN KEY constraint failed" once the element has
+  // element_values (element_values.tracking_element_id → tracking_elements, no
+  // cascade). DO UPDATE edits in place. EVERY synced column must still be listed
+  // — an omitted one silently keeps its stale value (the bug that reset `width`).
   {
     const { data, error } = await supabase
       .from('tracking_elements')
@@ -326,8 +329,18 @@ export async function rehydrateActivities(
         const configStr =
           typeof e.config === 'string' ? e.config : JSON.stringify(e.config);
         await db.runAsync(
-          `INSERT OR REPLACE INTO tracking_elements (id, drill_id, type, label, config, width, display_order, deleted_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO tracking_elements (id, drill_id, type, label, config, width, display_order, deleted_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             drill_id = excluded.drill_id,
+             type = excluded.type,
+             label = excluded.label,
+             config = excluded.config,
+             width = excluded.width,
+             display_order = excluded.display_order,
+             deleted_at = excluded.deleted_at,
+             created_at = excluded.created_at,
+             updated_at = excluded.updated_at`,
           e.id, e.drill_id, e.type, e.label, configStr,
           e.width ?? 'full', e.display_order, e.deleted_at ?? null, e.created_at, e.updated_at,
         );

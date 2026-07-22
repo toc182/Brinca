@@ -112,10 +112,14 @@ export async function deletePhoto(id: UUID): Promise<{ storagePath: string | nul
   );
   if (!row) return { storagePath: null };
 
-  await db.runAsync(`DELETE FROM session_photos WHERE id = ?`, id);
-
   if (row.upload_status === 'uploaded') {
-    await appendToQueue('DELETE', 'session_photos', { id });
+    // On the server → soft-delete so the tombstone reaches other devices.
+    const deletedAt = new Date().toISOString();
+    await db.runAsync(`UPDATE session_photos SET deleted_at = ? WHERE id = ?`, deletedAt, id);
+    await appendToQueue('UPDATE', 'session_photos', { id, deleted_at: deletedAt });
+  } else {
+    // Never uploaded → nothing on the server to propagate; hard-delete locally.
+    await db.runAsync(`DELETE FROM session_photos WHERE id = ?`, id);
   }
   return { storagePath: row.storage_path };
 }
@@ -124,7 +128,7 @@ export async function getPhotosBySession(sessionId: UUID): Promise<SessionPhotoR
   const db = await getDatabase();
   return db.getAllAsync<SessionPhotoRow>(
     `SELECT * FROM session_photos
-       WHERE session_id = ?
+       WHERE session_id = ? AND deleted_at IS NULL
      ORDER BY display_order ASC, created_at ASC`,
     sessionId,
   );
