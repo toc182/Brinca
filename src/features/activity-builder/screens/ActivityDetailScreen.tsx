@@ -246,6 +246,17 @@ export function ActivityDetailScreen() {
     setTimeout(() => nameInputRef.current?.focus(), 50);
   };
 
+  // Every surface that lists this child's activities: the builder list, the
+  // settings launchpad summary, and the session-start picker. A rename, icon
+  // change, activate toggle, or delete must refresh all three, not just the
+  // builder list (the bug where a new/renamed activity lagged in the launchpad).
+  const refreshActivityLists = () => {
+    if (!childId) return;
+    queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
+    queryClient.invalidateQueries({ queryKey: ['profile', 'activities-summary', childId] });
+    queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
+  };
+
   const handleNameBlur = async () => {
     setEditingName(false);
     const trimmed = nameValue.trim();
@@ -253,6 +264,7 @@ export function ActivityDetailScreen() {
     try {
       await updateActivity(activityId!, { name: trimmed });
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activity(activityId!) });
+      refreshActivityLists();
     } catch {
       showToast('error', 'Could not update activity name.');
     }
@@ -264,6 +276,7 @@ export function ActivityDetailScreen() {
     try {
       await updateActivity(activityId!, { icon });
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activity(activityId!) });
+      refreshActivityLists();
     } catch {
       showToast('error', 'Could not update activity icon.');
     }
@@ -275,10 +288,7 @@ export function ActivityDetailScreen() {
     try {
       await updateActivity(activityId!, { is_active: next });
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activity(activityId!) });
-      if (childId) {
-        queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
-        queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
-      }
+      refreshActivityLists();
     } catch {
       showToast('error', 'Could not update activity.');
     }
@@ -291,10 +301,7 @@ export function ActivityDetailScreen() {
       onConfirm: async () => {
         try {
           await deleteActivity(activityId!);
-          if (childId) {
-            queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
-            queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
-          }
+          refreshActivityLists();
           router.back();
         } catch {
           showToast('error', 'Could not delete activity.');

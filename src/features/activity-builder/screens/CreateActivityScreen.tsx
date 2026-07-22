@@ -48,7 +48,13 @@ export function CreateActivityScreen() {
     try {
       const id = randomUUID();
       await insertActivity(id, childId, name.trim(), icon, category);
+      // Refresh every surface that lists activities: the full builder list, the
+      // settings launchpad summary, and the session-start picker. Invalidating
+      // only the first left the new activity missing from the other two until a
+      // background sync or restart.
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
+      queryClient.invalidateQueries({ queryKey: ['profile', 'activities-summary', childId] });
+      queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
       router.replace(`/(settings)/activities/${id}` as never);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
