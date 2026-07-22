@@ -53,7 +53,10 @@ export function CreateActivityScreen() {
       // only the first left the new activity missing from the other two until a
       // background sync or restart.
       queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
-      queryClient.invalidateQueries({ queryKey: ['profile', 'activities-summary', childId] });
+      // The settings launchpad reads activities from the combined profile query
+      // (['profile','child',childId]) — NOT the 'activities-summary' key, which
+      // no query actually uses. Invalidate the real one so the launchpad updates.
+      queryClient.invalidateQueries({ queryKey: ['profile', 'child', childId] });
       queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
       router.replace(`/(settings)/activities/${id}` as never);
     } catch (error) {

@@ -253,7 +253,9 @@ export function ActivityDetailScreen() {
   const refreshActivityLists = () => {
     if (!childId) return;
     queryClient.invalidateQueries({ queryKey: activityBuilderKeys.activities(childId) });
-    queryClient.invalidateQueries({ queryKey: ['profile', 'activities-summary', childId] });
+    // Launchpad activities live in the combined profile query, not the unused
+    // 'activities-summary' key.
+    queryClient.invalidateQueries({ queryKey: ['profile', 'child', childId] });
     queryClient.invalidateQueries({ queryKey: ['activities-selector', childId] });
   };
 

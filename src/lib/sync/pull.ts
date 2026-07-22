@@ -527,7 +527,9 @@ export async function pullChildData(childId: UUID, queryClient: QueryClient): Pr
   queryClient.invalidateQueries({ queryKey: ['stats-summary'] });
   queryClient.invalidateQueries({ queryKey: ['profile', 'measurements', childId] });
   queryClient.invalidateQueries({ queryKey: ['profile', 'external-activities', childId] });
-  queryClient.invalidateQueries({ queryKey: ['profile', 'activities-summary', childId] });
+  // The combined profile query (child + measurements + activities launchpad).
+  // The 'activities-summary' key it used to invalidate is unused by any query.
+  queryClient.invalidateQueries({ queryKey: ['profile', 'child', childId] });
 }
 
 /**
