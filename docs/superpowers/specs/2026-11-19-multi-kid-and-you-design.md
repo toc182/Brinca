@@ -1,6 +1,6 @@
-# Multi-kid navigation, Kids tab, and You screen — design
+# Multi-kid navigation, Kids tab, and Account screen — design
 
-**Status:** waiting for Ivan's review
+**Status:** decisions 1A 2C 3A 4B made 2026-11-19; waiting for final review
 **Date:** 2026-11-19
 **Mockups:**
 - Clickable flow (1 / 3 / 30 kids): https://claude.ai/artifact/WoPW8AgiW6mN4M7Wpf3caW
@@ -23,7 +23,7 @@
 - **Only Home has All.**
 - **The cutoff is 7 kids.** It's a guess, kept as one constant in the code so it's easy to change.
 - **Cards or List** is a switch on Home. It only changes Home, and the app remembers it. Until someone uses it, Home follows the cutoff.
-- **The tab is your kids; your photo is you.** The Profile tab becomes **Kids** (everything about a kid). The photo at the top right opens **You** (your account, the other adults, app settings).
+- **The tab is your kids; your photo is you.** The Profile tab becomes **Kids** (everything about a kid). The photo at the top right opens **Account** (your account, the other adults, app settings).
 - **A running session blocks switching kids,** same as today ("Finish it before switching children").
 
 ## 3. Home
@@ -37,10 +37,8 @@ No change from today: Home is the kid's page.
 - **Card** (one per kid): photo, name, the kid's activity names, a "last practiced" label (Today / Yesterday / N days ago), the last 7 days as day rings, and "N of 7 days practiced".
 - **List row** (one per kid): photo, name, activity names, 7 small day rings, a short last-practiced label (Today, 2d…).
 - The last-practiced label turns to the warning color at 3 or more days, and for a kid who has never practiced.
-- **Order, 2–6 kids:** the order the kids were added (same as today's switcher).
-- **Order, 7+ kids:** a search box on top, then two groups:
-  1. "Not practiced in 3+ days · N": longest gap first. Kids who never practiced go at the top of this group.
-  2. "Practiced recently · N", A to Z.
+- **Order, 2–6 kids:** the order the kids were added (same as today's switcher). The row of names uses the same order, so each name always sits in the same spot.
+- **Order, 7+ kids:** a search box on top, then every kid A to Z, each with its last-practiced label. No "needs practice" group: a therapist works by appointment, so a long gap often means no appointment was booked, not that the kid needs attention. Appointments are a later phase (§9).
 - No results: "No kids match "<text>"."
 
 ### 3.3 One kid, from Home
@@ -71,9 +69,9 @@ Everything about the picked kid, and nothing else.
 
 The tab icon changes from one person to two people.
 
-## 6. The You screen (opened from your photo)
+## 6. The Account screen (opened from your photo)
 
-It replaces both today's Settings screen and Accounts Center. Title: **You**. It is about you and the app only, with nothing about the kids.
+It replaces both today's Settings screen and Accounts Center. Title: **Account**, the name Apple's own apps (App Store, Apple Music) give the screen behind your photo, so it feels native. It is about you and the app only, with nothing about the kids.
 
 1. **Header:** your photo, name, email, and your ID (e.g. BR-4821).
 2. **Your account:** Photo, Name, Email, Password. Each opens today's editor from Accounts Center.
@@ -87,13 +85,13 @@ It replaces both today's Settings screen and Accounts Center. Title: **You**. It
 | Today | After |
 |---|---|
 | Settings → "Child" card: activity bubbles, Edit Profile, Measurements, External Activities | Kids tab |
-| Settings → "You" card: Accounts Center | You (Accounts Center is no longer a separate screen) |
-| Settings → App: imperial units toggle, Help, Privacy Policy, About, Log out | You |
-| Accounts Center → Your profile: photo, change password, ID | You |
+| Settings → "You" card: Accounts Center | Account (Accounts Center is no longer a separate screen) |
+| Settings → App: imperial units toggle, Help, Privacy Policy, About, Log out | Account |
+| Accounts Center → Your profile: photo, change password, ID | Account |
 | Accounts Center → Children list, Add child | Kids tab (the row of names, plus Add a kid) |
-| Accounts Center → Family members, Invite member | You → People with access |
+| Accounts Center → Family members, Invite member | Account → People with access |
 | Accounts Center → Sign in with Apple / Google ("Coming soon") | **Removed.** They did nothing yet. |
-| Accounts Center → Delete my account | You |
+| Accounts Center → Delete my account | Account |
 
 ## 7. How it's built
 
@@ -117,7 +115,7 @@ Follows the project rules: Zustand only for client state, local SQLite as the so
 ### 7.4 Routes
 - `app/(tabs)/profile.tsx` → `app/(tabs)/kids.tsx`: label "Kids", icon two people.
 - `app/(tabs)/home.tsx` → a stack in `app/(tabs)/home/`: `_layout.tsx` (Stack, header hidden), `index.tsx` (All, and the kid page for 2–6 kids), `[kidId].tsx` (the pushed kid page for 7+ kids). Same pattern as the existing `stats/` stack. `app/index.tsx` stays, per the root-index gotcha.
-- The parent photo still opens `/(settings)/menu`, which now shows the You screen. It is owned by the `accounts-center` feature.
+- The parent photo still opens `/(settings)/menu`, which now shows the Account screen. It is owned by the `accounts-center` feature.
 - `/(settings)/accounts-center/index` is removed. Member detail stays.
 - `SettingsScreen` and `ChildSwitcherSheet` in `profile` are deleted.
 
@@ -128,8 +126,8 @@ Follows the project rules: Zustand only for client state, local SQLite as the so
 - **Offline:** everything reads local SQLite, so it works without a connection.
 
 ### 7.6 Tests
-- Unit: the count → layout helper (1, 2, 6, 7, 30). The 7+ grouping and sort (gaps, never practiced, A to Z). The last-practiced label.
-- Component: `KidSwitcher` at 1, 3 and 30 kids. The Home All ↔ kid ↔ All flow. The You screen shows Invite only for Admin and Co-admin.
+- Unit: the count → layout helper (1, 2, 6, 7, 30). The 7+ A-to-Z sort and search (accents ignored, so "lucia" finds Lucía). The last-practiced label.
+- Component: `KidSwitcher` at 1, 3 and 30 kids. The Home All ↔ kid ↔ All flow. The Account screen shows Invite only for Admin and Co-admin.
 - Device check before release: 1, 3 and 8+ kids on a real phone, with a session running.
 
 ## 8. Risks and unknowns
@@ -140,14 +138,15 @@ Follows the project rules: Zustand only for client state, local SQLite as the so
 
 ## 9. Not in this change (later)
 
-- **Activity manager in You:** create an activity once and use it for several kids. Today every activity belongs to one kid. This is a bigger change to how data is stored, so it's deferred to its own phase.
+- **Activity manager in Account:** create an activity once and use it for several kids. Today every activity belongs to one kid. This is a bigger change to how data is stored, so it's deferred to its own phase.
 - **Role-based tab name** (Kids / Athletes / Students / Clients): deferred. "Kids" for everyone for now.
 - **Sign in with Apple / Google.**
+- **Appointments** (for therapists): book sessions per kid, so Home can show who has an appointment today or who is overdue. This would bring back a "needs attention" view for 7+ kids, based on appointments instead of days since practice.
 
 ## 10. Docs to update when this is built
 
 - `docs/feature-specs/home-dashboard.md`: All view, Cards/List, cutoff
 - `docs/feature-specs/profile.md`: becomes the Kids tab
-- `docs/feature-specs/accounts-center.md`: becomes the You screen; Children section and Apple/Google removed
-- `docs/ux/navigation.md`: tabs, the kid switcher, the photo → You
+- `docs/feature-specs/accounts-center.md`: becomes the Account screen; Children section and Apple/Google removed
+- `docs/ux/navigation.md`: tabs, the kid switcher, the photo → Account
 - `docs/design-system/components/`: a spec for `KidSwitcher`
