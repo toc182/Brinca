@@ -46,8 +46,8 @@ No change from today: Home is the kid's page.
 ### 3.3 One kid, from Home
 - Tapping a card or row picks that kid (with the session check) and shows that kid's page: today's Home content (calendar, coins, level, recent sessions, accolades, rewards).
 - **2–6 kids:** the row of names stays at the top, with **All** as its first item.
-- **7+ kids:** a "‹ All kids" link at the top left instead of the row.
-- Tapping the Home tab while already on Home goes back to All. (See §8: this depends on NativeTabs exposing a re-tap event. If it doesn't, All and "‹ All kids" are the ways back.)
+- **7+ kids:** the kid's page opens as a real pushed screen (like any iPhone list → detail): "‹ All kids" at the top left, and swiping from the left edge goes back.
+- Tapping the Home tab while on a kid's page goes back to All, like tapping the current tab in any iPhone app. Confirmed in the library code: react-native-screens 4.24 emits `onNativeFocusChange` on a repeated tab selection, and expo-router 55 turns it into a `tabPress` event (`NativeBottomTabsNavigator.js`). For 2–6 kids, Home listens for `tabPress` while focused and switches to All. For 7+, the native pop-to-root on re-tap does it (`disablePopToTop` stays off). Tapping Home while already on All scrolls to the top, the native default.
 
 ### 3.4 Header title
 - **1 kid:** the kid's name, as today.
@@ -116,6 +116,7 @@ Follows the project rules: Zustand only for client state, local SQLite as the so
 
 ### 7.4 Routes
 - `app/(tabs)/profile.tsx` → `app/(tabs)/kids.tsx`: label "Kids", icon two people.
+- `app/(tabs)/home.tsx` → a stack in `app/(tabs)/home/`: `_layout.tsx` (Stack, header hidden), `index.tsx` (All, and the kid page for 2–6 kids), `[kidId].tsx` (the pushed kid page for 7+ kids). Same pattern as the existing `stats/` stack. `app/index.tsx` stays, per the root-index gotcha.
 - The parent photo still opens `/(settings)/menu`, which now shows the You screen. It is owned by the `accounts-center` feature.
 - `/(settings)/accounts-center/index` is removed. Member detail stays.
 - `SettingsScreen` and `ChildSwitcherSheet` in `profile` are deleted.
@@ -133,7 +134,6 @@ Follows the project rules: Zustand only for client state, local SQLite as the so
 
 ## 8. Risks and unknowns
 
-- **Re-tapping the Home tab.** I'm not sure expo-router's `NativeTabs` reports a tap on the tab you're already on. If it doesn't, that shortcut is dropped. All and "‹ All kids" still work.
 - **The cutoff of 7 is a guess.** It's one constant.
 - **Performance at 30+ kids.** The All query reads 7 days of sessions for every kid. It should be fine on SQLite, but check with a 30-kid test family.
 - **Help, Privacy Policy and About do nothing today.** They move as-is. Wiring them up is separate work.
