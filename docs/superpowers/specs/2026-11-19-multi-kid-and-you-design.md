@@ -1,15 +1,17 @@
 # Multi-kid navigation, Kids tab, and Account screen — design
 
-**Status:** decisions 1A 2C 3A 4B made 2026-11-19; waiting for final review
+**Status:** decisions 1A 2C 3A 4B and session confirmation B made 2026-11-19; waiting for final review
 **Date:** 2026-11-19
 **Mockups:**
 - Clickable flow (1 / 3 / 30 kids): https://claude.ai/artifact/WoPW8AgiW6mN4M7Wpf3caW
 - Where every Settings option goes, before and after: https://claude.ai/artifact/MZ4hd1CdVjE3u5JTM9rGG8
+- Session confirmation sheet: https://claude.ai/artifact/6ZvpSL7M5SXxB1FBB8zCAZ
 
 ## 1. The problem
 
 1. **Seeing several kids is tedious.** Home shows one kid at a time. To see another kid you open the Profile tab, open the kid switcher, pick the kid, and go back to Home.
 2. **"Profile" vs. your own profile is confusing.** The Profile tab is the kid's profile, but the word doesn't say whose. The parent photo (top right) opens "Settings", which mixes three things: the kid again (Edit Profile, Measurements, Activities), the parent (two levels deep, behind "Accounts Center"), and app settings.
+3. **A session can start for the wrong kid.** Tapping an activity starts the session at once, with nothing showing which kid it's for.
 
 ## 2. The rules, in one place
 
@@ -25,6 +27,7 @@
 - **Cards or List** is a switch on Home. It only changes Home, and the app remembers it. Until someone uses it, Home follows the cutoff.
 - **The tab is your kids; your photo is you.** The Profile tab becomes **Kids** (everything about a kid). The photo at the top right opens **Account** (your account, the other adults, app settings).
 - **A running session blocks switching kids,** same as today ("Finish it before switching children").
+- **Every session starts with a confirmation** showing the kid's photo, for every family (§5).
 
 ## 3. Home
 
@@ -38,7 +41,7 @@ No change from today: Home is the kid's page.
 - **List row** (one per kid): photo, name, activity names, 7 small day rings, a short last-practiced label (Today, 2d…).
 - The last-practiced label turns to the warning color at 3 or more days, and for a kid who has never practiced.
 - **Order, 2–6 kids:** the order the kids were added (same as today's switcher). The row of names uses the same order, so each name always sits in the same spot.
-- **Order, 7+ kids:** a search box on top, then every kid A to Z, each with its last-practiced label. No "needs practice" group: a therapist works by appointment, so a long gap often means no appointment was booked, not that the kid needs attention. Appointments are a later phase (§9).
+- **Order, 7+ kids:** a search box on top, then every kid A to Z, each with its last-practiced label. No "needs practice" group: a therapist works by appointment, so a long gap often means no appointment was booked, not that the kid needs attention. Appointments are a later phase (§10).
 - No results: "No kids match "<text>"."
 
 ### 3.3 One kid, from Home
@@ -57,7 +60,23 @@ No change from today: Home is the kid's page.
 - **7+ kids:** one button with the current kid's photo, name and a down arrow. It opens a sheet titled "Choose a kid", with a search box and every kid A to Z. Each row shows the kid's activities and last-practiced label, and a checkmark on the current kid. Tapping a kid picks them and closes the sheet.
 - The old switcher on the Profile tab (tap the kid's header) goes away.
 
-## 5. The Kids tab (was Profile)
+## 5. Starting a session (Activity tab)
+
+Today, tapping an activity starts the session at once. From now on a confirmation sheet comes first, so it's clear which kid the session is for. It shows **for every family, even with 1 kid** (decision B, 2026-11-19).
+
+- Tapping an activity tile opens the iPhone's own bottom sheet: it slides up from the bottom, fits its content, has the grab bar at the top, and dims the screen behind it.
+- The sheet shows, top to bottom:
+  1. The kid's photo, large (92 pt, with a ring), or the kid's initial on a color when there's no photo.
+  2. The kid's name, and their age ("8 years old"). No age line if the birthday is empty.
+  3. The activity: its name, its number of drills, and when it was last done ("last session yesterday", "last session 5 days ago", or "first session").
+  4. **Start session**: a full-width button.
+  5. **Cancel**: a text button under it.
+- **Start session** starts the timer and opens the session screen, same as today. It can only be tapped once: it's disabled while the session is being created, so a double tap never makes two sessions.
+- **Cancel**, tapping the dimmed area, or swiping the sheet down closes it. Nothing is created.
+- **Wrong kid:** Cancel, then tap the right kid in the row of names (or the name with an arrow, for 7+).
+- **A session is already running:** the "Session in progress" alert (Cancel / Resume) shows instead of the sheet, same as today.
+
+## 6. The Kids tab (was Profile)
 
 Everything about the picked kid, and nothing else.
 
@@ -69,7 +88,7 @@ Everything about the picked kid, and nothing else.
 
 The tab icon changes from one person to two people.
 
-## 6. The Account screen (opened from your photo)
+## 7. The Account screen (opened from your photo)
 
 It replaces both today's Settings screen and Accounts Center. Title: **Account**, the name Apple's own apps (App Store, Apple Music) give the screen behind your photo, so it feels native. It is about you and the app only, with nothing about the kids.
 
@@ -93,60 +112,69 @@ It replaces both today's Settings screen and Accounts Center. Title: **Account**
 | Accounts Center → Sign in with Apple / Google ("Coming soon") | **Removed.** They did nothing yet. |
 | Accounts Center → Delete my account | Account |
 
-## 7. How it's built
+## 8. How it's built
 
 Follows the project rules: Zustand only for client state, local SQLite as the source of truth, features don't import each other, route files stay thin.
 
-### 7.1 Shared pieces (`src/shared/`)
+### 8.1 Shared pieces (`src/shared/`)
 - **Kid list:** a shared read of the family's kids from local SQLite (id, name, photo, birth date, created order). It lives in shared code because Home, Activity, Stats and Kids all need it, and features can't import each other.
 - **`KidSwitcher` component:** takes the kid list, the picked kid and an optional "All". It draws nothing for 1 kid, the row for 2–6, and the name-with-arrow plus sheet for 7+. Switching goes through the existing `useChildSwitchGuard`.
 - **Cutoff:** one constant, `KID_LIST_CUTOFF = 7`, and one helper that turns a kid count into `'single' | 'row' | 'picker'`.
 
-### 7.2 State
+### 8.2 State
 - **Picked kid:** unchanged, `active-child.store` (saved on the device).
 - **Home showing All or one kid:** a new field in a Zustand store, **not** saved. The app always opens on All.
 - **Cards or List:** a new field in `ui-preferences.store`, saved on the device. `null` means "follow the cutoff".
 
-### 7.3 Home data
+### 8.3 Home data
 - A new `home-dashboard` repository function reads, for every kid in the family in one query: completed sessions in the last 7 days by day and activity, the date of the last completed session, and the kid's activity names. One TanStack query hook wraps it, following the existing `useDashboardQuery` pattern.
 - It refreshes when a session is saved or deleted, the same way the dashboard and stats already do (see v121–v124).
 - The one-kid page keeps today's `getDashboardData`.
 
-### 7.4 Routes
+### 8.4 Session confirmation sheet
+- **Route:** `app/start-session.tsx`, a thin wrapper, registered in the root stack (`app/_layout.tsx`) with `presentation: 'formSheet'`, `sheetAllowedDetents: 'fitToContents'` and `sheetGrabberVisible: true`. These are the native iOS sheet options; all three exist in the installed react-native-screens 4.24 (`src/types.tsx`). It takes the activity id as a parameter.
+- **Screen:** `StartSessionSheet` in the `activity-selector` feature. The kid comes from `active-child.store` plus the shared kid list (§8.1); the activity comes from a new `activity-selector` repository function that returns the activity's name, its count of active drills, and its last completed session (today's `getActivitiesWithRecency` already has the last session but not the drill count).
+- **Start session:** runs today's `useStartSessionMutation`, then calls `router.replace('/(modals)/session')`. The replace swaps the sheet for the session screen in one step, so finishing or discarding the session never lands back on the sheet. Checked in `RNSScreenStack.mm`: when one modal replaces another, the native stack dismisses the first and presents the second only after the dismissal finishes, so the two never collide.
+- **ActivityScreen:** a tile tap still runs today's "Session in progress" check first. With no session running it opens `/start-session` instead of starting the session.
+
+### 8.5 Routes
 - `app/(tabs)/profile.tsx` → `app/(tabs)/kids.tsx`: label "Kids", icon two people.
 - `app/(tabs)/home.tsx` → a stack in `app/(tabs)/home/`: `_layout.tsx` (Stack, header hidden), `index.tsx` (All, and the kid page for 2–6 kids), `[kidId].tsx` (the pushed kid page for 7+ kids). Same pattern as the existing `stats/` stack. `app/index.tsx` stays, per the root-index gotcha.
+- `app/start-session.tsx`: the confirmation sheet (§8.4).
 - The parent photo still opens `/(settings)/menu`, which now shows the Account screen. It is owned by the `accounts-center` feature.
 - `/(settings)/accounts-center/index` is removed. Member detail stays.
 - `SettingsScreen` and `ChildSwitcherSheet` in `profile` are deleted.
 
-### 7.5 Edge cases
+### 8.6 Edge cases
 - **Picked kid is removed:** pick the first remaining kid. If none remain, follow today's no-kid behavior.
 - **Kid count crosses the cutoff** (adding the 2nd or 7th kid): the layout follows on the next render. A saved Cards/List choice is kept.
 - **Session running:** every switch path (row, sheet, Home card, Home "All") goes through the guard. Going to All doesn't change the picked kid, so it's always allowed.
-- **Offline:** everything reads local SQLite, so it works without a connection.
+- **Offline:** everything reads local SQLite, so it works without a connection. The session sheet too.
+- **Kid without a photo or birthday:** the sheet shows the initial on a color, and no age line.
 
-### 7.6 Tests
-- Unit: the count → layout helper (1, 2, 6, 7, 30). The 7+ A-to-Z sort and search (accents ignored, so "lucia" finds Lucía). The last-practiced label.
-- Component: `KidSwitcher` at 1, 3 and 30 kids. The Home All ↔ kid ↔ All flow. The Account screen shows Invite only for Admin and Co-admin.
-- Device check before release: 1, 3 and 8+ kids on a real phone, with a session running.
+### 8.7 Tests
+- Unit: the count → layout helper (1, 2, 6, 7, 30). The 7+ A-to-Z sort and search (accents ignored, so "lucia" finds Lucía). The last-practiced label. The sheet's "last session" label (yesterday, N days ago, first session).
+- Component: `KidSwitcher` at 1, 3 and 30 kids. The Home All ↔ kid ↔ All flow. The Account screen shows Invite only for Admin and Co-admin. The session sheet: shows the kid's name and the activity; Start session is disabled while starting; Cancel creates nothing.
+- Device check before release: 1, 3 and 8+ kids on a real phone, with a session running. Start a session from the sheet, finish it, and confirm it lands on the Activity grid, not the sheet.
 
-## 8. Risks and unknowns
+## 9. Risks and unknowns
 
 - **The cutoff of 7 is a guess.** It's one constant.
 - **Performance at 30+ kids.** The All query reads 7 days of sessions for every kid. It should be fine on SQLite, but check with a 30-kid test family.
 - **Help, Privacy Policy and About do nothing today.** They move as-is. Wiring them up is separate work.
 
-## 9. Not in this change (later)
+## 10. Not in this change (later)
 
 - **Activity manager in Account:** create an activity once and use it for several kids. Today every activity belongs to one kid. This is a bigger change to how data is stored, so it's deferred to its own phase.
 - **Role-based tab name** (Kids / Athletes / Students / Clients): deferred. "Kids" for everyone for now.
 - **Sign in with Apple / Google.**
 - **Appointments** (for therapists): book sessions per kid, so Home can show who has an appointment today or who is overdue. This would bring back a "needs attention" view for 7+ kids, based on appointments instead of days since practice.
 
-## 10. Docs to update when this is built
+## 11. Docs to update when this is built
 
 - `docs/feature-specs/home-dashboard.md`: All view, Cards/List, cutoff
 - `docs/feature-specs/profile.md`: becomes the Kids tab
 - `docs/feature-specs/accounts-center.md`: becomes the Account screen; Children section and Apple/Google removed
-- `docs/ux/navigation.md`: tabs, the kid switcher, the photo → Account
+- `docs/feature-specs/activity.md`: tapping a tile opens the confirmation sheet instead of starting the session (Entry flow, tile tap behavior, Navigation table, acceptance criteria)
+- `docs/ux/navigation.md`: tabs, the kid switcher, the photo → Account, the session sheet
 - `docs/design-system/components/`: a spec for `KidSwitcher`
